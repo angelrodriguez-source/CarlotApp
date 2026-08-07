@@ -28,6 +28,17 @@ Cambios en `supabase/migrations/` + push a `main` → `migrate.yml` ejecuta
 Actions): connection string URI del **session pooler** (Dashboard > Connect),
 contrasena sin caracteres especiales.
 
+## Recordatorio nocturno
+
+`recordatorio.yml` envía cada noche (20:15 UTC) un email a los dos padres
+con el resumen del día (consulta la BBDD con `SUPABASE_DB_URL`) y el
+recordatorio de apuntar lo que falte.
+
+**Requiere** dos secrets: `MAIL_USERNAME` (el Gmail emisor) y
+`MAIL_PASSWORD` (contraseña de aplicación de ese Gmail:
+myaccount.google.com/apppasswords, exige 2FA). Sin ellos el workflow
+falla y GitHub avisa por email.
+
 ## Keepalive
 
 `keepalive.yml` hace un ping cada 3 dias para que el free tier de Supabase
