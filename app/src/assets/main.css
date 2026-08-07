@@ -1,29 +1,29 @@
 /* main.css — Estilos globales de CarlotApp (CSS puro con variables) */
 
 :root {
-  --color-primario: #e57398;
-  --color-primario-oscuro: #c94f78;
-  --color-fondo: #fdf2f6;
+  --color-primario: #2aa595;
+  --color-primario-oscuro: #1d8175;
+  --color-fondo: #eefaf7;
   --color-tarjeta: #ffffff;
-  --color-texto: #4a3540;
-  --color-texto-suave: #96788a;
-  --color-borde: #f3d7e2;
+  --color-texto: #2c423e;
+  --color-texto-suave: #6f978f;
+  --color-borde: #cfeae3;
   --color-ok: #4caf7d;
   --color-aviso: #e5a173;
   --color-peligro: #d95d5d;
   --radio: 14px;
-  --sombra: 0 2px 10px rgb(201 79 120 / 0.08);
+  --sombra: 0 2px 10px rgb(29 129 117 / 0.08);
 }
 
 /* Modo noche (clase en <html>, la gestiona App.vue por horario o a mano) */
 .noche {
-  --color-primario: #e57398;
-  --color-primario-oscuro: #f094b1;
-  --color-fondo: #211820;
-  --color-tarjeta: #2d222b;
-  --color-texto: #f2e4ec;
-  --color-texto-suave: #b697a8;
-  --color-borde: #4b3844;
+  --color-primario: #2aa595;
+  --color-primario-oscuro: #7cd6c8;
+  --color-fondo: #142120;
+  --color-tarjeta: #1e2f2c;
+  --color-texto: #e3f1ee;
+  --color-texto-suave: #8fb3ab;
+  --color-borde: #35504b;
   --sombra: 0 2px 10px rgb(0 0 0 / 0.35);
 }
 
