@@ -15,6 +15,7 @@ import {
   type Sueno,
   type Toma,
 } from '../types'
+import { REFERENCIA_OMS_NINAS } from './referenciaOMS'
 
 /** Clave de día local 'YYYY-MM-DD' de una fecha ISO (zona del usuario) */
 export function claveDia(iso: string): string {
@@ -191,6 +192,54 @@ export function ultimoValor<T>(
     if (!ultimo || fecha.localeCompare(ultimo.fecha) >= 0) ultimo = { valor, fecha }
   }
   return ultimo
+}
+
+// ---- Percentiles OMS (niñas) ----
+
+export type MedidaOMS = 'peso' | 'altura' | 'pc'
+
+/** Función error de Gauss (aproximación Abramowitz-Stegun 7.1.26, error < 1.5e-7) */
+function erf(x: number): number {
+  const signo = x < 0 ? -1 : 1
+  x = Math.abs(x)
+  const t = 1 / (1 + 0.3275911 * x)
+  const y =
+    1 -
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+      t *
+      Math.exp(-x * x)
+  return signo * y
+}
+
+function cdfNormal(z: number): number {
+  return 0.5 * (1 + erf(z / Math.SQRT2))
+}
+
+/** Edad en días entre el nacimiento y una fecha, ambas 'YYYY-MM-DD' */
+export function edadDias(fechaNacimiento: string, fecha: string): number {
+  const nacimiento = new Date(fechaNacimiento + 'T00:00:00')
+  const dia = new Date(fecha + 'T00:00:00')
+  return Math.round((dia.getTime() - nacimiento.getTime()) / 86_400_000)
+}
+
+/**
+ * Percentil OMS (0.1-99.9) de una medida de niña a cierta edad en días.
+ * `valor` en unidades de la app (peso en g, altura/PC en cm). Interpola los
+ * parámetros LMS entre semanas; null fuera de rango (0-700 días).
+ */
+export function percentilOMS(tipo: MedidaOMS, valor: number, dias: number): number | null {
+  if (valor <= 0 || dias < 0) return null
+  const semanas = dias / 7
+  const ref0 = REFERENCIA_OMS_NINAS[Math.floor(semanas)]
+  const ref1 = REFERENCIA_OMS_NINAS[Math.ceil(semanas)]
+  if (!ref0 || !ref1) return null
+  const t = semanas - Math.floor(semanas)
+  const interpolar = (a: number, b: number) => a + (b - a) * t
+  const l = interpolar(ref0.lms[tipo].l, ref1.lms[tipo].l)
+  const m = interpolar(ref0.lms[tipo].m, ref1.lms[tipo].m)
+  const s = interpolar(ref0.lms[tipo].s, ref1.lms[tipo].s)
+  const z = l === 0 ? Math.log(valor / m) / s : (Math.pow(valor / m, l) - 1) / (l * s)
+  return Math.min(99.9, Math.max(0.1, cdfNormal(z) * 100))
 }
 
 export interface PuntoGrafica {

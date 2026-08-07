@@ -19,7 +19,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | `/` | LoginView | Boton "Entrar con Google" |
 | `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + accesos rapidos (Sueno, Toma, Caca, Mas) + linea de tiempo |
 | `/historial` | HistorialView | Dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
-| `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC + tabla |
+| `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC con percentil OMS junto a cada valor y graficas de evolucion del percentil + tabla |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
 
 Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
@@ -65,6 +65,13 @@ Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
 - `textoToma/textoSueno/textoPanal/textoEvento` — registro → texto de las
   lineas de tiempo (compartido por Hoy e Historial)
 - `aInputLocal` — Date → valor de `<input type="datetime-local">`
+- `edadDias`, `percentilOMS` — percentil OMS de una medida (LMS + CDF normal)
+
+Ademas, `models/referenciaOMS.ts` (GENERADO, no editar a mano): estandares
+OMS de ninas semanas 0-100 (P3/P15/P50/P85/P97 + parametros LMS de peso,
+altura y perimetro craneal). Se regenera con
+`python3 scripts/generar-referencia-oms.py <ruta-a-growthstandards>` a partir
+de las tablas del repo oficial github.com/WorldHealthOrganization/anthro.
 
 ## Componentes
 
