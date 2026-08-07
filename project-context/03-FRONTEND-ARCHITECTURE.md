@@ -86,8 +86,8 @@ de las tablas del repo oficial github.com/WorldHealthOrganization/anthro.
 
 CSS puro. Variables y utilidades compartidas en `assets/main.css`
 (`.pantalla`, `.tarjeta`, `.boton`, `.campo`, `.chip`, `.fila-registro`).
-Paleta rosa suave (`--color-primario: #e57398`). Navegacion inferior fija
-(App.vue) con safe-area para iPhone.
+Paleta verde aguamarina (`--color-primario: #2aa595`). Navegacion inferior
+fija (App.vue) con safe-area para iPhone.
 
 **Modo noche**: clase `.noche` en `<html>` que redefine las variables de
 color (paleta oscura). La gestiona App.vue: automatica de 22:00 a 08:00,
