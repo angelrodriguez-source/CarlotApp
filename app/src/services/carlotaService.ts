@@ -56,6 +56,14 @@ export async function listarTomas(bebeId: string, desdeIso: string): Promise<Tom
   return (data ?? []) as Toma[]
 }
 
+export async function actualizarToma(
+  id: string,
+  cambios: Partial<Pick<Toma, 'inicio' | 'fin' | 'tipo' | 'cantidad_ml' | 'notas'>>,
+): Promise<void> {
+  const { error } = await supabase.from('tomas').update(cambios).eq('id', id)
+  lanzarSi(error)
+}
+
 export async function eliminarToma(id: string): Promise<void> {
   const { error } = await supabase.from('tomas').delete().eq('id', id)
   lanzarSi(error)
@@ -64,6 +72,15 @@ export async function eliminarToma(id: string): Promise<void> {
 // ------------------------------------------------------------
 // Sueño
 // ------------------------------------------------------------
+
+/** Registra un sueño ya terminado (a posteriori), con inicio y fin conocidos */
+export async function registrarSueno(
+  sueno: Pick<Sueno, 'bebe_id' | 'inicio' | 'fin' | 'notas'>,
+): Promise<Sueno> {
+  const { data, error } = await supabase.from('suenos').insert(sueno).select().single()
+  lanzarSi(error)
+  return data as Sueno
+}
 
 /** Inicia un sueño (fin = null). Si ya hay uno abierto, la vista debe cerrarlo antes. */
 export async function iniciarSueno(bebeId: string, inicioIso: string): Promise<Sueno> {
@@ -106,6 +123,14 @@ export async function listarSuenos(bebeId: string, desdeIso: string): Promise<Su
   return (data ?? []) as Sueno[]
 }
 
+export async function actualizarSueno(
+  id: string,
+  cambios: Partial<Pick<Sueno, 'inicio' | 'fin' | 'notas'>>,
+): Promise<void> {
+  const { error } = await supabase.from('suenos').update(cambios).eq('id', id)
+  lanzarSi(error)
+}
+
 export async function eliminarSueno(id: string): Promise<void> {
   const { error } = await supabase.from('suenos').delete().eq('id', id)
   lanzarSi(error)
@@ -116,11 +141,19 @@ export async function eliminarSueno(id: string): Promise<void> {
 // ------------------------------------------------------------
 
 export async function registrarPanal(
-  panal: Pick<Panal, 'bebe_id' | 'fecha' | 'tipo' | 'notas'>,
+  panal: Pick<Panal, 'bebe_id' | 'fecha' | 'tipo' | 'cantidad' | 'notas'>,
 ): Promise<Panal> {
   const { data, error } = await supabase.from('panales').insert(panal).select().single()
   lanzarSi(error)
   return data as Panal
+}
+
+export async function actualizarPanal(
+  id: string,
+  cambios: Partial<Pick<Panal, 'fecha' | 'tipo' | 'cantidad' | 'notas'>>,
+): Promise<void> {
+  const { error } = await supabase.from('panales').update(cambios).eq('id', id)
+  lanzarSi(error)
 }
 
 export async function listarPanales(bebeId: string, desdeIso: string): Promise<Panal[]> {
@@ -160,6 +193,14 @@ export async function listarEventos(bebeId: string, desdeIso: string): Promise<E
     .order('fecha', { ascending: false })
   lanzarSi(error)
   return (data ?? []) as Evento[]
+}
+
+export async function actualizarEvento(
+  id: string,
+  cambios: Partial<Pick<Evento, 'fecha' | 'tipo' | 'descripcion'>>,
+): Promise<void> {
+  const { error } = await supabase.from('eventos').update(cambios).eq('id', id)
+  lanzarSi(error)
 }
 
 export async function eliminarEvento(id: string): Promise<void> {

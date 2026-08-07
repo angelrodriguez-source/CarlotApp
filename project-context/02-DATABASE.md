@@ -26,7 +26,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | `medidas` | fecha (date), peso_gramos, altura_cm, perimetro_craneal_cm, notas | Todos los valores opcionales (se anota lo que se tenga) |
 | `tomas` | inicio, fin, tipo, cantidad_ml, notas | tipo: pecho_izq/pecho_der/biberon_formula/biberon_materna. Pecho→duracion, biberon→ml |
 | `suenos` | inicio, fin, notas | `fin NULL` = sueno en curso |
-| `panales` | fecha, tipo | tipo: pis/caca/mixto |
+| `panales` | fecha, tipo, cantidad | tipo: pis/caca/mixto. cantidad (poco/medio/mucho, opcional) para caca/mixto |
 | `eventos` | fecha, tipo, descripcion | tipo: bano/vitamina_d/medicacion/hito/otro |
 | `citas` | fecha, titulo, tipo, lugar, notas, completada | tipo: medica/tramite/otro |
 | `usuarios_autorizados` | email, nota | Lista blanca (ver arriba) |
@@ -52,6 +52,8 @@ Migraciones existentes:
    (emails autorizados y bebe Carlota). ⚠️ Contiene los TODO(config) de
    email de la madre y fecha de nacimiento: si ya se aplico con
    placeholders, corregir con una migracion nueva.
+2. `202608071430_panales_cantidad.sql` — columna `cantidad` en `panales`
+   (poco/medio/mucho, opcional).
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

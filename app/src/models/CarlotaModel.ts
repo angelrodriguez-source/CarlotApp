@@ -5,7 +5,16 @@
  * agrupaciones por día, resúmenes. Es lo único que se testea con Vitest
  * (src/models/__tests__/).
  */
-import type { Sueno, Toma, Panal } from '../types'
+import {
+  ETIQUETAS_CANTIDAD_PANAL,
+  ETIQUETAS_EVENTO,
+  ETIQUETAS_PANAL,
+  ETIQUETAS_TOMA,
+  type Evento,
+  type Panal,
+  type Sueno,
+  type Toma,
+} from '../types'
 
 /** Clave de día local 'YYYY-MM-DD' de una fecha ISO (zona del usuario) */
 export function claveDia(iso: string): string {
@@ -15,6 +24,13 @@ export function claveDia(iso: string): string {
 /** Hoy en la zona del usuario, como 'YYYY-MM-DD' */
 export function hoyLocal(ahora: Date = new Date()): string {
   return ahora.toLocaleDateString('sv-SE')
+}
+
+/** Date → valor para <input type="datetime-local"> en hora local */
+export function aInputLocal(fecha: Date): string {
+  const dia = fecha.toLocaleDateString('sv-SE')
+  const hora = fecha.toTimeString().slice(0, 5)
+  return `${dia}T${hora}`
 }
 
 /** Desglose interno de la edad: días sueltos, semanas+días o meses+días */
@@ -130,6 +146,32 @@ export function resumenDia(tomas: Toma[], suenos: Sueno[], panales: Panal[]): Re
     numPanales: panales.length,
     numCacas: panales.filter((p) => p.tipo === 'caca' || p.tipo === 'mixto').length,
   }
+}
+
+// ---- Texto de los registros (compartido por Hoy e Historial) ----
+
+export function textoToma(t: Toma): string {
+  const minutos = duracionMinutos(t.inicio, t.fin)
+  const detalle = t.cantidad_ml
+    ? `${t.cantidad_ml} ml`
+    : minutos !== null
+      ? formatoDuracion(minutos)
+      : ''
+  return `🍼 ${ETIQUETAS_TOMA[t.tipo]}${detalle ? ` — ${detalle}` : ''}${t.notas ? ` · ${t.notas}` : ''}`
+}
+
+export function textoSueno(s: Sueno): string {
+  const minutos = duracionMinutos(s.inicio, s.fin)
+  return `😴 Sueño${minutos !== null ? ` — ${formatoDuracion(minutos)}` : ' (en curso)'}`
+}
+
+export function textoPanal(p: Panal): string {
+  const cantidad = p.cantidad ? ` (${ETIQUETAS_CANTIDAD_PANAL[p.cantidad].toLowerCase()})` : ''
+  return `🧷 Pañal — ${ETIQUETAS_PANAL[p.tipo]}${cantidad}`
+}
+
+export function textoEvento(e: Evento): string {
+  return `⭐ ${ETIQUETAS_EVENTO[e.tipo]}${e.descripcion ? ` — ${e.descripcion}` : ''}`
 }
 
 /**

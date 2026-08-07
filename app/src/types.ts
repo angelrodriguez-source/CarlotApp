@@ -11,7 +11,7 @@ export interface Bebe {
   fecha_nacimiento: string // 'YYYY-MM-DD'
 }
 
-export type TipoToma = 'pecho_izq' | 'pecho_der' | 'biberon_formula' | 'biberon_materna'
+export type TipoToma = 'biberon_formula' | 'biberon_materna' | 'pecho_izq' | 'pecho_der'
 
 export interface Toma {
   id: string
@@ -33,11 +33,15 @@ export interface Sueno {
 
 export type TipoPanal = 'pis' | 'caca' | 'mixto'
 
+/** Cuánta caca traía el pañal (solo tipos caca/mixto; null = sin especificar) */
+export type CantidadPanal = 'poco' | 'medio' | 'mucho'
+
 export interface Panal {
   id: string
   bebe_id: string
   fecha: string
   tipo: TipoPanal
+  cantidad: CantidadPanal | null
   notas: string | null
 }
 
@@ -75,16 +79,22 @@ export interface Cita {
 }
 
 export const ETIQUETAS_TOMA: Record<TipoToma, string> = {
-  pecho_izq: 'Pecho izq.',
-  pecho_der: 'Pecho der.',
   biberon_formula: 'Biberón (fórmula)',
   biberon_materna: 'Biberón (materna)',
+  pecho_izq: 'Pecho izq.',
+  pecho_der: 'Pecho der.',
 }
 
 export const ETIQUETAS_PANAL: Record<TipoPanal, string> = {
   pis: 'Pis',
   caca: 'Caca',
   mixto: 'Pis + caca',
+}
+
+export const ETIQUETAS_CANTIDAD_PANAL: Record<CantidadPanal, string> = {
+  poco: 'Poco',
+  medio: 'Medio',
+  mucho: 'Mucho',
 }
 
 export const ETIQUETAS_EVENTO: Record<TipoEvento, string> = {

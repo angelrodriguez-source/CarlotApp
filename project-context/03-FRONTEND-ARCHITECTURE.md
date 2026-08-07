@@ -18,7 +18,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
 | `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + accesos rapidos (Sueno, Toma, Caca, Mas) + linea de tiempo |
-| `/historial` | HistorialView | Dias plegables con resumen y registros (7/14/30 dias) |
+| `/historial` | HistorialView | Dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
 | `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC + tabla |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
 
@@ -41,8 +41,9 @@ Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
   hash router. Credenciales: `.env.local` en dev, fallbacks hardcoded en
   produccion (la anon key es publica).
 - **services/carlotaService.ts**: TODO el acceso a datos. Funciones por
-  entidad (registrar/listar/eliminar tomas, suenos, panales, eventos,
-  medidas, citas; iniciar/finalizar sueno; marcar cita). Convencion:
+  entidad (registrar/listar/actualizar/eliminar tomas, suenos, panales,
+  eventos, medidas, citas; iniciar/finalizar sueno; registrar sueno a
+  posteriori; marcar cita). Convencion:
   lanzan `Error` si Supabase devuelve error; las vistas capturan y
   muestran el mensaje.
 
@@ -61,6 +62,9 @@ Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
 - `agruparPorDia` — registros → Map por dia (recientes primero)
 - `resumenDia` — nº tomas, ml biberon, min pecho, min sueno, panales/cacas
 - `serieGrafica` — medidas → puntos (fecha, valor) para GraficaLinea
+- `textoToma/textoSueno/textoPanal/textoEvento` — registro → texto de las
+  lineas de tiempo (compartido por Hoy e Historial)
+- `aInputLocal` — Date → valor de `<input type="datetime-local">`
 
 ## Componentes
 

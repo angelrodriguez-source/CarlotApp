@@ -12,7 +12,7 @@
 
 ## Proximas features (ideas)
 
-- [ ] Editar registros (ahora solo crear/borrar)
+- [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [ ] Cronometro de toma de pecho en vivo (como el de sueno, con inicio/fin)
 - [ ] Percentiles OMS en las graficas de peso/altura
 - [ ] Recordatorios de citas (notificaciones o export a Google Calendar)
@@ -24,8 +24,8 @@
 
 - [ ] Sin linting configurado (Mimes usa eslint+oxlint+prettier; se quito
       del esqueleto para aligerar — anadir si el proyecto crece)
-- [ ] HoyView e HistorialView duplican el mapeo registro→texto; extraer a
-      un helper si se toca una tercera vez
+- [x] HoyView e HistorialView duplican el mapeo registro→texto (2026-08-07:
+      extraido a `textoToma/textoSueno/textoPanal/textoEvento` en CarlotaModel)
 - [ ] Solo hay tests de CarlotaModel; las vistas no se testean (aceptado)
 
 ## Bugs conocidos
