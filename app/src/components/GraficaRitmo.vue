@@ -64,7 +64,7 @@ function etiquetaDia(dia: string): string {
 
 <template>
   <div class="tarjeta">
-    <h3>Ritmo de 24 h</h3>
+    <h3>🌗 Ritmo de 24 h</h3>
     <div class="leyenda suave">
       <span><i class="muestra sueno" /> Sueño</span>
       <span><i class="muestra toma" /> Toma</span>

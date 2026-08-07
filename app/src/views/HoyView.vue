@@ -476,7 +476,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
     <template v-if="!cargando && bebeStore.cargado && !bebeStore.bebe">
       <div class="tarjeta">
-        <h2>Cuenta sin acceso</h2>
+        <h2>🔒 Cuenta sin acceso</h2>
         <p>
           Este usuario no está en la lista blanca (<code>usuarios_autorizados</code>).
           Comprueba que has entrado con el Google correcto, o añade el email con una
@@ -488,7 +488,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     <template v-if="bebeStore.bebe">
       <!-- Mitad superior: resumen con números en grande -->
       <section class="tarjeta">
-        <h2>{{ bebeStore.bebe.nombre }}</h2>
+        <h2>👶 {{ bebeStore.bebe.nombre }}</h2>
 
         <div class="stats tres">
           <div class="stat">
@@ -559,7 +559,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <!-- Mitad inferior: registrar -->
       <section class="tarjeta">
-        <h3>Registrar</h3>
+        <h3>📝 Registrar</h3>
         <div class="accesos">
           <button class="acceso" :class="{ activo: suenoAbierto }" @click="alternarSueno">
             <span class="icono">😴</span>
@@ -609,7 +609,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <!-- Formulario: toma -->
       <form v-if="formulario === 'toma'" class="tarjeta" @submit.prevent="guardarToma">
-        <h3>Nueva toma</h3>
+        <h3>🍼 Nueva toma</h3>
         <div class="campo">
           <label for="toma-tipo">Tipo</label>
           <select id="toma-tipo" v-model="nuevaToma.tipo">
@@ -648,7 +648,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         class="tarjeta"
         @submit.prevent="terminarToma(mlFinToma)"
       >
-        <h3>Toma terminada — ¿cuántos ml?</h3>
+        <h3>🍼 Toma terminada — ¿cuántos ml?</h3>
         <div class="campo">
           <label for="fin-toma-ml">Cantidad (ml)</label>
           <input id="fin-toma-ml" v-model.number="mlFinToma" type="number" min="1" />
@@ -666,7 +666,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </button>
         </div>
         <form class="bloque-mas" @submit.prevent="guardarSueno">
-          <h3>Sueño a posteriori</h3>
+          <h3>😴 Sueño a posteriori</h3>
           <div class="campo">
             <label for="sueno-inicio">Empezó</label>
             <input id="sueno-inicio" v-model="nuevoSueno.inicio" type="datetime-local" required />
@@ -678,7 +678,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <button class="boton" type="submit">Guardar sueño</button>
         </form>
         <form class="bloque-mas" @submit.prevent="guardarEvento">
-          <h3>Nuevo evento</h3>
+          <h3>⭐ Nuevo evento</h3>
           <div class="campo">
             <label for="evento-tipo">Tipo</label>
             <select id="evento-tipo" v-model="nuevoEvento.tipo">
@@ -717,7 +717,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <!-- Línea de tiempo de hoy -->
       <div class="tarjeta">
-        <h3>Registro del día</h3>
+        <h3>📋 Registro del día</h3>
         <p v-if="lineaDeTiempo.length === 0" class="suave">Todavía no hay registros hoy.</p>
         <div v-for="registro in lineaDeTiempo" :key="registro.id" class="fila-registro">
           <span class="hora">{{ horaCorta(registro.hora) }}</span>

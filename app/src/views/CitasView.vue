@@ -104,7 +104,7 @@ function icono(tipo: TipoCita): string {
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-citas">
-      <h2>Citas y trámites</h2>
+      <h2>🗓️ Citas y trámites</h2>
       <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Cita</button>
     </div>
 
@@ -112,7 +112,7 @@ function icono(tipo: TipoCita): string {
     <p v-if="error" class="error">{{ error }}</p>
 
     <form v-if="mostrarFormulario" class="tarjeta" @submit.prevent="guardarCita">
-      <h3>Nueva cita</h3>
+      <h3>🗓️ Nueva cita</h3>
       <div class="campo">
         <label for="cita-titulo">Título</label>
         <input
@@ -147,7 +147,7 @@ function icono(tipo: TipoCita): string {
     </form>
 
     <div class="tarjeta">
-      <h3>Próximas</h3>
+      <h3>🔜 Próximas</h3>
       <p v-if="pendientes.length === 0" class="suave">No hay citas pendientes 🎉</p>
       <div v-for="cita in pendientes" :key="cita.id" class="fila-registro">
         <input
@@ -173,7 +173,7 @@ function icono(tipo: TipoCita): string {
 
     <div class="tarjeta">
       <button class="boton secundario" @click="mostrarPasadas = !mostrarPasadas">
-        {{ mostrarPasadas ? 'Ocultar hechas' : `Ver hechas (${pasadas.length})` }}
+        {{ mostrarPasadas ? '✅ Ocultar hechas' : `✅ Ver hechas (${pasadas.length})` }}
       </button>
       <template v-if="mostrarPasadas">
         <div v-for="cita in pasadas" :key="cita.id" class="fila-registro hecha">

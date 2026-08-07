@@ -288,7 +288,7 @@ function borrarRegistro() {
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-historial">
-      <h2>Historial</h2>
+      <h2>📖 Historial</h2>
       <select v-model.number="dias" aria-label="Días a mostrar">
         <option :value="7">Últimos 7 días</option>
         <option :value="14">Últimos 14 días</option>
@@ -313,7 +313,7 @@ function borrarRegistro() {
         @click="diaAbierto = diaAbierto === diaHistorial.dia ? null : diaHistorial.dia"
       >
         <strong>
-          {{ diaHistorial.dia === hoy ? 'Hoy' : fechaLegible(diaHistorial.dia) }}
+          📅 {{ diaHistorial.dia === hoy ? 'Hoy' : fechaLegible(diaHistorial.dia) }}
         </strong>
         <span class="suave">{{ diaAbierto === diaHistorial.dia ? '▲' : '▼' }}</span>
       </button>
