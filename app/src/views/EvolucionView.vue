@@ -130,7 +130,7 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-evolucion">
-      <h2>Evolución</h2>
+      <h2>📈 Evolución</h2>
       <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Medida</button>
     </div>
 
@@ -138,7 +138,7 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
     <p v-if="error" class="error">{{ error }}</p>
 
     <form v-if="mostrarFormulario" class="tarjeta" @submit.prevent="guardarMedida">
-      <h3>Nueva medida</h3>
+      <h3>📏 Nueva medida</h3>
       <div class="campo">
         <label for="medida-fecha">Fecha</label>
         <input id="medida-fecha" v-model="nuevaMedida.fecha" type="date" required />
@@ -174,30 +174,30 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
       <button class="boton" type="submit">Guardar</button>
     </form>
 
-    <GraficaLinea titulo="Peso" :puntos="seriePeso" unidad="g" />
+    <GraficaLinea titulo="⚖️ Peso" :puntos="seriePeso" unidad="g" />
     <GraficaLinea
       v-if="seriePercentilPeso.length > 0"
-      titulo="Percentil de peso (OMS niñas)"
+      titulo="📊 Percentil de peso (OMS niñas)"
       :puntos="seriePercentilPeso"
       unidad="P"
     />
-    <GraficaLinea titulo="Altura" :puntos="serieAltura" unidad="cm" />
+    <GraficaLinea titulo="📏 Altura" :puntos="serieAltura" unidad="cm" />
     <GraficaLinea
       v-if="seriePercentilAltura.length > 0"
-      titulo="Percentil de altura (OMS niñas)"
+      titulo="📊 Percentil de altura (OMS niñas)"
       :puntos="seriePercentilAltura"
       unidad="P"
     />
-    <GraficaLinea titulo="Perímetro craneal" :puntos="seriePerimetro" unidad="cm" />
+    <GraficaLinea titulo="👶 Perímetro craneal" :puntos="seriePerimetro" unidad="cm" />
     <GraficaLinea
       v-if="seriePercentilPerimetro.length > 0"
-      titulo="Percentil de PC (OMS niñas)"
+      titulo="📊 Percentil de PC (OMS niñas)"
       :puntos="seriePercentilPerimetro"
       unidad="P"
     />
 
     <div class="tarjeta">
-      <h3>Mediciones</h3>
+      <h3>📋 Mediciones</h3>
       <p v-if="medidas.length === 0" class="suave">Todavía no hay mediciones.</p>
       <div v-for="medida in medidasRecientes" :key="medida.id" class="fila-registro">
         <span class="hora">{{ medida.fecha }}</span>
