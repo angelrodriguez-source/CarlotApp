@@ -33,7 +33,7 @@ jobs:
           # '|| true' para que un fallo de curl (ej. DNS de proyecto
           # pausado, exit 6) no aborte el script antes del mensaje claro
           STATUS=$(curl -s -o /tmp/resp.json -w '%{http_code}' \
-            "https://PEGA-AQUI-TU-PROYECTO.supabase.co/rest/v1/bebes?select=id&limit=1" \
+            "https://aolbgcuvgcjpogdarpmg.supabase.co/rest/v1/bebes?select=id&limit=1" \
             -H "apikey: $ANON_KEY" \
             -H "Authorization: Bearer $ANON_KEY" || true)
           echo "HTTP ${STATUS:-sin respuesta}"

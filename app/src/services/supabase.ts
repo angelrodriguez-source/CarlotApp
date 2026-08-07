@@ -14,7 +14,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ?? 'https://PEGA-AQUI-TU-PROYECTO.supabase.co'
+  import.meta.env.VITE_SUPABASE_URL ?? 'https://aolbgcuvgcjpogdarpmg.supabase.co'
 
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'PEGA-AQUI-LA-ANON-KEY'
