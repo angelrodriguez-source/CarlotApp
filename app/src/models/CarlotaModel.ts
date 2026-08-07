@@ -194,6 +194,43 @@ export function ultimoValor<T>(
   return ultimo
 }
 
+// ---- Objetivos diarios (orientativos) ----
+
+export interface ObjetivoDiario {
+  min: number
+  max: number
+}
+
+/**
+ * Sueño recomendado por 24 h según la edad, en minutos (rangos de la
+ * National Sleep Foundation / AASM): 0-3 meses 14-17 h, 4-11 meses
+ * 12-15 h, 1-2 años 11-14 h.
+ */
+export function objetivoSuenoMinutos(edadDias: number): ObjetivoDiario {
+  if (edadDias < 120) return { min: 14 * 60, max: 17 * 60 }
+  if (edadDias < 365) return { min: 12 * 60, max: 15 * 60 }
+  return { min: 11 * 60, max: 14 * 60 }
+}
+
+/**
+ * Leche diaria orientativa (ml) con la regla pediátrica de ml/kg por edad
+ * (~150 ml/kg hasta los 3 meses, 120 hasta los 6, 100 hasta los 9, 90
+ * después), con banda del ±15% y tope de 1000 ml/día. Requiere conocer el
+ * peso: null si no hay medida de peso.
+ */
+export function objetivoLecheMl(
+  edadDias: number,
+  pesoGramos: number | null,
+): ObjetivoDiario | null {
+  if (!pesoGramos || pesoGramos <= 0) return null
+  const porKg = edadDias < 90 ? 150 : edadDias < 180 ? 120 : edadDias < 270 ? 100 : 90
+  const kg = pesoGramos / 1000
+  const redondear = (v: number) => Math.round(v / 10) * 10
+  const max = Math.min(1000, redondear(kg * porKg * 1.15))
+  const min = Math.min(max, redondear(kg * porKg * 0.85))
+  return { min, max }
+}
+
 // ---- Ritmo de 24 h ----
 
 export interface TramoRitmo {

@@ -50,6 +50,11 @@
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
 - [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
+- [x] Objetivos diarios de sueno y leche (2026-08-07): barras de progreso en
+      Hoy segun edad — sueno con rangos NSF/AASM (14-17h / 12-15h / 11-14h),
+      leche con regla ml/kg por edad sobre el ultimo peso (BarraObjetivo.vue,
+      objetivoSuenoMinutos/objetivoLecheMl con tests). Orientativo, no
+      consejo medico
 - [x] Contadores "hace X" en el dashboard (2026-08-07): ultima toma, ultimo
       panal y despierta/durmiendo desde, refrescados cada minuto
 - [x] Deshacer rapido (2026-08-07): toast de 6 s tras cada alta rapida

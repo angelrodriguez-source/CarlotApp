@@ -10,12 +10,17 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
+import BarraObjetivo from '../components/BarraObjetivo.vue'
 import {
   aInputLocal,
   duracionMinutos,
   edadCorta,
+  edadDias,
   formatoDuracion,
   formatoPeso,
+  hoyLocal,
+  objetivoLecheMl,
+  objetivoSuenoMinutos,
   resumenDia,
   textoEvento,
   textoPanal,
@@ -180,6 +185,28 @@ function fechaCorta(fechaIso: string): string {
     month: 'short',
   })
 }
+
+// ---- Objetivos del día (orientativos, según edad) ----
+const edadDiasHoy = computed(() =>
+  bebeStore.bebe ? edadDias(bebeStore.bebe.fecha_nacimiento, hoyLocal(ahora.value)) : 0,
+)
+
+const objetivoSueno = computed(() => objetivoSuenoMinutos(edadDiasHoy.value))
+
+const objetivoLeche = computed(() =>
+  objetivoLecheMl(edadDiasHoy.value, ultimoPeso.value?.valor ?? null),
+)
+
+const textoObjetivoSueno = computed(() => {
+  const o = objetivoSueno.value
+  return `${formatoDuracion(minutosSuenoHoy.value)} de ${o.min / 60}-${o.max / 60} h`
+})
+
+const textoObjetivoLeche = computed(() =>
+  objetivoLeche.value
+    ? `${resumen.value.mlBiberon} ml de ${objetivoLeche.value.min}-${objetivoLeche.value.max} ml`
+    : '',
+)
 
 // ---- Contadores "hace X" ----
 function haceTexto(iso: string): string {
@@ -496,6 +523,26 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
         </div>
 
+        <!-- Objetivos del día según la edad (orientativos) -->
+        <BarraObjetivo
+          etiqueta="😴 Objetivo de sueño"
+          :valor="minutosSuenoHoy"
+          :min="objetivoSueno.min"
+          :max="objetivoSueno.max"
+          :texto="textoObjetivoSueno"
+        />
+        <BarraObjetivo
+          v-if="objetivoLeche"
+          etiqueta="🍼 Objetivo de leche"
+          :valor="resumen.mlBiberon"
+          :min="objetivoLeche.min"
+          :max="objetivoLeche.max"
+          :texto="textoObjetivoLeche"
+        />
+        <p v-else class="suave sin-peso">
+          Registra el peso en Evolución para calcular el objetivo de leche.
+        </p>
+
         <!-- Contadores "hace X" -->
         <div class="contadores">
           <span class="chip">🍼 {{ contadorToma }}</span>
@@ -769,6 +816,11 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
 .contadores {
   margin-top: 0.6rem;
+}
+
+.sin-peso {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
 }
 
 .botones-toma {
