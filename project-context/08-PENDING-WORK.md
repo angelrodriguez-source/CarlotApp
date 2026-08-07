@@ -53,6 +53,15 @@
 
 ### Hechas
 
+- [x] Revision exhaustiva del codigo (2026-08-07): 8 arreglos aplicados —
+      el sueno nocturno que cruza medianoche ya cuenta en "Sueno hoy" y en
+      el email nocturno (recorte por dia), editar un biberon conserva su
+      fin, el formulario de cita no se pierde si falla el guardado,
+      "ultimos 7 dias" ya no listaba 8, la etiqueta "Hoy" del historial no
+      se queda obsoleta tras medianoche, claves de v-for sin colisiones en
+      GraficaRitmo, aInputLocal deduplicado, y los ml del biberon manual
+      son obligatorios (para no confundirlo con una toma en curso)
+
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
 - [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
@@ -85,8 +94,11 @@
 
 ## Deuda tecnica
 
-- [ ] Sin linting configurado (Mimes usa eslint+oxlint+prettier; se quito
-      del esqueleto para aligerar — anadir si el proyecto crece)
+- [x] Linting configurado (2026-08-07): ESLint flat config (vue +
+      typescript + prettier) con `npm run lint` (--fix) / `lint-check`
+      (CI) / `format`; el CI lo ejecuta antes de los tests.
+      `referenciaOMS.ts` excluido de prettier (generado, una fila por
+      semana)
 - [x] HoyView e HistorialView duplican el mapeo registro→texto (2026-08-07:
       extraido a `textoToma/textoSueno/textoPanal/textoEvento` en CarlotaModel)
 - [ ] Solo hay tests de CarlotaModel; las vistas no se testean (aceptado)

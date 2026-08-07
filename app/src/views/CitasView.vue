@@ -5,6 +5,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
+import { aInputLocal } from '../models/CarlotaModel'
 import { ETIQUETAS_CITA, type Cita, type TipoCita } from '../types'
 
 const bebeStore = useBebeStore()
@@ -14,12 +15,6 @@ const error = ref('')
 const citas = ref<Cita[]>([])
 const mostrarFormulario = ref(false)
 const mostrarPasadas = ref(false)
-
-function aInputLocal(fecha: Date): string {
-  const dia = fecha.toLocaleDateString('sv-SE')
-  const hora = fecha.toTimeString().slice(0, 5)
-  return `${dia}T${hora}`
-}
 
 const nuevaCita = ref({
   titulo: '',
@@ -55,11 +50,11 @@ async function ejecutar(accion: () => Promise<unknown>) {
   }
 }
 
-function guardarCita() {
+async function guardarCita() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   const datos = nuevaCita.value
-  ejecutar(() =>
+  await ejecutar(() =>
     servicio.crearCita({
       bebe_id: bebe.id,
       fecha: new Date(datos.fecha).toISOString(),
@@ -69,6 +64,8 @@ function guardarCita() {
       notas: datos.notas || null,
     }),
   )
+  // Solo limpiar y cerrar si se guardó: si falló, conservar lo escrito
+  if (error.value) return
   mostrarFormulario.value = false
   nuevaCita.value = {
     titulo: '',

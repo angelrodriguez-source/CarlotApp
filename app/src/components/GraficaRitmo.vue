@@ -69,10 +69,21 @@ function etiquetaDia(dia: string): string {
       <span><i class="muestra sueno" /> Sueño</span>
       <span><i class="muestra toma" /> Toma</span>
     </div>
-    <svg :viewBox="`0 0 ${ANCHO} ${alto}`" class="grafica" role="img" aria-label="Ritmo de 24 horas">
+    <svg
+      :viewBox="`0 0 ${ANCHO} ${alto}`"
+      class="grafica"
+      role="img"
+      aria-label="Ritmo de 24 horas"
+    >
       <!-- Eje horario -->
       <g v-for="hora in HORAS_EJE" :key="hora">
-        <line :x1="x(hora * 60)" :y1="ARRIBA - 4" :x2="x(hora * 60)" :y2="alto - ABAJO" class="linea-hora" />
+        <line
+          :x1="x(hora * 60)"
+          :y1="ARRIBA - 4"
+          :x2="x(hora * 60)"
+          :y2="alto - ABAJO"
+          class="linea-hora"
+        />
         <text :x="x(hora * 60)" :y="alto - 3" text-anchor="middle" class="eje">{{ hora }}h</text>
       </g>
 
@@ -84,8 +95,8 @@ function etiquetaDia(dia: string): string {
         <rect :x="IZQ" :y="fila.y" :width="anchoUtil" :height="ALTO_FILA" rx="3" class="pista" />
         <!-- Tramos de sueño -->
         <rect
-          v-for="tramo in fila.tramos"
-          :key="tramo.desdeMin"
+          v-for="(tramo, i) in fila.tramos"
+          :key="i"
           :x="x(tramo.desdeMin)"
           :y="fila.y"
           :width="Math.max(1.5, x(tramo.hastaMin) - x(tramo.desdeMin))"
@@ -94,14 +105,18 @@ function etiquetaDia(dia: string): string {
           class="bloque-sueno"
         >
           <title>
-            Sueño {{ Math.floor(tramo.desdeMin / 60) }}:{{ String(tramo.desdeMin % 60).padStart(2, '0') }}
-            – {{ Math.floor(tramo.hastaMin / 60) }}:{{ String(tramo.hastaMin % 60).padStart(2, '0') }}
+            Sueño {{ Math.floor(tramo.desdeMin / 60) }}:{{
+              String(tramo.desdeMin % 60).padStart(2, '0')
+            }}
+            – {{ Math.floor(tramo.hastaMin / 60) }}:{{
+              String(tramo.hastaMin % 60).padStart(2, '0')
+            }}
           </title>
         </rect>
         <!-- Tomas -->
         <circle
-          v-for="toma in fila.tomasMin"
-          :key="toma.minuto"
+          v-for="(toma, i) in fila.tomasMin"
+          :key="i"
           :cx="x(toma.minuto)"
           :cy="fila.y + ALTO_FILA / 2"
           r="2.6"

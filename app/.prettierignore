@@ -1,0 +1,4 @@
+# Generado por scripts/generar-referencia-oms.py — una fila por semana;
+# prettier lo explotaria en miles de lineas
+src/models/referenciaOMS.ts
+dist/

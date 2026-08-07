@@ -85,13 +85,25 @@ async function borrarMedida(id: string) {
 }
 
 const seriePeso = computed(() =>
-  serieGrafica(medidas.value, (m) => m.fecha, (m) => m.peso_gramos),
+  serieGrafica(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => m.peso_gramos,
+  ),
 )
 const serieAltura = computed(() =>
-  serieGrafica(medidas.value, (m) => m.fecha, (m) => m.altura_cm),
+  serieGrafica(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => m.altura_cm,
+  ),
 )
 const seriePerimetro = computed(() =>
-  serieGrafica(medidas.value, (m) => m.fecha, (m) => m.perimetro_craneal_cm),
+  serieGrafica(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => m.perimetro_craneal_cm,
+  ),
 )
 
 // ---- Percentiles OMS (comparacion con el estandar de ninas) ----
@@ -111,10 +123,18 @@ function etiquetaP(tipo: MedidaOMS, valor: number | null, fecha: string): string
 }
 
 const seriePercentilPeso = computed(() =>
-  serieGrafica(medidas.value, (m) => m.fecha, (m) => percentilDe('peso', m.peso_gramos, m.fecha)),
+  serieGrafica(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => percentilDe('peso', m.peso_gramos, m.fecha),
+  ),
 )
 const seriePercentilAltura = computed(() =>
-  serieGrafica(medidas.value, (m) => m.fecha, (m) => percentilDe('altura', m.altura_cm, m.fecha)),
+  serieGrafica(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => percentilDe('altura', m.altura_cm, m.fecha),
+  ),
 )
 const seriePercentilPerimetro = computed(() =>
   serieGrafica(
@@ -209,8 +229,9 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
             · {{ medida.altura_cm }} cm{{ etiquetaP('altura', medida.altura_cm, medida.fecha) }}
           </template>
           <template v-if="medida.perimetro_craneal_cm">
-            · PC {{ medida.perimetro_craneal_cm }}
-            cm{{ etiquetaP('pc', medida.perimetro_craneal_cm, medida.fecha) }}
+            · PC {{ medida.perimetro_craneal_cm }} cm{{
+              etiquetaP('pc', medida.perimetro_craneal_cm, medida.fecha)
+            }}
           </template>
           <template v-if="medida.notas"> · {{ medida.notas }}</template>
         </span>

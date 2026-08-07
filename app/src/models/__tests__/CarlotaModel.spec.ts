@@ -61,18 +61,36 @@ describe('ultimoValor', () => {
   ]
 
   it('devuelve el valor no nulo mas reciente por fecha', () => {
-    expect(ultimoValor(medidas, (m) => m.fecha, (m) => m.peso)).toEqual({
+    expect(
+      ultimoValor(
+        medidas,
+        (m) => m.fecha,
+        (m) => m.peso,
+      ),
+    ).toEqual({
       valor: 5200,
       fecha: '2026-08-01',
     })
-    expect(ultimoValor(medidas, (m) => m.fecha, (m) => m.altura)).toEqual({
+    expect(
+      ultimoValor(
+        medidas,
+        (m) => m.fecha,
+        (m) => m.altura,
+      ),
+    ).toEqual({
       valor: 56.5,
       fecha: '2026-07-15',
     })
   })
 
   it('devuelve null si no hay ningun valor', () => {
-    expect(ultimoValor(medidas, (m) => m.fecha, () => null)).toBeNull()
+    expect(
+      ultimoValor(
+        medidas,
+        (m) => m.fecha,
+        () => null,
+      ),
+    ).toBeNull()
   })
 })
 
@@ -121,11 +139,31 @@ describe('resumenDia', () => {
       toma({ tipo: 'pecho_izq', fin: '2026-08-06T10:20:00Z' }),
     ]
     const suenos: Sueno[] = [
-      { id: 's', bebe_id: 'b', inicio: '2026-08-06T12:00:00Z', fin: '2026-08-06T13:30:00Z', notas: null },
+      {
+        id: 's',
+        bebe_id: 'b',
+        inicio: '2026-08-06T12:00:00Z',
+        fin: '2026-08-06T13:30:00Z',
+        notas: null,
+      },
     ]
     const panales: Panal[] = [
-      { id: 'p1', bebe_id: 'b', fecha: '2026-08-06T11:00:00Z', tipo: 'pis', cantidad: null, notas: null },
-      { id: 'p2', bebe_id: 'b', fecha: '2026-08-06T15:00:00Z', tipo: 'mixto', cantidad: 'poco', notas: null },
+      {
+        id: 'p1',
+        bebe_id: 'b',
+        fecha: '2026-08-06T11:00:00Z',
+        tipo: 'pis',
+        cantidad: null,
+        notas: null,
+      },
+      {
+        id: 'p2',
+        bebe_id: 'b',
+        fecha: '2026-08-06T15:00:00Z',
+        tipo: 'mixto',
+        cantidad: 'poco',
+        notas: null,
+      },
     ]
     const resumen = resumenDia(tomas, suenos, panales)
     expect(resumen.numTomas).toBe(3)
@@ -270,7 +308,11 @@ describe('serieGrafica', () => {
       { fecha: '2026-07-01', peso: 4400 },
       { fecha: '2026-07-15', peso: null },
     ]
-    const serie = serieGrafica(medidas, (m) => m.fecha, (m) => m.peso)
+    const serie = serieGrafica(
+      medidas,
+      (m) => m.fecha,
+      (m) => m.peso,
+    )
     expect(serie).toEqual([
       { etiqueta: '2026-07-01', valor: 4400 },
       { etiqueta: '2026-08-01', valor: 5200 },

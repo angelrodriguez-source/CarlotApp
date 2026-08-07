@@ -10,7 +10,9 @@ const CACHE = 'carlotapp-v1'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(['./', './manifest.webmanifest', './icon.svg'])),
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(['./', './manifest.webmanifest', './icon.svg'])),
   )
 })
 
@@ -22,9 +24,10 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-    ).then(() => self.clients.claim()),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
   )
 })
 
@@ -42,13 +45,15 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('/assets/')) {
     event.respondWith(
       caches.match(request).then(
-        (hit) => hit ?? fetch(request).then((res) => {
-          if (res.ok) {
-            const copy = res.clone()
-            caches.open(CACHE).then((cache) => cache.put(request, copy))
-          }
-          return res
-        }),
+        (hit) =>
+          hit ??
+          fetch(request).then((res) => {
+            if (res.ok) {
+              const copy = res.clone()
+              caches.open(CACHE).then((cache) => cache.put(request, copy))
+            }
+            return res
+          }),
       ),
     )
     return

@@ -36,10 +36,19 @@ jobs:
               (SELECT count(*) FROM panales
                  WHERE (fecha AT TIME ZONE 'Europe/Madrid')::date
                      = (now()  AT TIME ZONE 'Europe/Madrid')::date),
-              (SELECT coalesce(sum(extract(epoch FROM (coalesce(fin, now()) - inicio)) / 60)::int, 0)
+              -- Sueño de HOY: cada sueño aporta solo su parte de hoy (recortado
+              -- a [00:00, 24:00) de Madrid), incluido el nocturno que empezó ayer
+              (SELECT coalesce(sum(extract(epoch FROM (
+                       least(coalesce(fin, now()) AT TIME ZONE 'Europe/Madrid',
+                             date_trunc('day', now() AT TIME ZONE 'Europe/Madrid') + interval '1 day')
+                     - greatest(inicio AT TIME ZONE 'Europe/Madrid',
+                             date_trunc('day', now() AT TIME ZONE 'Europe/Madrid'))
+                     )) / 60)::int, 0)
                  FROM suenos
-                 WHERE (inicio AT TIME ZONE 'Europe/Madrid')::date
-                     = (now()  AT TIME ZONE 'Europe/Madrid')::date)
+                 WHERE inicio AT TIME ZONE 'Europe/Madrid'
+                       < date_trunc('day', now() AT TIME ZONE 'Europe/Madrid') + interval '1 day'
+                   AND coalesce(fin, now()) AT TIME ZONE 'Europe/Madrid'
+                       > date_trunc('day', now() AT TIME ZONE 'Europe/Madrid'))
           ")
           TOMAS=$(echo "$FILA" | cut -d'|' -f1)
           PANALES=$(echo "$FILA" | cut -d'|' -f2)
