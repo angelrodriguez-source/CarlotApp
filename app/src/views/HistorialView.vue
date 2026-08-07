@@ -13,6 +13,7 @@ import {
   claveDia,
   duracionMinutos,
   formatoDuracion,
+  minutosSuenoEnDia,
   resumenDia,
   textoEvento,
   textoPanal,
@@ -64,9 +65,13 @@ async function cargar() {
     desde.setDate(desde.getDate() - (dias.value - 1))
     desde.setHours(0, 0, 0, 0)
     const desdeIso = desde.toISOString()
+    // Sueños desde un día antes del rango: el nocturno que empezó la
+    // víspera aporta sus horas de madrugada al primer día visible
+    const desdeSuenos = new Date(desde)
+    desdeSuenos.setDate(desdeSuenos.getDate() - 1)
     ;[tomas.value, suenos.value, panales.value, eventos.value, momentos.value] = await Promise.all([
       servicio.listarTomas(bebe.id, desdeIso),
-      servicio.listarSuenos(bebe.id, desdeIso),
+      servicio.listarSuenos(bebe.id, desdeSuenos.toISOString()),
       servicio.listarPanales(bebe.id, desdeIso),
       servicio.listarEventos(bebe.id, desdeIso),
       servicio.listarMomentos(bebe.id),
@@ -122,7 +127,12 @@ const historial = computed<DiaHistorial[]>(() => {
     ...eventosPorDia.keys(),
   ])
 
+  // Los sueños se piden desde un día antes del rango (para repartir el
+  // nocturno); ese día extra no se lista
+  const primerDia = diasRitmo.value[diasRitmo.value.length - 1]!
+
   return [...todosLosDias]
+    .filter((dia) => dia >= primerDia)
     .sort((a, b) => b.localeCompare(a))
     .map((dia) => {
       const tomasDia = tomasPorDia.get(dia) ?? []
@@ -161,7 +171,13 @@ const historial = computed<DiaHistorial[]>(() => {
         })),
       ].sort((a, b) => a.hora.localeCompare(b.hora))
 
-      return { dia, resumen: resumenDia(tomasDia, suenosDia, panalesDia), registros }
+      // El sueño del resumen se reparte por día real (los nocturnos que
+      // cruzan medianoche aportan su parte a cada día), no por día de inicio
+      const resumen = {
+        ...resumenDia(tomasDia, suenosDia, panalesDia),
+        minutosSueno: minutosSuenoEnDia(suenos.value, dia),
+      }
+      return { dia, resumen, registros }
     })
 })
 

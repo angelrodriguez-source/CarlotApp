@@ -11,6 +11,7 @@ import {
   agruparPorDia,
   resumenDia,
   minutoDelDia,
+  minutosSuenoEnDia,
   objetivoLecheMl,
   objetivoSuenoMinutos,
   serieGrafica,
@@ -260,6 +261,35 @@ describe('ritmo de 24 h', () => {
     expect(
       tramoEnDia('2026-08-06T13:00:00', null, '2026-08-06', new Date('2026-08-06T13:45:00')),
     ).toEqual({ desdeMin: 780, hastaMin: 825 })
+  })
+
+  it('reparte el sueno nocturno entre los dos dias', () => {
+    const suenos: Sueno[] = [
+      // Nocturno 23:00 → 07:00: 60 min para el dia 5, 420 para el dia 6
+      {
+        id: 'a',
+        bebe_id: 'b',
+        inicio: '2026-08-05T23:00:00',
+        fin: '2026-08-06T07:00:00',
+        notas: null,
+      },
+      // Siesta entera dentro del dia 6
+      {
+        id: 'b',
+        bebe_id: 'b',
+        inicio: '2026-08-06T13:00:00',
+        fin: '2026-08-06T14:30:00',
+        notas: null,
+      },
+    ]
+    expect(minutosSuenoEnDia(suenos, '2026-08-05')).toBe(60)
+    expect(minutosSuenoEnDia(suenos, '2026-08-06')).toBe(420 + 90)
+    expect(minutosSuenoEnDia(suenos, '2026-08-07')).toBe(0)
+    // Abierto (fin null): recortado en "ahora"
+    const abierto: Sueno[] = [
+      { id: 'c', bebe_id: 'b', inicio: '2026-08-06T22:00:00', fin: null, notas: null },
+    ]
+    expect(minutosSuenoEnDia(abierto, '2026-08-06', new Date('2026-08-06T23:30:00'))).toBe(90)
   })
 
   it('minutoDelDia y ultimosDias', () => {

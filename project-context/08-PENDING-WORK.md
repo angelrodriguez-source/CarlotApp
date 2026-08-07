@@ -50,6 +50,13 @@
 
 ### Hechas
 
+- [x] Reparto del sueno por dia natural en TODAS las vistas (2026-08-07):
+      nuevo minutosSuenoEnDia en el modelo (con tests) — el resumen por dia
+      del Historial ya reparte el nocturno entre los dos dias (antes lo
+      asignaba entero al dia de inicio), los suenos se piden desde un dia
+      antes del rango para no perder la madrugada del primer dia visible,
+      y tramoEnDia usa la medianoche real del dia siguiente (correcto en
+      los cambios de hora)
 - [x] Corte de unas (2026-08-07): nuevo tipo de evento 'unas' (migracion
       del CHECK), boton rapido "✂️ Uñas cortadas" en la hoja Mas con
       "ultima vez hace N dias" (getUltimoEventoDeTipo)

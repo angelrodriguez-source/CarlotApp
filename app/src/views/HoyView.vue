@@ -23,6 +23,7 @@ import {
   formatoDuracion,
   formatoPeso,
   hoyLocal,
+  minutosSuenoEnDia,
   objetivoLecheMl,
   objetivoSuenoMinutos,
   percentilOMS,
@@ -31,7 +32,6 @@ import {
   textoPanal,
   textoSueno,
   textoToma,
-  tramoEnDia,
   ultimoValor,
 } from '../models/CarlotaModel'
 import {
@@ -216,22 +216,15 @@ const ultimaAltura = computed(() =>
 )
 
 /**
- * Minutos de sueño de hoy: cada sueño aporta solo su parte de hoy
- * (tramoEnDia), incluyendo el nocturno que empezó ayer y el que sigue
- * en curso (se recorta en `ahora`).
+ * Minutos de sueño de hoy: cada sueño aporta solo su parte de hoy,
+ * incluyendo el nocturno que empezó ayer y el que sigue en curso.
  */
 const minutosSuenoHoy = computed(() => {
-  const dia = hoyLocal(ahora.value)
   const candidatos =
     suenoAbierto.value && !suenosDesdeAyer.value.some((s) => s.id === suenoAbierto.value!.id)
       ? [...suenosDesdeAyer.value, suenoAbierto.value]
       : suenosDesdeAyer.value
-  let minutos = 0
-  for (const s of candidatos) {
-    const tramo = tramoEnDia(s.inicio, s.fin, dia, ahora.value)
-    if (tramo) minutos += tramo.hastaMin - tramo.desdeMin
-  }
-  return minutos
+  return minutosSuenoEnDia(candidatos, hoyLocal(ahora.value), ahora.value)
 })
 
 function fechaCorta(fechaIso: string): string {

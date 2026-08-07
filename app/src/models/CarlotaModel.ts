@@ -254,7 +254,11 @@ export function tramoEnDia(
   ahora: Date = new Date(),
 ): TramoRitmo | null {
   const inicioDia = new Date(dia + 'T00:00:00').getTime()
-  const finDia = inicioDia + 86_400_000
+  // Medianoche del día siguiente vía Date (no +24h fijas): así los días de
+  // cambio de hora (23/25 h) se recortan donde toca
+  const siguiente = new Date(dia + 'T00:00:00')
+  siguiente.setDate(siguiente.getDate() + 1)
+  const finDia = siguiente.getTime()
   const desde = Math.max(new Date(inicioIso).getTime(), inicioDia)
   const hasta = Math.min(finIso ? new Date(finIso).getTime() : ahora.getTime(), finDia)
   if (hasta <= desde) return null
@@ -262,6 +266,20 @@ export function tramoEnDia(
     desdeMin: Math.round((desde - inicioDia) / 60_000),
     hastaMin: Math.round((hasta - inicioDia) / 60_000),
   }
+}
+
+/**
+ * Minutos de sueño que caen dentro de un día local: cada sueño aporta solo
+ * su parte de ese día (los nocturnos que cruzan medianoche se reparten
+ * entre los dos días; los abiertos se recortan en `ahora`).
+ */
+export function minutosSuenoEnDia(suenos: Sueno[], dia: string, ahora: Date = new Date()): number {
+  let minutos = 0
+  for (const s of suenos) {
+    const tramo = tramoEnDia(s.inicio, s.fin, dia, ahora)
+    if (tramo) minutos += tramo.hastaMin - tramo.desdeMin
+  }
+  return minutos
 }
 
 /** Minuto del día local (0-1439) de una fecha ISO */
