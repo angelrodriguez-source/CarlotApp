@@ -17,21 +17,19 @@ export function hoyLocal(ahora: Date = new Date()): string {
   return ahora.toLocaleDateString('sv-SE')
 }
 
-/**
- * Edad legible a partir de la fecha de nacimiento.
- * < 10 semanas → "8 semanas y 3 días"; después → "3 meses y 12 días".
- */
-export function edadTexto(fechaNacimiento: string, hoy: Date = new Date()): string {
+/** Desglose interno de la edad: días sueltos, semanas+días o meses+días */
+interface EdadDesglosada {
+  unidad: 'dias' | 'semanas' | 'meses'
+  mayor: number // semanas o meses (0 si unidad === 'dias')
+  dias: number
+}
+
+function desglosarEdad(fechaNacimiento: string, hoy: Date): EdadDesglosada {
   const nacimiento = new Date(fechaNacimiento + 'T00:00:00')
   const dias = Math.max(0, Math.floor((hoy.getTime() - nacimiento.getTime()) / 86_400_000))
 
-  if (dias < 70) {
-    const semanas = Math.floor(dias / 7)
-    const resto = dias % 7
-    if (semanas === 0) return `${dias} ${dias === 1 ? 'día' : 'días'}`
-    if (resto === 0) return `${semanas} ${semanas === 1 ? 'semana' : 'semanas'}`
-    return `${semanas} ${semanas === 1 ? 'semana' : 'semanas'} y ${resto} ${resto === 1 ? 'día' : 'días'}`
-  }
+  if (dias < 7) return { unidad: 'dias', mayor: 0, dias }
+  if (dias < 70) return { unidad: 'semanas', mayor: Math.floor(dias / 7), dias: dias % 7 }
 
   // Meses de calendario + días sueltos
   let meses =
@@ -40,14 +38,46 @@ export function edadTexto(fechaNacimiento: string, hoy: Date = new Date()): stri
   const ancla = new Date(nacimiento)
   ancla.setMonth(ancla.getMonth() + meses)
   const diasSueltos = Math.floor((hoy.getTime() - ancla.getTime()) / 86_400_000)
-  if (diasSueltos <= 0) return `${meses} ${meses === 1 ? 'mes' : 'meses'}`
-  return `${meses} ${meses === 1 ? 'mes' : 'meses'} y ${diasSueltos} ${diasSueltos === 1 ? 'día' : 'días'}`
+  return { unidad: 'meses', mayor: meses, dias: Math.max(0, diasSueltos) }
+}
+
+/**
+ * Edad legible a partir de la fecha de nacimiento.
+ * < 10 semanas → "8 semanas y 3 días"; después → "3 meses y 12 días".
+ */
+export function edadTexto(fechaNacimiento: string, hoy: Date = new Date()): string {
+  const { unidad, mayor, dias } = desglosarEdad(fechaNacimiento, hoy)
+  const diasTexto = `${dias} ${dias === 1 ? 'día' : 'días'}`
+  if (unidad === 'dias') return diasTexto
+  const mayorTexto =
+    unidad === 'semanas'
+      ? `${mayor} ${mayor === 1 ? 'semana' : 'semanas'}`
+      : `${mayor} ${mayor === 1 ? 'mes' : 'meses'}`
+  return dias === 0 ? mayorTexto : `${mayorTexto} y ${diasTexto}`
+}
+
+/** Edad compacta para tiles con poco espacio: "5 d", "8 sem 5 d", "3 m 12 d" */
+export function edadCorta(fechaNacimiento: string, hoy: Date = new Date()): string {
+  const { unidad, mayor, dias } = desglosarEdad(fechaNacimiento, hoy)
+  if (unidad === 'dias') return `${dias} d`
+  const mayorTexto = unidad === 'semanas' ? `${mayor} sem` : `${mayor} m`
+  return dias === 0 ? mayorTexto : `${mayorTexto} ${dias} d`
 }
 
 /** Minutos entre inicio y fin; null si el fin aún no existe */
 export function duracionMinutos(inicio: string, fin: string | null): number | null {
   if (!fin) return null
   return Math.max(0, Math.round((new Date(fin).getTime() - new Date(inicio).getTime()) / 60_000))
+}
+
+/** Gramos → texto legible: 830 → '830 g'; 4320 → '4,32 kg' */
+export function formatoPeso(gramos: number): string {
+  if (gramos < 1000) return `${gramos} g`
+  const kg = (gramos / 1000).toLocaleString('es-ES', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  })
+  return `${kg} kg`
 }
 
 /** '135' minutos → '2 h 15 min'; '45' → '45 min' */
@@ -100,6 +130,25 @@ export function resumenDia(tomas: Toma[], suenos: Sueno[], panales: Panal[]): Re
     numPanales: panales.length,
     numCacas: panales.filter((p) => p.tipo === 'caca' || p.tipo === 'mixto').length,
   }
+}
+
+/**
+ * Último valor no nulo de una serie por fecha (p. ej. el peso más reciente
+ * entre medidas donde no siempre se apunta todo). null si no hay ninguno.
+ */
+export function ultimoValor<T>(
+  items: T[],
+  fechaDe: (item: T) => string,
+  valorDe: (item: T) => number | null,
+): { valor: number; fecha: string } | null {
+  let ultimo: { valor: number; fecha: string } | null = null
+  for (const item of items) {
+    const valor = valorDe(item)
+    if (valor === null) continue
+    const fecha = fechaDe(item)
+    if (!ultimo || fecha.localeCompare(ultimo.fecha) >= 0) ultimo = { valor, fecha }
+  }
+  return ultimo
 }
 
 export interface PuntoGrafica {

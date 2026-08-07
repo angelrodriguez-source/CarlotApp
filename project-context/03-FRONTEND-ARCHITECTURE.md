@@ -17,7 +17,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Registro rapido + resumen + linea de tiempo del dia |
+| `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + accesos rapidos (Sueno, Toma, Caca, Mas) + linea de tiempo |
 | `/historial` | HistorialView | Dias plegables con resumen y registros (7/14/30 dias) |
 | `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC + tabla |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
@@ -53,7 +53,10 @@ Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
 Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
 
 - `edadTexto(nacimiento)` — "8 semanas y 5 dias" / "3 meses y 12 dias"
+- `edadCorta(nacimiento)` — version compacta para tiles: "8 sem 5 d" / "3 m 12 d"
 - `duracionMinutos`, `formatoDuracion` — "2 h 15 min"
+- `formatoPeso` — 4320 g → "4,32 kg"
+- `ultimoValor` — ultimo valor no nulo de una serie por fecha (peso/altura mas recientes)
 - `claveDia`, `hoyLocal` — dia local via `toLocaleDateString('sv-SE')`
 - `agruparPorDia` — registros → Map por dia (recientes primero)
 - `resumenDia` — nº tomas, ml biberon, min pecho, min sueno, panales/cacas

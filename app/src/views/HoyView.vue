@@ -1,19 +1,29 @@
 <script setup lang="ts">
 /**
- * HoyView.vue — Pantalla principal: registro rápido + lo que ha pasado hoy.
+ * HoyView.vue — Dashboard de inicio.
  *
- * Acciones de un toque: pañal, empezar/terminar sueño. Formularios cortos:
- * toma y evento. Debajo, la línea de tiempo del día con opción de borrar.
+ * Mitad superior: resumen de Carlota con números en grande — edad/peso/altura,
+ * sueño del día (incluye el sueño en curso) y leche tomada.
+ * Mitad inferior: accesos directos Sueño / Toma / Caca + botón "Más" para el
+ * resto (pañal pis/mixto y eventos). Debajo, la línea de tiempo del día.
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
-import { formatoDuracion, duracionMinutos, resumenDia } from '../models/CarlotaModel'
+import {
+  duracionMinutos,
+  edadCorta,
+  formatoDuracion,
+  formatoPeso,
+  resumenDia,
+  ultimoValor,
+} from '../models/CarlotaModel'
 import {
   ETIQUETAS_EVENTO,
   ETIQUETAS_PANAL,
   ETIQUETAS_TOMA,
   type Evento,
+  type Medida,
   type Panal,
   type Sueno,
   type TipoEvento,
@@ -31,10 +41,15 @@ const tomas = ref<Toma[]>([])
 const suenos = ref<Sueno[]>([])
 const panales = ref<Panal[]>([])
 const eventos = ref<Evento[]>([])
+const medidas = ref<Medida[]>([])
 const suenoAbierto = ref<Sueno | null>(null)
 
 // Qué formulario rápido está abierto
-const formulario = ref<'toma' | 'evento' | null>(null)
+const formulario = ref<'toma' | 'mas' | null>(null)
+
+// Reloj para que la edad y el sueño en curso se actualicen solos
+const ahora = ref(new Date())
+let temporizador: number | undefined
 
 /** ISO del inicio del día de HOY en la zona local */
 function inicioHoyIso(): string {
@@ -54,17 +69,25 @@ async function cargarDia() {
   const bebe = await bebeStore.cargar()
   if (!bebe) return
   const desde = inicioHoyIso()
-  ;[tomas.value, suenos.value, panales.value, eventos.value, suenoAbierto.value] =
-    await Promise.all([
-      servicio.listarTomas(bebe.id, desde),
-      servicio.listarSuenos(bebe.id, desde),
-      servicio.listarPanales(bebe.id, desde),
-      servicio.listarEventos(bebe.id, desde),
-      servicio.getSuenoAbierto(bebe.id),
-    ])
+  ;[
+    tomas.value,
+    suenos.value,
+    panales.value,
+    eventos.value,
+    medidas.value,
+    suenoAbierto.value,
+  ] = await Promise.all([
+    servicio.listarTomas(bebe.id, desde),
+    servicio.listarSuenos(bebe.id, desde),
+    servicio.listarPanales(bebe.id, desde),
+    servicio.listarEventos(bebe.id, desde),
+    servicio.listarMedidas(bebe.id),
+    servicio.getSuenoAbierto(bebe.id),
+  ])
 }
 
 onMounted(async () => {
+  temporizador = window.setInterval(() => (ahora.value = new Date()), 60_000)
   try {
     await cargarDia()
   } catch (e) {
@@ -74,6 +97,8 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => window.clearInterval(temporizador))
+
 async function ejecutar(accion: () => Promise<unknown>) {
   error.value = ''
   try {
@@ -82,6 +107,31 @@ async function ejecutar(accion: () => Promise<unknown>) {
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   }
+}
+
+// ---- Resumen (mitad superior) ----
+const resumen = computed(() => resumenDia(tomas.value, suenos.value, panales.value))
+
+const ultimoPeso = computed(() => ultimoValor(medidas.value, (m) => m.fecha, (m) => m.peso_gramos))
+const ultimaAltura = computed(() => ultimoValor(medidas.value, (m) => m.fecha, (m) => m.altura_cm))
+
+/** Minutos de sueño de hoy, contando el sueño en curso (solo su parte de hoy) */
+const minutosSuenoHoy = computed(() => {
+  let minutos = resumen.value.minutosSueno
+  if (suenoAbierto.value) {
+    const inicioDia = new Date(ahora.value)
+    inicioDia.setHours(0, 0, 0, 0)
+    const inicio = Math.max(new Date(suenoAbierto.value.inicio).getTime(), inicioDia.getTime())
+    minutos += Math.max(0, Math.round((ahora.value.getTime() - inicio) / 60_000))
+  }
+  return minutos
+})
+
+function fechaCorta(fechaIso: string): string {
+  return new Date(fechaIso + 'T00:00:00').toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+  })
 }
 
 // ---- Toma ----
@@ -125,12 +175,12 @@ function guardarToma() {
 function alternarSueno() {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  const ahora = new Date().toISOString()
+  const ahoraIso = new Date().toISOString()
   if (suenoAbierto.value) {
     const id = suenoAbierto.value.id
-    ejecutar(() => servicio.finalizarSueno(id, ahora))
+    ejecutar(() => servicio.finalizarSueno(id, ahoraIso))
   } else {
-    ejecutar(() => servicio.iniciarSueno(bebe.id, ahora))
+    ejecutar(() => servicio.iniciarSueno(bebe.id, ahoraIso))
   }
 }
 
@@ -146,6 +196,7 @@ function registrarPanal(tipo: TipoPanal) {
       notas: null,
     }),
   )
+  if (formulario.value === 'mas') formulario.value = null
 }
 
 // ---- Evento ----
@@ -221,8 +272,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   }
   return registros.sort((a, b) => b.hora.localeCompare(a.hora))
 })
-
-const resumen = computed(() => resumenDia(tomas.value, suenos.value, panales.value))
 </script>
 
 <template>
@@ -242,38 +291,80 @@ const resumen = computed(() => resumenDia(tomas.value, suenos.value, panales.val
     </template>
 
     <template v-if="bebeStore.bebe">
-      <!-- Resumen de hoy -->
-      <div class="tarjeta">
-        <h2>Hoy</h2>
-        <span class="chip">🍼 {{ resumen.numTomas }} tomas</span>
-        <span v-if="resumen.mlBiberon > 0" class="chip">{{ resumen.mlBiberon }} ml biberón</span>
-        <span v-if="resumen.minutosPecho > 0" class="chip">
-          {{ formatoDuracion(resumen.minutosPecho) }} pecho
-        </span>
-        <span class="chip">😴 {{ formatoDuracion(resumen.minutosSueno) }}</span>
-        <span class="chip">🧷 {{ resumen.numPanales }} ({{ resumen.numCacas }} 💩)</span>
-      </div>
+      <!-- Mitad superior: resumen con números en grande -->
+      <section class="tarjeta">
+        <h2>{{ bebeStore.bebe.nombre }}</h2>
 
-      <!-- Acciones rápidas -->
-      <div class="tarjeta acciones">
-        <button class="boton" @click="abrirFormularioToma">+ Toma</button>
-        <button class="boton" :class="{ secundario: !suenoAbierto }" @click="alternarSueno">
-          {{ suenoAbierto ? '😴 Fin del sueño' : '😴 Empieza sueño' }}
-        </button>
-        <button
-          class="boton secundario"
-          @click="formulario = formulario === 'evento' ? null : 'evento'"
-        >
-          + Evento
-        </button>
-      </div>
+        <div class="stats tres">
+          <div class="stat">
+            <span class="etiqueta">Edad</span>
+            <span class="valor">{{ edadCorta(bebeStore.bebe.fecha_nacimiento, ahora) }}</span>
+          </div>
+          <div class="stat">
+            <span class="etiqueta">Peso</span>
+            <span class="valor">{{ ultimoPeso ? formatoPeso(ultimoPeso.valor) : '—' }}</span>
+            <span class="sub">{{ ultimoPeso ? fechaCorta(ultimoPeso.fecha) : 'sin datos' }}</span>
+          </div>
+          <div class="stat">
+            <span class="etiqueta">Altura</span>
+            <span class="valor">{{ ultimaAltura ? `${ultimaAltura.valor} cm` : '—' }}</span>
+            <span class="sub">{{ ultimaAltura ? fechaCorta(ultimaAltura.fecha) : 'sin datos' }}</span>
+          </div>
+        </div>
 
-      <div class="tarjeta acciones">
-        <span class="suave">Pañal:</span>
-        <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
-        <button class="boton secundario" @click="registrarPanal('caca')">💩 Caca</button>
-        <button class="boton secundario" @click="registrarPanal('mixto')">💧💩 Mixto</button>
-      </div>
+        <div class="stats dos">
+          <div class="stat">
+            <span class="etiqueta">😴 Sueño hoy</span>
+            <span class="valor">{{ formatoDuracion(minutosSuenoHoy) }}</span>
+            <span class="sub">
+              {{
+                suenoAbierto
+                  ? 'durmiendo ahora'
+                  : `${suenos.length} ${suenos.length === 1 ? 'sueño' : 'sueños'}`
+              }}
+            </span>
+          </div>
+          <div class="stat">
+            <span class="etiqueta">🍼 Leche hoy</span>
+            <span class="valor">{{ resumen.mlBiberon }} ml</span>
+            <span class="sub">
+              {{ resumen.numTomas }} {{ resumen.numTomas === 1 ? 'toma' : 'tomas'
+              }}{{ resumen.minutosPecho > 0 ? ` · ${formatoDuracion(resumen.minutosPecho)} pecho` : '' }}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mitad inferior: registrar -->
+      <section class="tarjeta">
+        <h3>Registrar</h3>
+        <div class="accesos">
+          <button class="acceso" :class="{ activo: suenoAbierto }" @click="alternarSueno">
+            <span class="icono">😴</span>
+            {{ suenoAbierto ? 'Termina sueño' : 'Empieza sueño' }}
+          </button>
+          <button
+            class="acceso"
+            :class="{ activo: formulario === 'toma' }"
+            @click="abrirFormularioToma"
+          >
+            <span class="icono">🍼</span>
+            Toma
+          </button>
+          <button class="acceso" @click="registrarPanal('caca')">
+            <span class="icono">💩</span>
+            Caca
+          </button>
+          <button
+            class="acceso"
+            :class="{ activo: formulario === 'mas' }"
+            @click="formulario = formulario === 'mas' ? null : 'mas'"
+          >
+            <span class="icono">➕</span>
+            Más
+          </button>
+        </div>
+      </section>
 
       <!-- Formulario: toma -->
       <form v-if="formulario === 'toma'" class="tarjeta" @submit.prevent="guardarToma">
@@ -305,23 +396,30 @@ const resumen = computed(() => resumenDia(tomas.value, suenos.value, panales.val
         <button class="boton" type="submit">Guardar</button>
       </form>
 
-      <!-- Formulario: evento -->
-      <form v-if="formulario === 'evento'" class="tarjeta" @submit.prevent="guardarEvento">
-        <h3>Nuevo evento</h3>
-        <div class="campo">
-          <label for="evento-tipo">Tipo</label>
-          <select id="evento-tipo" v-model="nuevoEvento.tipo">
-            <option v-for="(etiqueta, valor) in ETIQUETAS_EVENTO" :key="valor" :value="valor">
-              {{ etiqueta }}
-            </option>
-          </select>
+      <!-- Panel "Más": pañal pis/mixto + evento -->
+      <div v-if="formulario === 'mas'" class="tarjeta">
+        <div class="acciones">
+          <span class="suave">Pañal:</span>
+          <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
+          <button class="boton secundario" @click="registrarPanal('mixto')">💧💩 Mixto</button>
         </div>
-        <div class="campo">
-          <label for="evento-desc">Descripción</label>
-          <input id="evento-desc" v-model="nuevoEvento.descripcion" type="text" />
-        </div>
-        <button class="boton" type="submit">Guardar</button>
-      </form>
+        <form @submit.prevent="guardarEvento">
+          <h3>Nuevo evento</h3>
+          <div class="campo">
+            <label for="evento-tipo">Tipo</label>
+            <select id="evento-tipo" v-model="nuevoEvento.tipo">
+              <option v-for="(etiqueta, valor) in ETIQUETAS_EVENTO" :key="valor" :value="valor">
+                {{ etiqueta }}
+              </option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="evento-desc">Descripción</label>
+            <input id="evento-desc" v-model="nuevoEvento.descripcion" type="text" />
+          </div>
+          <button class="boton" type="submit">Guardar</button>
+        </form>
+      </div>
 
       <!-- Línea de tiempo de hoy -->
       <div class="tarjeta">
@@ -338,10 +436,94 @@ const resumen = computed(() => resumenDia(tomas.value, suenos.value, panales.val
 </template>
 
 <style scoped>
+/* Tiles del resumen */
+.stats {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.stats.tres {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stats.dos {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 0.5rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+  border-radius: 12px;
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+}
+
+.stat .etiqueta {
+  font-size: 0.75rem;
+  color: var(--color-texto-suave);
+}
+
+.stat .valor {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--color-primario-oscuro);
+}
+
+.stat .sub {
+  font-size: 0.72rem;
+  color: var(--color-texto-suave);
+}
+
+/* Accesos directos de registro */
+.accesos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+.acceso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.85rem 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.acceso .icono {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.acceso:hover {
+  background: var(--color-borde);
+}
+
+.acceso.activo {
+  background: var(--color-primario);
+  border-color: var(--color-primario);
+  color: #fff;
+}
+
 .acciones {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+  margin-bottom: 1rem;
 }
 </style>
