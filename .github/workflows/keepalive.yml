@@ -8,10 +8,6 @@
 # Bonus: si Supabase esta caido o pausado, el workflow falla y GitHub
 # te avisa por email — funciona tambien como monitorizacion gratuita.
 #
-# TODO(config): sustituye ANON_KEY y la URL por las de TU proyecto
-# Supabase de CarlotApp (Dashboard > Settings > API). Son los mismos
-# valores que en app/src/services/supabase.ts.
-#
 # Nota: GitHub deshabilita los crons si el repo lleva 60 dias sin
 # commits. Si eso pasa, se reactiva con un click en la pestana Actions.
 name: Keepalive Supabase
@@ -29,7 +25,7 @@ jobs:
     steps:
       - name: Consulta trivial a Supabase
         run: |
-          ANON_KEY='PEGA-AQUI-LA-ANON-KEY'
+          ANON_KEY='sb_publishable_9GZyG7vIJem21Zc52BE2aw_IdW3wI0W'
           # '|| true' para que un fallo de curl (ej. DNS de proyecto
           # pausado, exit 6) no aborte el script antes del mensaje claro
           STATUS=$(curl -s -o /tmp/resp.json -w '%{http_code}' \
