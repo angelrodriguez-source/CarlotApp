@@ -77,6 +77,11 @@ altura y perimetro craneal). Se regenera con
 `python3 scripts/generar-referencia-oms.py <ruta-a-growthstandards>` a partir
 de las tablas del repo oficial github.com/WorldHealthOrganization/anthro.
 
+Y `models/semanasDesarrollo.ts` (editado a mano): etapas de desarrollo para
+las semanas 0-100 — cambios principales + ajustes de sueno y tomas por
+etapa (hitos CDC/AAP/NHS, orientativo). `desarrolloSemana(n)` hace el
+lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
+
 ## Componentes
 
 - **GraficaLinea.vue**: grafica de linea en SVG puro (sin librerias),

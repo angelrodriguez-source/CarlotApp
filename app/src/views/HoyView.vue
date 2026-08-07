@@ -11,6 +11,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
+import { desarrolloSemana } from '../models/semanasDesarrollo'
 import {
   aInputLocal,
   duracionMinutos,
@@ -207,6 +208,11 @@ const textoObjetivoLeche = computed(() =>
     ? `${resumen.value.mlBiberon} ml de ${objetivoLeche.value.min}-${objetivoLeche.value.max} ml`
     : '',
 )
+
+// ---- ¿Qué hay de nuevo esta semana? ----
+const semanaActual = computed(() => Math.floor(edadDiasHoy.value / 7))
+const etapaSemana = computed(() => desarrolloSemana(semanaActual.value))
+const mostrarSemana = ref(false)
 
 // ---- Contadores "hace X" ----
 function haceTexto(iso: string): string {
@@ -689,6 +695,26 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </form>
       </div>
 
+      <!-- ¿Qué hay de nuevo esta semana? -->
+      <section v-if="etapaSemana" class="tarjeta">
+        <button class="cabecera-semana" @click="mostrarSemana = !mostrarSemana">
+          <span>
+            🌱 <strong>Semana {{ semanaActual }}</strong> · {{ etapaSemana.titulo }}
+          </span>
+          <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
+        </button>
+        <template v-if="mostrarSemana">
+          <ul class="lista-cambios">
+            <li v-for="cambio in etapaSemana.cambios" :key="cambio">{{ cambio }}</li>
+          </ul>
+          <p class="ajuste">😴 {{ etapaSemana.sueno }}</p>
+          <p class="ajuste">🍼 {{ etapaSemana.tomas }}</p>
+          <p class="suave nota-semana">
+            Orientativo (hitos CDC/AAP/NHS): cada bebé va a su ritmo. Las dudas, al pediatra.
+          </p>
+        </template>
+      </section>
+
       <!-- Línea de tiempo de hoy -->
       <div class="tarjeta">
         <h3>Registro del día</h3>
@@ -821,6 +847,39 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 .sin-peso {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
+}
+
+/* ¿Qué hay de nuevo esta semana? */
+.cabecera-semana {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1rem;
+  color: inherit;
+  text-align: left;
+}
+
+.lista-cambios {
+  margin: 0.75rem 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.lista-cambios li {
+  margin-bottom: 0.35rem;
+}
+
+.ajuste {
+  margin: 0.35rem 0;
+}
+
+.nota-semana {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
 }
 
 .botones-toma {

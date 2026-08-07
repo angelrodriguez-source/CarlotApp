@@ -50,6 +50,10 @@
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
 - [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
+- [x] Seccion "¿Que hay de nuevo esta semana?" (2026-08-07): tarjeta plegable
+      en Hoy con los cambios de desarrollo y ajustes de sueno/tomas de la
+      semana actual, precargados para las semanas 0-100 por etapas
+      (`semanasDesarrollo.ts`, hitos CDC/AAP/NHS, con test de cobertura)
 - [x] Objetivos diarios de sueno y leche (2026-08-07): barras de progreso en
       Hoy segun edad — sueno con rangos NSF/AASM (14-17h / 12-15h / 11-14h),
       leche con regla ml/kg por edad sobre el ultimo peso (BarraObjetivo.vue,
