@@ -12,6 +12,7 @@ import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import {
   aInputLocal,
+  duracionMinutos,
   edadCorta,
   formatoDuracion,
   formatoPeso,
@@ -48,9 +49,13 @@ const panales = ref<Panal[]>([])
 const eventos = ref<Evento[]>([])
 const medidas = ref<Medida[]>([])
 const suenoAbierto = ref<Sueno | null>(null)
+const tomaAbierta = ref<Toma | null>(null)
+const ultimaToma = ref<Toma | null>(null)
+const ultimoPanal = ref<Panal | null>(null)
+const ultimoSuenoTerminado = ref<Sueno | null>(null)
 
 // Qué formulario rápido está abierto
-const formulario = ref<'toma' | 'mas' | null>(null)
+const formulario = ref<'toma' | 'fin-toma' | 'mas' | null>(null)
 
 // Reloj para que la edad y el sueño en curso se actualicen solos
 const ahora = ref(new Date())
@@ -74,6 +79,10 @@ async function cargarDia() {
     eventos.value,
     medidas.value,
     suenoAbierto.value,
+    tomaAbierta.value,
+    ultimaToma.value,
+    ultimoPanal.value,
+    ultimoSuenoTerminado.value,
   ] = await Promise.all([
     servicio.listarTomas(bebe.id, desde),
     servicio.listarSuenos(bebe.id, desde),
@@ -81,6 +90,10 @@ async function cargarDia() {
     servicio.listarEventos(bebe.id, desde),
     servicio.listarMedidas(bebe.id),
     servicio.getSuenoAbierto(bebe.id),
+    servicio.getTomaAbierta(bebe.id),
+    servicio.getUltimaToma(bebe.id),
+    servicio.getUltimoPanal(bebe.id),
+    servicio.getUltimoSuenoTerminado(bebe.id),
   ])
 }
 
@@ -95,12 +108,48 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => window.clearInterval(temporizador))
+onUnmounted(() => {
+  window.clearInterval(temporizador)
+  window.clearTimeout(temporizadorDeshacer)
+})
 
 async function ejecutar(accion: () => Promise<unknown>) {
   error.value = ''
   try {
     await accion()
+    await cargarDia()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
+}
+
+// ---- Deshacer rápido ----
+const deshacer = ref<{ texto: string; accion: () => Promise<unknown> } | null>(null)
+let temporizadorDeshacer: number | undefined
+
+function ofrecerDeshacer(texto: string, accion: () => Promise<unknown>) {
+  deshacer.value = { texto, accion }
+  window.clearTimeout(temporizadorDeshacer)
+  temporizadorDeshacer = window.setTimeout(() => (deshacer.value = null), 6000)
+}
+
+async function ejecutarDeshacer() {
+  const pendiente = deshacer.value
+  if (!pendiente) return
+  deshacer.value = null
+  await ejecutar(pendiente.accion)
+}
+
+/** Ejecuta un alta, recarga el día y ofrece deshacerla durante unos segundos */
+async function registrarYOfrecer<T>(
+  texto: string,
+  accion: () => Promise<T>,
+  deshacerDe: (resultado: T) => () => Promise<unknown>,
+) {
+  error.value = ''
+  try {
+    const resultado = await accion()
+    ofrecerDeshacer(texto, deshacerDe(resultado))
     await cargarDia()
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -132,6 +181,33 @@ function fechaCorta(fechaIso: string): string {
   })
 }
 
+// ---- Contadores "hace X" ----
+function haceTexto(iso: string): string {
+  const minutos = duracionMinutos(iso, ahora.value.toISOString()) ?? 0
+  return minutos < 1 ? 'ahora mismo' : `hace ${formatoDuracion(minutos)}`
+}
+
+const minutosTomaAbierta = computed(() =>
+  tomaAbierta.value ? (duracionMinutos(tomaAbierta.value.inicio, ahora.value.toISOString()) ?? 0) : 0,
+)
+
+const contadorToma = computed(() => {
+  if (tomaAbierta.value) return `Toma en curso — ${formatoDuracion(minutosTomaAbierta.value)}`
+  if (ultimaToma.value) return `Última toma ${haceTexto(ultimaToma.value.inicio)}`
+  return 'Sin tomas todavía'
+})
+
+const contadorPanal = computed(() =>
+  ultimoPanal.value ? `Último pañal ${haceTexto(ultimoPanal.value.fecha)}` : null,
+)
+
+const contadorSueno = computed(() => {
+  if (suenoAbierto.value) return `Durmiendo desde ${haceTexto(suenoAbierto.value.inicio)}`
+  if (ultimoSuenoTerminado.value?.fin)
+    return `Despierta desde ${haceTexto(ultimoSuenoTerminado.value.fin)}`
+  return null
+})
+
 // ---- Toma ----
 const nuevaToma = ref({
   tipo: 'biberon_formula' as TipoToma,
@@ -155,18 +231,71 @@ function guardarToma() {
   const minutos = nuevaToma.value.duracionMin
   const fin =
     !esBiberon.value && minutos ? new Date(inicio.getTime() + minutos * 60_000) : null
-  ejecutar(() =>
-    servicio.registrarToma({
-      bebe_id: bebe.id,
-      inicio: inicio.toISOString(),
-      fin: fin ? fin.toISOString() : null,
-      tipo: nuevaToma.value.tipo,
-      cantidad_ml: esBiberon.value ? nuevaToma.value.cantidadMl : null,
-      notas: nuevaToma.value.notas || null,
-    }),
+  registrarYOfrecer(
+    'Toma registrada',
+    () =>
+      servicio.registrarToma({
+        bebe_id: bebe.id,
+        inicio: inicio.toISOString(),
+        fin: fin ? fin.toISOString() : null,
+        tipo: nuevaToma.value.tipo,
+        cantidad_ml: esBiberon.value ? nuevaToma.value.cantidadMl : null,
+        notas: nuevaToma.value.notas || null,
+      }),
+    (toma) => () => servicio.eliminarToma(toma.id),
   )
   formulario.value = null
   nuevaToma.value.notas = ''
+}
+
+// ---- Cronómetro de toma en vivo ----
+const tomaAbiertaEsBiberon = computed(() => tomaAbierta.value?.tipo.startsWith('biberon') ?? false)
+const mlFinToma = ref<number | null>(null)
+
+function empezarCronometroToma() {
+  const bebe = bebeStore.bebe
+  if (!bebe) return
+  const tipo = nuevaToma.value.tipo
+  registrarYOfrecer(
+    'Cronómetro de toma iniciado',
+    () =>
+      servicio.registrarToma({
+        bebe_id: bebe.id,
+        inicio: new Date().toISOString(),
+        fin: null,
+        tipo,
+        cantidad_ml: null,
+        notas: null,
+      }),
+    (toma) => () => servicio.eliminarToma(toma.id),
+  )
+  formulario.value = null
+}
+
+/** El acceso 🍼: abre el formulario, o termina la toma en curso si la hay */
+function pulsarAccesoToma() {
+  if (!tomaAbierta.value) {
+    abrirFormularioToma()
+    return
+  }
+  if (tomaAbiertaEsBiberon.value) {
+    // Biberón: preguntar los ml antes de cerrar
+    mlFinToma.value = null
+    formulario.value = formulario.value === 'fin-toma' ? null : 'fin-toma'
+  } else {
+    terminarToma(null)
+  }
+}
+
+function terminarToma(ml: number | null) {
+  const toma = tomaAbierta.value
+  if (!toma) return
+  registrarYOfrecer(
+    'Toma terminada',
+    () => servicio.actualizarToma(toma.id, { fin: new Date().toISOString(), cantidad_ml: ml }),
+    () => () => servicio.actualizarToma(toma.id, { fin: null, cantidad_ml: null }),
+  )
+  formulario.value = null
 }
 
 // ---- Sueño ----
@@ -176,9 +305,17 @@ function alternarSueno() {
   const ahoraIso = new Date().toISOString()
   if (suenoAbierto.value) {
     const id = suenoAbierto.value.id
-    ejecutar(() => servicio.finalizarSueno(id, ahoraIso))
+    registrarYOfrecer(
+      'Sueño terminado',
+      () => servicio.finalizarSueno(id, ahoraIso),
+      () => () => servicio.actualizarSueno(id, { fin: null }),
+    )
   } else {
-    ejecutar(() => servicio.iniciarSueno(bebe.id, ahoraIso))
+    registrarYOfrecer(
+      'Sueño iniciado',
+      () => servicio.iniciarSueno(bebe.id, ahoraIso),
+      (sueno) => () => servicio.eliminarSueno(sueno.id),
+    )
   }
 }
 
@@ -193,14 +330,17 @@ function pedirCantidadPanal(tipo: TipoPanal) {
 function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  ejecutar(() =>
-    servicio.registrarPanal({
-      bebe_id: bebe.id,
-      fecha: new Date().toISOString(),
-      tipo,
-      cantidad,
-      notas: null,
-    }),
+  registrarYOfrecer(
+    'Pañal registrado',
+    () =>
+      servicio.registrarPanal({
+        bebe_id: bebe.id,
+        fecha: new Date().toISOString(),
+        tipo,
+        cantidad,
+        notas: null,
+      }),
+    (panal) => () => servicio.eliminarPanal(panal.id),
   )
   panalPendiente.value = null
   if (formulario.value === 'mas') formulario.value = null
@@ -212,13 +352,16 @@ const nuevoSueno = ref({ inicio: aInputLocal(new Date()), fin: aInputLocal(new D
 function guardarSueno() {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  ejecutar(() =>
-    servicio.registrarSueno({
-      bebe_id: bebe.id,
-      inicio: new Date(nuevoSueno.value.inicio).toISOString(),
-      fin: new Date(nuevoSueno.value.fin).toISOString(),
-      notas: null,
-    }),
+  registrarYOfrecer(
+    'Sueño registrado',
+    () =>
+      servicio.registrarSueno({
+        bebe_id: bebe.id,
+        inicio: new Date(nuevoSueno.value.inicio).toISOString(),
+        fin: new Date(nuevoSueno.value.fin).toISOString(),
+        notas: null,
+      }),
+    (sueno) => () => servicio.eliminarSueno(sueno.id),
   )
   formulario.value = null
 }
@@ -235,13 +378,16 @@ const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '' })
 function guardarEvento() {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  ejecutar(() =>
-    servicio.registrarEvento({
-      bebe_id: bebe.id,
-      fecha: new Date().toISOString(),
-      tipo: nuevoEvento.value.tipo,
-      descripcion: nuevoEvento.value.descripcion || null,
-    }),
+  registrarYOfrecer(
+    'Evento registrado',
+    () =>
+      servicio.registrarEvento({
+        bebe_id: bebe.id,
+        fecha: new Date().toISOString(),
+        tipo: nuevoEvento.value.tipo,
+        descripcion: nuevoEvento.value.descripcion || null,
+      }),
+    (evento) => () => servicio.eliminarEvento(evento.id),
   )
   formulario.value = null
   nuevoEvento.value.descripcion = ''
@@ -349,6 +495,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             </span>
           </div>
         </div>
+
+        <!-- Contadores "hace X" -->
+        <div class="contadores">
+          <span class="chip">🍼 {{ contadorToma }}</span>
+          <span v-if="contadorPanal" class="chip">🧷 {{ contadorPanal }}</span>
+          <span v-if="contadorSueno" class="chip">😴 {{ contadorSueno }}</span>
+        </div>
       </section>
 
       <!-- Mitad inferior: registrar -->
@@ -361,11 +514,11 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </button>
           <button
             class="acceso"
-            :class="{ activo: formulario === 'toma' }"
-            @click="abrirFormularioToma"
+            :class="{ activo: !!tomaAbierta || formulario === 'toma' }"
+            @click="pulsarAccesoToma"
           >
             <span class="icono">🍼</span>
-            Toma
+            {{ tomaAbierta ? `Termina toma (${minutosTomaAbierta} min)` : 'Toma' }}
           </button>
           <button
             class="acceso"
@@ -428,6 +581,25 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <label for="toma-notas">Notas</label>
           <input id="toma-notas" v-model="nuevaToma.notas" type="text" />
         </div>
+        <div class="botones-toma">
+          <button class="boton" type="submit">Guardar</button>
+          <button class="boton secundario" type="button" @click="empezarCronometroToma">
+            ▶ Cronómetro
+          </button>
+        </div>
+      </form>
+
+      <!-- Fin de toma de biberón: preguntar los ml -->
+      <form
+        v-if="formulario === 'fin-toma'"
+        class="tarjeta"
+        @submit.prevent="terminarToma(mlFinToma)"
+      >
+        <h3>Toma terminada — ¿cuántos ml?</h3>
+        <div class="campo">
+          <label for="fin-toma-ml">Cantidad (ml)</label>
+          <input id="fin-toma-ml" v-model.number="mlFinToma" type="number" min="1" />
+        </div>
         <button class="boton" type="submit">Guardar</button>
       </form>
 
@@ -481,6 +653,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </div>
       </div>
     </template>
+
+    <!-- Toast de deshacer -->
+    <div v-if="deshacer" class="toast-deshacer">
+      {{ deshacer.texto }}
+      <button class="boton" @click="ejecutarDeshacer">Deshacer</button>
+    </div>
   </main>
 </template>
 
@@ -587,5 +765,30 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   border-top: 1px solid var(--color-borde);
   padding-top: 0.75rem;
   margin-top: 0.75rem;
+}
+
+.contadores {
+  margin-top: 0.6rem;
+}
+
+.botones-toma {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toast-deshacer {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-texto);
+  color: #fff;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
 }
 </style>

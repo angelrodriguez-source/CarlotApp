@@ -56,6 +56,40 @@ export async function listarTomas(bebeId: string, desdeIso: string): Promise<Tom
   return (data ?? []) as Toma[]
 }
 
+/** La última toma registrada (de cualquier día), si la hay */
+export async function getUltimaToma(bebeId: string): Promise<Toma | null> {
+  const { data, error } = await supabase
+    .from('tomas')
+    .select()
+    .eq('bebe_id', bebeId)
+    .order('inicio', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as Toma | null
+}
+
+/**
+ * La toma en curso del cronómetro (sin fin ni ml), si la hay. Solo se
+ * consideran las últimas 3 horas para no confundir con tomas antiguas
+ * apuntadas sin duración.
+ */
+export async function getTomaAbierta(bebeId: string): Promise<Toma | null> {
+  const hace3h = new Date(Date.now() - 3 * 3600_000).toISOString()
+  const { data, error } = await supabase
+    .from('tomas')
+    .select()
+    .eq('bebe_id', bebeId)
+    .is('fin', null)
+    .is('cantidad_ml', null)
+    .gte('inicio', hace3h)
+    .order('inicio', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as Toma | null
+}
+
 export async function actualizarToma(
   id: string,
   cambios: Partial<Pick<Toma, 'inicio' | 'fin' | 'tipo' | 'cantidad_ml' | 'notas'>>,
@@ -123,6 +157,20 @@ export async function listarSuenos(bebeId: string, desdeIso: string): Promise<Su
   return (data ?? []) as Sueno[]
 }
 
+/** El último sueño terminado (por hora de fin), para "despierta desde hace X" */
+export async function getUltimoSuenoTerminado(bebeId: string): Promise<Sueno | null> {
+  const { data, error } = await supabase
+    .from('suenos')
+    .select()
+    .eq('bebe_id', bebeId)
+    .not('fin', 'is', null)
+    .order('fin', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as Sueno | null
+}
+
 export async function actualizarSueno(
   id: string,
   cambios: Partial<Pick<Sueno, 'inicio' | 'fin' | 'notas'>>,
@@ -146,6 +194,19 @@ export async function registrarPanal(
   const { data, error } = await supabase.from('panales').insert(panal).select().single()
   lanzarSi(error)
   return data as Panal
+}
+
+/** El último pañal registrado (de cualquier día), si lo hay */
+export async function getUltimoPanal(bebeId: string): Promise<Panal | null> {
+  const { data, error } = await supabase
+    .from('panales')
+    .select()
+    .eq('bebe_id', bebeId)
+    .order('fecha', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as Panal | null
 }
 
 export async function actualizarPanal(

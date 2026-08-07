@@ -4,7 +4,7 @@
  * barra de navegación inferior (solo con sesión iniciada).
  * También gestiona el toast de "versión nueva" de la PWA.
  */
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
@@ -19,6 +19,37 @@ async function cerrarSesion() {
   router.push({ name: 'login' })
 }
 
+// ---- Modo noche ----
+// 'auto' = oscuro de 22:00 a 08:00; se puede forzar con el botón de la cabecera
+type ModoTema = 'auto' | 'claro' | 'oscuro'
+const CLAVE_TEMA = 'carlotapp-tema'
+
+const modoTema = ref<ModoTema>(
+  (['auto', 'claro', 'oscuro'] as const).find(
+    (m) => m === localStorage.getItem(CLAVE_TEMA),
+  ) ?? 'auto',
+)
+const horaActual = ref(new Date().getHours())
+let temporizadorTema: number | undefined
+
+const esNoche = computed(() =>
+  modoTema.value === 'auto'
+    ? horaActual.value >= 22 || horaActual.value < 8
+    : modoTema.value === 'oscuro',
+)
+
+watchEffect(() => document.documentElement.classList.toggle('noche', esNoche.value))
+
+function alternarTema() {
+  const siguiente: Record<ModoTema, ModoTema> = { auto: 'oscuro', oscuro: 'claro', claro: 'auto' }
+  modoTema.value = siguiente[modoTema.value]
+  localStorage.setItem(CLAVE_TEMA, modoTema.value)
+}
+
+const iconoTema = computed(() =>
+  modoTema.value === 'auto' ? '🌓' : modoTema.value === 'oscuro' ? '🌙' : '☀️',
+)
+
 // ---- Actualización de la PWA (evento que dispara main.ts) ----
 const swEsperando = ref<ServiceWorker | null>(null)
 
@@ -26,7 +57,10 @@ onMounted(() => {
   window.addEventListener('carlotapp-sw-update', (e) => {
     swEsperando.value = (e as CustomEvent<ServiceWorker>).detail
   })
+  temporizadorTema = window.setInterval(() => (horaActual.value = new Date().getHours()), 60_000)
 })
+
+onUnmounted(() => window.clearInterval(temporizadorTema))
 
 function actualizarApp() {
   swEsperando.value?.postMessage('SKIP_WAITING')
@@ -40,7 +74,17 @@ function actualizarApp() {
       <strong>{{ bebeStore.bebe?.nombre ?? 'CarlotApp' }}</strong>
       <span v-if="bebeStore.edad" class="suave"> · {{ bebeStore.edad }}</span>
     </div>
-    <button class="boton peligro" @click="cerrarSesion">Salir</button>
+    <div class="acciones-cabecera">
+      <button
+        class="boton-tema"
+        :title="`Tema: ${modoTema}`"
+        aria-label="Cambiar tema"
+        @click="alternarTema"
+      >
+        {{ iconoTema }}
+      </button>
+      <button class="boton peligro" @click="cerrarSesion">Salir</button>
+    </div>
   </header>
 
   <RouterView />
@@ -66,6 +110,19 @@ function actualizarApp() {
   max-width: 540px;
   margin: 0 auto;
   padding: 0.75rem 1rem 0;
+}
+
+.acciones-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.boton-tema {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  padding: 0.2rem 0.4rem;
 }
 
 .nav-inferior {

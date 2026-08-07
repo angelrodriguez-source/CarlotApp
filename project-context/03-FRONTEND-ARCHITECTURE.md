@@ -17,8 +17,8 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + accesos rapidos (Sueno, Toma, Caca, Mas) + linea de tiempo |
-| `/historial` | HistorialView | Dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
+| `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + contadores "hace X" + accesos rapidos (Sueno, Toma con cronometro, Caca, Mas) + toast de deshacer + linea de tiempo |
+| `/historial` | HistorialView | Grafica de ritmo de 24h + dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
 | `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC con percentil OMS junto a cada valor y graficas de evolucion del percentil + tabla |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
 
@@ -66,6 +66,8 @@ Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
   lineas de tiempo (compartido por Hoy e Historial)
 - `aInputLocal` — Date → valor de `<input type="datetime-local">`
 - `edadDias`, `percentilOMS` — percentil OMS de una medida (LMS + CDF normal)
+- `tramoEnDia`, `minutoDelDia`, `ultimosDias` — helpers del ritmo de 24h
+  (recorte de intervalos por dia local, con cruce de medianoche)
 
 Ademas, `models/referenciaOMS.ts` (GENERADO, no editar a mano): estandares
 OMS de ninas semanas 0-100 (P3/P15/P50/P85/P97 + parametros LMS de peso,
@@ -77,6 +79,8 @@ de las tablas del repo oficial github.com/WorldHealthOrganization/anthro.
 
 - **GraficaLinea.vue**: grafica de linea en SVG puro (sin librerias),
   eje Y autoajustado, tooltips nativos (`<title>`), responsive via viewBox.
+- **GraficaRitmo.vue**: ritmo de 24h en SVG puro — una fila por dia,
+  tramos de sueno como bloques y tomas como puntos, con leyenda.
 
 ## Estilos
 
@@ -84,3 +88,8 @@ CSS puro. Variables y utilidades compartidas en `assets/main.css`
 (`.pantalla`, `.tarjeta`, `.boton`, `.campo`, `.chip`, `.fila-registro`).
 Paleta rosa suave (`--color-primario: #e57398`). Navegacion inferior fija
 (App.vue) con safe-area para iPhone.
+
+**Modo noche**: clase `.noche` en `<html>` que redefine las variables de
+color (paleta oscura). La gestiona App.vue: automatica de 22:00 a 08:00,
+con boton en la cabecera para forzar (auto → oscuro → claro, persistido
+en localStorage `carlotapp-tema`).

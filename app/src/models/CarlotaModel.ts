@@ -157,8 +157,8 @@ export function textoToma(t: Toma): string {
     ? `${t.cantidad_ml} ml`
     : minutos !== null
       ? formatoDuracion(minutos)
-      : ''
-  return `🍼 ${ETIQUETAS_TOMA[t.tipo]}${detalle ? ` — ${detalle}` : ''}${t.notas ? ` · ${t.notas}` : ''}`
+      : '(en curso)'
+  return `🍼 ${ETIQUETAS_TOMA[t.tipo]} — ${detalle}${t.notas ? ` · ${t.notas}` : ''}`
 }
 
 export function textoSueno(s: Sueno): string {
@@ -192,6 +192,53 @@ export function ultimoValor<T>(
     if (!ultimo || fecha.localeCompare(ultimo.fecha) >= 0) ultimo = { valor, fecha }
   }
   return ultimo
+}
+
+// ---- Ritmo de 24 h ----
+
+export interface TramoRitmo {
+  desdeMin: number // minuto del día (0-1440)
+  hastaMin: number
+}
+
+/**
+ * Recorta un intervalo [inicio, fin] al día local indicado y lo devuelve en
+ * minutos del día (0-1440). Un intervalo que cruza medianoche aporta un tramo
+ * a cada día. fin === null (en curso) se recorta en `ahora`. null si el
+ * intervalo no toca el día.
+ */
+export function tramoEnDia(
+  inicioIso: string,
+  finIso: string | null,
+  dia: string,
+  ahora: Date = new Date(),
+): TramoRitmo | null {
+  const inicioDia = new Date(dia + 'T00:00:00').getTime()
+  const finDia = inicioDia + 86_400_000
+  const desde = Math.max(new Date(inicioIso).getTime(), inicioDia)
+  const hasta = Math.min(finIso ? new Date(finIso).getTime() : ahora.getTime(), finDia)
+  if (hasta <= desde) return null
+  return {
+    desdeMin: Math.round((desde - inicioDia) / 60_000),
+    hastaMin: Math.round((hasta - inicioDia) / 60_000),
+  }
+}
+
+/** Minuto del día local (0-1439) de una fecha ISO */
+export function minutoDelDia(iso: string): number {
+  const fecha = new Date(iso)
+  return fecha.getHours() * 60 + fecha.getMinutes()
+}
+
+/** Los últimos `n` días locales como 'YYYY-MM-DD', el más reciente primero */
+export function ultimosDias(n: number, ahora: Date = new Date()): string[] {
+  const dias: string[] = []
+  for (let i = 0; i < n; i++) {
+    const fecha = new Date(ahora)
+    fecha.setDate(fecha.getDate() - i)
+    dias.push(fecha.toLocaleDateString('sv-SE'))
+  }
+  return dias
 }
 
 // ---- Percentiles OMS (niñas) ----

@@ -14,18 +14,10 @@
 
 ### Registro mas rapido / util
 
-- [ ] Contadores "hace X" en el dashboard: tiempo desde la ultima toma,
-      ultimo panal y ultimo sueno (el dato que mas se consulta)
-- [ ] Deshacer rapido: toast con "deshacer" unos segundos tras registrar
-      (para toques accidentales)
-- [ ] Cronometro de toma en vivo (empezar/parar como el sueno; al parar,
-      pregunta los ml si es biberon)
-- [ ] Modo noche: tema oscuro automatico por horario (tomas nocturnas)
+(el primer bloque del brainstorming se completo el 2026-08-07, ver "Hechas")
 
 ### Analisis y graficas
 
-- [ ] Grafica de ritmo de 24h: barras horarias por dia con sueno/tomas,
-      para ver el patron emerger semana a semana
 - [ ] Pintar las bandas P3-P97 de la OMS sobre las graficas de peso/altura/PC
       (los datos ya estan en referenciaOMS.ts; GraficaLinea necesitaria
       soporte de bandas)
@@ -58,6 +50,15 @@
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
 - [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
+- [x] Contadores "hace X" en el dashboard (2026-08-07): ultima toma, ultimo
+      panal y despierta/durmiendo desde, refrescados cada minuto
+- [x] Deshacer rapido (2026-08-07): toast de 6 s tras cada alta rapida
+- [x] Cronometro de toma en vivo (2026-08-07): toma con fin NULL en la BBDD
+      (sincroniza entre moviles); al terminar un biberon pregunta los ml
+- [x] Modo noche (2026-08-07): oscuro automatico de 22:00 a 08:00, con
+      boton en la cabecera para forzar (auto → oscuro → claro)
+- [x] Grafica de ritmo de 24h (2026-08-07): GraficaRitmo.vue en Historial,
+      sueno como bloques y tomas como puntos, cruza medianoche bien
 - [x] Percentiles OMS (2026-08-07): referencia oficial de ninas semanas 0-100
       precargada (`referenciaOMS.ts`, generada con
       `scripts/generar-referencia-oms.py` desde las tablas LMS del repo

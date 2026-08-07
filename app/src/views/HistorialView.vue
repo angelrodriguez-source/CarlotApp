@@ -18,7 +18,9 @@ import {
   textoPanal,
   textoSueno,
   textoToma,
+  ultimosDias,
 } from '../models/CarlotaModel'
+import GraficaRitmo from '../components/GraficaRitmo.vue'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
@@ -154,6 +156,8 @@ const historial = computed<DiaHistorial[]>(() => {
 })
 
 const hoy = claveDia(new Date().toISOString())
+
+const diasRitmo = computed(() => ultimosDias(dias.value))
 
 // ---- Edición de registros ----
 
@@ -295,6 +299,13 @@ function borrarRegistro() {
     <p v-if="cargando" class="suave">Cargando…</p>
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="!cargando && historial.length === 0" class="suave">Sin registros en este periodo.</p>
+
+    <GraficaRitmo
+      v-if="!cargando && historial.length > 0"
+      :dias="diasRitmo"
+      :suenos="suenos"
+      :tomas="tomas"
+    />
 
     <div v-for="diaHistorial in historial" :key="diaHistorial.dia" class="tarjeta">
       <button
