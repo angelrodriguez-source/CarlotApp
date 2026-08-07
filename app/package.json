@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint . --fix",
+    "lint-check": "eslint .",
+    "format": "prettier --write src/"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
@@ -21,8 +24,13 @@
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.12.0",
     "@vitejs/plugin-vue": "^6.0.5",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/tsconfig": "^0.9.1",
+    "eslint": "^10.8.0",
+    "eslint-plugin-vue": "^10.10.0",
     "npm-run-all2": "^8.0.4",
+    "prettier": "^3.9.6",
     "typescript": "~6.0.0",
     "vite": "^8.0.3",
     "vitest": "^4.1.10",

@@ -54,6 +54,8 @@ cd app
 npm install
 npm run dev          # Dev server en http://localhost:5173 (host: true → accesible por WiFi)
 npm run test         # Vitest — CarlotaModel
+npm run lint         # ESLint con --fix (lint-check en CI, sin fix)
+npm run format       # Prettier sobre src/ (referenciaOMS.ts excluido)
 npm run build        # Type-check (vue-tsc) + build
 npm run preview      # Preview del build
 ```

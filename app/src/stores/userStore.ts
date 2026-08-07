@@ -26,10 +26,7 @@ export const useUserStore = defineStore('user', () => {
   // --- COMPUTED ---
   const isLoggedIn = computed(() => !!user.value)
   const nombre = computed(
-    () =>
-      (user.value?.user_metadata?.name as string | undefined) ??
-      user.value?.email ??
-      '',
+    () => (user.value?.user_metadata?.name as string | undefined) ?? user.value?.email ?? '',
   )
 
   // --- ACTIONS ---

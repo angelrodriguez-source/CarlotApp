@@ -28,7 +28,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Se calma con el contacto piel con piel, tu voz y el movimiento suave',
       'La caída del cordón suele llegar entre la primera y la segunda semana',
     ],
-    sueno: 'Duerme casi todo el día (14-17 h) en tramos cortos de 2-4 h, sin distinguir día y noche.',
+    sueno:
+      'Duerme casi todo el día (14-17 h) en tramos cortos de 2-4 h, sin distinguir día y noche.',
     tomas: 'A demanda, 8-12 tomas al día; estómago pequeño, tomas cortas y frecuentes.',
   },
   {
@@ -41,7 +42,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Reconoce tu voz y tu olor',
       'Primer brote de crecimiento (~2-3 semanas): días de querer comer sin parar',
     ],
-    sueno: 'Sigue sin patrón fijo; siestas irregulares. Sacarla a la luz de día ayuda a montar el reloj interno.',
+    sueno:
+      'Sigue sin patrón fijo; siestas irregulares. Sacarla a la luz de día ayuda a montar el reloj interno.',
     tomas: 'El brote de crecimiento aumenta el apetito unos días: es normal y pasa solo.',
   },
   {
@@ -54,7 +56,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Primeros sonidos guturales',
       'El llanto de la tarde puede ir a más: su pico llega hacia la semana 6',
     ],
-    sueno: 'Empieza a distinguir día y noche. Noches con algo más de agrupación; paciencia con la tarde.',
+    sueno:
+      'Empieza a distinguir día y noche. Noches con algo más de agrupación; paciencia con la tarde.',
     tomas: 'Se van espaciando un poco; sigue mandando la demanda.',
   },
   {
@@ -81,7 +84,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Abre las manos y empieza a mirárselas',
     ],
     sueno: 'Ventanas despierta de ~60-90 min; puede consolidar 5-6 h nocturnas seguidas.',
-    tomas: 'Patrón más regular, tomas algo más grandes y espaciadas. Tras las vacunas puede comer menos 1-2 días.',
+    tomas:
+      'Patrón más regular, tomas algo más grandes y espaciadas. Tras las vacunas puede comer menos 1-2 días.',
   },
   {
     desdeSemana: 10,
@@ -147,7 +151,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Rastrilla objetos pequeños con la mano',
       'Empieza la cautela con desconocidos: es un avance, no un retroceso',
     ],
-    sueno: 'Hacia 2 siestas. Los hitos motores pueden dar despertares: practica de día, calma de noche.',
+    sueno:
+      'Hacia 2 siestas. Los hitos motores pueden dar despertares: practica de día, calma de noche.',
     tomas: '2-3 comidas de sólidos + su leche; trocitos blandos para practicar.',
   },
   {
@@ -160,7 +165,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Dice "mamá/papá" (todavía a cualquiera 😄)',
       'Busca objetos que le escondes: permanencia del objeto',
     ],
-    sueno: '2 siestas; la angustia de separación puede asomar de noche — despedidas cortas y previsibles.',
+    sueno:
+      '2 siestas; la angustia de separación puede asomar de noche — despedidas cortas y previsibles.',
     tomas: '3 comidas + algún tentempié; practica con vaso abierto o con boquilla.',
   },
   {
@@ -187,7 +193,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Torres de 2 cubos; mete y saca objetos',
       'De 3 a 5 palabras y subiendo; entiende muchísimo más',
     ],
-    sueno: 'Entre los 12 y 18 meses se pasa de 2 siestas a 1: días raros de transición son normales.',
+    sueno:
+      'Entre los 12 y 18 meses se pasa de 2 siestas a 1: días raros de transición son normales.',
     tomas: '3 comidas + 2 meriendas; leche ~2 raciones al día (350-500 ml).',
   },
   {
@@ -200,8 +207,10 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       '10-20 palabras; señala partes del cuerpo',
       'Primeras rabietas: frustración normal de querer más de lo que puede',
     ],
-    sueno: '1 siesta (1,5-3 h) y 11-14 h en total. Rutina firme y cariñosa contra la resistencia a dormir.',
-    tomas: 'Come lo de la familia, troceado. El apetito irregular a esta edad es completamente normal.',
+    sueno:
+      '1 siesta (1,5-3 h) y 11-14 h en total. Rutina firme y cariñosa contra la resistencia a dormir.',
+    tomas:
+      'Come lo de la familia, troceado. El apetito irregular a esta edad es completamente normal.',
   },
   {
     desdeSemana: 79,
@@ -213,7 +222,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       'Chuta una pelota; ayuda a vestirse',
       'Sigue instrucciones sencillas de un paso',
     ],
-    sueno: '1 siesta; puede aparecer resistencia a acostarse (autonomía). Elecciones pequeñas ayudan ("¿este pijama o este?").',
+    sueno:
+      '1 siesta; puede aparecer resistencia a acostarse (autonomía). Elecciones pequeñas ayudan ("¿este pijama o este?").',
     tomas: 'Cuchara y vaso con soltura; raciones pequeñas y variadas, sin forzar.',
   },
   {
@@ -226,7 +236,8 @@ export const ETAPAS_DESARROLLO: EtapaDesarrollo[] = [
       '50+ palabras y frases de 2; sigue instrucciones de 2 pasos',
       'Revisión de los 2 años a la vuelta de la esquina',
     ],
-    sueno: '11-14 h con 1 siesta. Los miedos nocturnos tempranos se calman con rutina y compañía breve.',
+    sueno:
+      '11-14 h con 1 siesta. Los miedos nocturnos tempranos se calman con rutina y compañía breve.',
     tomas: '3 comidas + 2 meriendas como la familia; leche ~2 raciones al día.',
   },
 ]

@@ -107,8 +107,9 @@ function fechaCorta(iso: string): string {
       </text>
     </svg>
     <p v-if="puntos.length > 0" class="suave ultimo">
-      Último: {{ puntos[puntos.length - 1]!.valor }} {{ unidad }}
-      ({{ puntos[puntos.length - 1]!.etiqueta }})
+      Último: {{ puntos[puntos.length - 1]!.valor }} {{ unidad }} ({{
+        puntos[puntos.length - 1]!.etiqueta
+      }})
     </p>
   </div>
 </template>

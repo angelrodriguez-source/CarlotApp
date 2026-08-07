@@ -138,7 +138,10 @@ export function resumenDia(tomas: Toma[], suenos: Sueno[], panales: Panal[]): Re
       mlBiberon += toma.cantidad_ml ?? 0
     }
   }
-  const minutosSueno = suenos.reduce((total, s) => total + (duracionMinutos(s.inicio, s.fin) ?? 0), 0)
+  const minutosSueno = suenos.reduce(
+    (total, s) => total + (duracionMinutos(s.inicio, s.fin) ?? 0),
+    0,
+  )
   return {
     numTomas: tomas.length,
     mlBiberon,

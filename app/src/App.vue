@@ -25,9 +25,8 @@ type ModoTema = 'auto' | 'claro' | 'oscuro'
 const CLAVE_TEMA = 'carlotapp-tema'
 
 const modoTema = ref<ModoTema>(
-  (['auto', 'claro', 'oscuro'] as const).find(
-    (m) => m === localStorage.getItem(CLAVE_TEMA),
-  ) ?? 'auto',
+  (['auto', 'claro', 'oscuro'] as const).find((m) => m === localStorage.getItem(CLAVE_TEMA)) ??
+    'auto',
 )
 const horaActual = ref(new Date().getHours())
 let temporizadorTema: number | undefined

@@ -55,8 +55,10 @@ async function cargar() {
   try {
     const bebe = await bebeStore.cargar()
     if (!bebe) return
+    hoy.value = claveDia(new Date().toISOString())
+    // "Últimos N días" = hoy + los N-1 anteriores (igual que ultimosDias)
     const desde = new Date()
-    desde.setDate(desde.getDate() - dias.value)
+    desde.setDate(desde.getDate() - (dias.value - 1))
     desde.setHours(0, 0, 0, 0)
     const desdeIso = desde.toISOString()
     ;[tomas.value, suenos.value, panales.value, eventos.value] = await Promise.all([
@@ -155,7 +157,8 @@ const historial = computed<DiaHistorial[]>(() => {
     })
 })
 
-const hoy = claveDia(new Date().toISOString())
+// Se refresca en cada cargar() para no quedarse obsoleto pasada la medianoche
+const hoy = ref(claveDia(new Date().toISOString()))
 
 const diasRitmo = computed(() => ultimosDias(dias.value))
 
@@ -233,8 +236,11 @@ function guardarEdicion() {
   const inicioIso = new Date(e.inicio).toISOString()
   if (e.kind === 'toma') {
     const esBiberon = e.tipoToma.startsWith('biberon')
+    // duracionMin viene precargada del registro original (abrirEdicion), así
+    // que editar un biberón con fin (cronómetro) conserva su duración en vez
+    // de borrarla; != null para no convertir una toma de 0 min en "en curso"
     const fin =
-      !esBiberon && e.duracionMin
+      e.duracionMin != null
         ? new Date(new Date(e.inicio).getTime() + e.duracionMin * 60_000).toISOString()
         : null
     ejecutar(() =>

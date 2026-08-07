@@ -14,6 +14,7 @@ import BarraObjetivo from '../components/BarraObjetivo.vue'
 import { desarrolloSemana } from '../models/semanasDesarrollo'
 import {
   aInputLocal,
+  claveDia,
   duracionMinutos,
   edadCorta,
   edadDias,
@@ -27,6 +28,7 @@ import {
   textoPanal,
   textoSueno,
   textoToma,
+  tramoEnDia,
   ultimoValor,
 } from '../models/CarlotaModel'
 import {
@@ -50,7 +52,9 @@ const cargando = ref(true)
 const error = ref('')
 
 const tomas = ref<Toma[]>([])
-const suenos = ref<Sueno[]>([])
+// Sueños desde ayer a las 00:00: el nocturno que empezó ayer y terminó hoy
+// también aporta minutos al "sueño de hoy" (se recorta con tramoEnDia)
+const suenosDesdeAyer = ref<Sueno[]>([])
 const panales = ref<Panal[]>([])
 const eventos = ref<Evento[]>([])
 const medidas = ref<Medida[]>([])
@@ -67,20 +71,21 @@ const formulario = ref<'toma' | 'fin-toma' | 'mas' | null>(null)
 const ahora = ref(new Date())
 let temporizador: number | undefined
 
-/** ISO del inicio del día de HOY en la zona local */
-function inicioHoyIso(): string {
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  return hoy.toISOString()
+/** ISO del inicio del día local de hace `diasAtras` días (0 = hoy) */
+function inicioDiaIso(diasAtras = 0): string {
+  const dia = new Date()
+  dia.setDate(dia.getDate() - diasAtras)
+  dia.setHours(0, 0, 0, 0)
+  return dia.toISOString()
 }
 
 async function cargarDia() {
   const bebe = await bebeStore.cargar()
   if (!bebe) return
-  const desde = inicioHoyIso()
+  const desde = inicioDiaIso()
   ;[
     tomas.value,
-    suenos.value,
+    suenosDesdeAyer.value,
     panales.value,
     eventos.value,
     medidas.value,
@@ -91,7 +96,7 @@ async function cargarDia() {
     ultimoSuenoTerminado.value,
   ] = await Promise.all([
     servicio.listarTomas(bebe.id, desde),
-    servicio.listarSuenos(bebe.id, desde),
+    servicio.listarSuenos(bebe.id, inicioDiaIso(1)),
     servicio.listarPanales(bebe.id, desde),
     servicio.listarEventos(bebe.id, desde),
     servicio.listarMedidas(bebe.id),
@@ -163,19 +168,44 @@ async function registrarYOfrecer<T>(
 }
 
 // ---- Resumen (mitad superior) ----
+
+/** Los sueños que empezaron hoy (línea de tiempo, contador de sueños) */
+const suenos = computed(() =>
+  suenosDesdeAyer.value.filter((s) => claveDia(s.inicio) === hoyLocal(ahora.value)),
+)
+
 const resumen = computed(() => resumenDia(tomas.value, suenos.value, panales.value))
 
-const ultimoPeso = computed(() => ultimoValor(medidas.value, (m) => m.fecha, (m) => m.peso_gramos))
-const ultimaAltura = computed(() => ultimoValor(medidas.value, (m) => m.fecha, (m) => m.altura_cm))
+const ultimoPeso = computed(() =>
+  ultimoValor(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => m.peso_gramos,
+  ),
+)
+const ultimaAltura = computed(() =>
+  ultimoValor(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => m.altura_cm,
+  ),
+)
 
-/** Minutos de sueño de hoy, contando el sueño en curso (solo su parte de hoy) */
+/**
+ * Minutos de sueño de hoy: cada sueño aporta solo su parte de hoy
+ * (tramoEnDia), incluyendo el nocturno que empezó ayer y el que sigue
+ * en curso (se recorta en `ahora`).
+ */
 const minutosSuenoHoy = computed(() => {
-  let minutos = resumen.value.minutosSueno
-  if (suenoAbierto.value) {
-    const inicioDia = new Date(ahora.value)
-    inicioDia.setHours(0, 0, 0, 0)
-    const inicio = Math.max(new Date(suenoAbierto.value.inicio).getTime(), inicioDia.getTime())
-    minutos += Math.max(0, Math.round((ahora.value.getTime() - inicio) / 60_000))
+  const dia = hoyLocal(ahora.value)
+  const candidatos =
+    suenoAbierto.value && !suenosDesdeAyer.value.some((s) => s.id === suenoAbierto.value!.id)
+      ? [...suenosDesdeAyer.value, suenoAbierto.value]
+      : suenosDesdeAyer.value
+  let minutos = 0
+  for (const s of candidatos) {
+    const tramo = tramoEnDia(s.inicio, s.fin, dia, ahora.value)
+    if (tramo) minutos += tramo.hastaMin - tramo.desdeMin
   }
   return minutos
 })
@@ -221,7 +251,9 @@ function haceTexto(iso: string): string {
 }
 
 const minutosTomaAbierta = computed(() =>
-  tomaAbierta.value ? (duracionMinutos(tomaAbierta.value.inicio, ahora.value.toISOString()) ?? 0) : 0,
+  tomaAbierta.value
+    ? (duracionMinutos(tomaAbierta.value.inicio, ahora.value.toISOString()) ?? 0)
+    : 0,
 )
 
 const contadorToma = computed(() => {
@@ -262,8 +294,7 @@ function guardarToma() {
   if (!bebe) return
   const inicio = new Date(nuevaToma.value.inicio)
   const minutos = nuevaToma.value.duracionMin
-  const fin =
-    !esBiberon.value && minutos ? new Date(inicio.getTime() + minutos * 60_000) : null
+  const fin = !esBiberon.value && minutos ? new Date(inicio.getTime() + minutos * 60_000) : null
   registrarYOfrecer(
     'Toma registrada',
     () =>
@@ -478,9 +509,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <div class="tarjeta">
         <h2>🔒 Cuenta sin acceso</h2>
         <p>
-          Este usuario no está en la lista blanca (<code>usuarios_autorizados</code>).
-          Comprueba que has entrado con el Google correcto, o añade el email con una
-          migración nueva.
+          Este usuario no está en la lista blanca (<code>usuarios_autorizados</code>). Comprueba que
+          has entrado con el Google correcto, o añade el email con una migración nueva.
         </p>
       </div>
     </template>
@@ -503,7 +533,9 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <div class="stat">
             <span class="etiqueta">Altura</span>
             <span class="valor">{{ ultimaAltura ? `${ultimaAltura.valor} cm` : '—' }}</span>
-            <span class="sub">{{ ultimaAltura ? fechaCorta(ultimaAltura.fecha) : 'sin datos' }}</span>
+            <span class="sub">{{
+              ultimaAltura ? fechaCorta(ultimaAltura.fecha) : 'sin datos'
+            }}</span>
           </div>
         </div>
 
@@ -524,7 +556,9 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <span class="valor">{{ resumen.mlBiberon }} ml</span>
             <span class="sub">
               {{ resumen.numTomas }} {{ resumen.numTomas === 1 ? 'toma' : 'tomas'
-              }}{{ resumen.minutosPecho > 0 ? ` · ${formatoDuracion(resumen.minutosPecho)} pecho` : '' }}
+              }}{{
+                resumen.minutosPecho > 0 ? ` · ${formatoDuracion(resumen.minutosPecho)} pecho` : ''
+              }}
             </span>
           </div>
         </div>
@@ -581,11 +615,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <span class="icono">💩</span>
             Caca
           </button>
-          <button
-            class="acceso"
-            :class="{ activo: formulario === 'mas' }"
-            @click="abrirMas"
-          >
+          <button class="acceso" :class="{ activo: formulario === 'mas' }" @click="abrirMas">
             <span class="icono">➕</span>
             Más
           </button>
@@ -622,9 +652,17 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <label for="toma-inicio">Hora de inicio</label>
           <input id="toma-inicio" v-model="nuevaToma.inicio" type="datetime-local" required />
         </div>
+        <!-- Obligatorio: un biberón guardado sin ml ni fin se confundiría con
+             una toma en curso del cronómetro (getTomaAbierta) -->
         <div v-if="esBiberon" class="campo">
           <label for="toma-ml">Cantidad (ml)</label>
-          <input id="toma-ml" v-model.number="nuevaToma.cantidadMl" type="number" min="1" />
+          <input
+            id="toma-ml"
+            v-model.number="nuevaToma.cantidadMl"
+            type="number"
+            min="1"
+            required
+          />
         </div>
         <div v-else class="campo">
           <label for="toma-min">Duración (min)</label>
@@ -661,9 +699,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <div class="acciones">
           <span class="suave">Pañal:</span>
           <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
-          <button class="boton secundario" @click="pedirCantidadPanal('mixto')">
-            💧💩 Mixto
-          </button>
+          <button class="boton secundario" @click="pedirCantidadPanal('mixto')">💧💩 Mixto</button>
         </div>
         <form class="bloque-mas" @submit.prevent="guardarSueno">
           <h3>😴 Sueño a posteriori</h3>

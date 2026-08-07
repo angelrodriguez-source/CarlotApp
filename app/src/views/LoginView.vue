@@ -25,9 +25,7 @@ async function entrar() {
     <button class="boton google" @click="entrar">Entrar con Google</button>
     <p v-if="error" class="error">{{ error }}</p>
 
-    <p class="suave nota">
-      App privada: solo los dos usuarios autorizados pueden ver los datos.
-    </p>
+    <p class="suave nota">App privada: solo los dos usuarios autorizados pueden ver los datos.</p>
   </main>
 </template>
 
