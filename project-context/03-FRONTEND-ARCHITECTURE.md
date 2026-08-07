@@ -17,7 +17,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + contadores "hace X" + accesos rapidos (Sueno, Toma con cronometro, Caca, Mas) + toast de deshacer + linea de tiempo |
+| `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + barras de objetivo diario de sueno/leche segun edad + contadores "hace X" + accesos rapidos (Sueno, Toma con cronometro, Caca, Mas) + toast de deshacer + linea de tiempo |
 | `/historial` | HistorialView | Grafica de ritmo de 24h + dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
 | `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC con percentil OMS junto a cada valor y graficas de evolucion del percentil + tabla |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
@@ -68,6 +68,8 @@ Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
 - `edadDias`, `percentilOMS` — percentil OMS de una medida (LMS + CDF normal)
 - `tramoEnDia`, `minutoDelDia`, `ultimosDias` — helpers del ritmo de 24h
   (recorte de intervalos por dia local, con cruce de medianoche)
+- `objetivoSuenoMinutos`, `objetivoLecheMl` — objetivos diarios orientativos
+  por edad (sueno: rangos NSF/AASM; leche: regla ml/kg sobre el peso)
 
 Ademas, `models/referenciaOMS.ts` (GENERADO, no editar a mano): estandares
 OMS de ninas semanas 0-100 (P3/P15/P50/P85/P97 + parametros LMS de peso,
@@ -81,6 +83,8 @@ de las tablas del repo oficial github.com/WorldHealthOrganization/anthro.
   eje Y autoajustado, tooltips nativos (`<title>`), responsive via viewBox.
 - **GraficaRitmo.vue**: ritmo de 24h en SVG puro — una fila por dia,
   tramos de sueno como bloques y tomas como puntos, con leyenda.
+- **BarraObjetivo.vue**: barra de progreso hacia un objetivo con rango
+  (marca en el minimo, relleno verde al entrar en rango).
 
 ## Estilos
 

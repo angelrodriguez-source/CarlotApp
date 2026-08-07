@@ -10,6 +10,8 @@ import {
   agruparPorDia,
   resumenDia,
   minutoDelDia,
+  objetivoLecheMl,
+  objetivoSuenoMinutos,
   serieGrafica,
   textoPanal,
   textoSueno,
@@ -175,6 +177,25 @@ describe('texto de registros', () => {
     }
     expect(textoPanal(panal)).toBe('🧷 Pañal — Caca (mucho)')
     expect(textoPanal({ ...panal, tipo: 'pis', cantidad: null })).toBe('🧷 Pañal — Pis')
+  })
+})
+
+describe('objetivos diarios', () => {
+  it('sueno recomendado por tramos de edad', () => {
+    expect(objetivoSuenoMinutos(60)).toEqual({ min: 840, max: 1020 }) // 14-17 h
+    expect(objetivoSuenoMinutos(200)).toEqual({ min: 720, max: 900 }) // 12-15 h
+    expect(objetivoSuenoMinutos(400)).toEqual({ min: 660, max: 840 }) // 11-14 h
+  })
+
+  it('leche por regla ml/kg segun edad, con banda y tope', () => {
+    // 5 kg a los 2 meses: 150 ml/kg → 750, banda 640-860
+    expect(objetivoLecheMl(60, 5000)).toEqual({ min: 640, max: 860 })
+    // 7 kg a los 5 meses: 120 ml/kg → 840, banda 710-970
+    expect(objetivoLecheMl(150, 7000)).toEqual({ min: 710, max: 970 })
+    // Tope de 1000 ml/dia
+    expect(objetivoLecheMl(60, 9000)!.max).toBe(1000)
+    // Sin peso no hay objetivo
+    expect(objetivoLecheMl(60, null)).toBeNull()
   })
 })
 
