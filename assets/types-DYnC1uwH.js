@@ -1,1 +1,0 @@
-var e={pecho_izq:`Pecho izq.`,pecho_der:`Pecho der.`,biberon_formula:`Biberón (fórmula)`,biberon_materna:`Biberón (materna)`},t={pis:`Pis`,caca:`Caca`,mixto:`Pis + caca`},n={bano:`Baño`,vitamina_d:`Vitamina D`,medicacion:`Medicación`,hito:`Hito`,otro:`Otro`},r={medica:`Médica`,tramite:`Trámite`,otro:`Otro`};export{e as i,n,t as r,r as t};
