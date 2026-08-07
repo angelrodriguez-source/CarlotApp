@@ -9,10 +9,13 @@ import {
   percentilOMS,
   agruparPorDia,
   resumenDia,
+  minutoDelDia,
   serieGrafica,
   textoPanal,
   textoSueno,
   textoToma,
+  tramoEnDia,
+  ultimosDias,
   ultimoValor,
 } from '../CarlotaModel'
 import type { Toma, Sueno, Panal } from '../../types'
@@ -172,6 +175,40 @@ describe('texto de registros', () => {
     }
     expect(textoPanal(panal)).toBe('🧷 Pañal — Caca (mucho)')
     expect(textoPanal({ ...panal, tipo: 'pis', cantidad: null })).toBe('🧷 Pañal — Pis')
+  })
+})
+
+describe('ritmo de 24 h', () => {
+  it('recorta intervalos al dia, incluyendo los que cruzan medianoche', () => {
+    // Contenido en el dia
+    expect(tramoEnDia('2026-08-06T13:00:00', '2026-08-06T14:30:00', '2026-08-06')).toEqual({
+      desdeMin: 780,
+      hastaMin: 870,
+    })
+    // Cruza medianoche: aporta a los dos dias
+    expect(tramoEnDia('2026-08-05T23:00:00', '2026-08-06T01:30:00', '2026-08-05')).toEqual({
+      desdeMin: 1380,
+      hastaMin: 1440,
+    })
+    expect(tramoEnDia('2026-08-05T23:00:00', '2026-08-06T01:30:00', '2026-08-06')).toEqual({
+      desdeMin: 0,
+      hastaMin: 90,
+    })
+    // Fuera del dia
+    expect(tramoEnDia('2026-08-04T10:00:00', '2026-08-04T11:00:00', '2026-08-06')).toBeNull()
+    // En curso: recorta en "ahora"
+    expect(
+      tramoEnDia('2026-08-06T13:00:00', null, '2026-08-06', new Date('2026-08-06T13:45:00')),
+    ).toEqual({ desdeMin: 780, hastaMin: 825 })
+  })
+
+  it('minutoDelDia y ultimosDias', () => {
+    expect(minutoDelDia('2026-08-06T13:30:00')).toBe(810)
+    expect(ultimosDias(3, new Date('2026-08-06T12:00:00'))).toEqual([
+      '2026-08-06',
+      '2026-08-05',
+      '2026-08-04',
+    ])
   })
 })
 
