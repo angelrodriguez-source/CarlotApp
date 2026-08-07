@@ -50,6 +50,9 @@
 
 ### Hechas
 
+- [x] Corte de unas (2026-08-07): nuevo tipo de evento 'unas' (migracion
+      del CHECK), boton rapido "✂️ Uñas cortadas" en la hoja Mas con
+      "ultima vez hace N dias" (getUltimoEventoDeTipo)
 - [x] Restyling completo tras auditoria UX (2026-08-07), fases F1-F4:
       contraste AA en botones (--color-accion), bloque "Ahora" arriba con
       contadores en grande, objetivos fusionados con sus barras, jerarquia

@@ -256,6 +256,23 @@ export async function listarEventos(bebeId: string, desdeIso: string): Promise<E
   return (data ?? []) as Evento[]
 }
 
+/** El último evento de un tipo dado (p. ej. el último corte de uñas) */
+export async function getUltimoEventoDeTipo(
+  bebeId: string,
+  tipo: Evento['tipo'],
+): Promise<Evento | null> {
+  const { data, error } = await supabase
+    .from('eventos')
+    .select()
+    .eq('bebe_id', bebeId)
+    .eq('tipo', tipo)
+    .order('fecha', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as Evento | null
+}
+
 /**
  * Los "Momentos" (eventos tipo hito) de todos los tiempos, el más reciente
  * primero — para la sección Momentos del Historial.

@@ -45,7 +45,7 @@ export interface Panal {
   notas: string | null
 }
 
-export type TipoEvento = 'bano' | 'vitamina_d' | 'medicacion' | 'hito' | 'otro'
+export type TipoEvento = 'bano' | 'vitamina_d' | 'medicacion' | 'unas' | 'hito' | 'otro'
 
 export interface Evento {
   id: string
@@ -101,6 +101,7 @@ export const ETIQUETAS_EVENTO: Record<TipoEvento, string> = {
   bano: 'Baño',
   vitamina_d: 'Vitamina D',
   medicacion: 'Medicación',
+  unas: 'Uñas cortadas',
   hito: 'Momento',
   otro: 'Otro',
 }
