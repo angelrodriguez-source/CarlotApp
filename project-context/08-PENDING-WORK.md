@@ -53,6 +53,11 @@
 
 ### Hechas
 
+- [x] Momentos (2026-08-07): alta dedicada en Hoy → Mas → "✨ Momento"
+      (reutiliza eventos tipo hito, sin migracion; etiqueta renombrada a
+      "Momento") y seccion propia en Historial con todos los momentos de
+      siempre (listarMomentos), con borrado
+
 - [x] Revision exhaustiva del codigo (2026-08-07): 8 arreglos aplicados —
       el sueno nocturno que cruza medianoche ya cuenta en "Sueno hoy" y en
       el email nocturno (recorte por dia), editar un biberon conserva su

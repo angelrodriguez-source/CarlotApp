@@ -256,6 +256,21 @@ export async function listarEventos(bebeId: string, desdeIso: string): Promise<E
   return (data ?? []) as Evento[]
 }
 
+/**
+ * Los "Momentos" (eventos tipo hito) de todos los tiempos, el más reciente
+ * primero — para la sección Momentos del Historial.
+ */
+export async function listarMomentos(bebeId: string): Promise<Evento[]> {
+  const { data, error } = await supabase
+    .from('eventos')
+    .select()
+    .eq('bebe_id', bebeId)
+    .eq('tipo', 'hito')
+    .order('fecha', { ascending: false })
+  lanzarSi(error)
+  return (data ?? []) as Evento[]
+}
+
 export async function actualizarEvento(
   id: string,
   cambios: Partial<Pick<Evento, 'fecha' | 'tipo' | 'descripcion'>>,

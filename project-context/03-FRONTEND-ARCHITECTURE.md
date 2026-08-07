@@ -18,7 +18,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
 | `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + barras de objetivo diario de sueno/leche segun edad + contadores "hace X" + accesos rapidos (Sueno, Toma con cronometro, Caca, Mas) + toast de deshacer + linea de tiempo |
-| `/historial` | HistorialView | Grafica de ritmo de 24h + dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
+| `/historial` | HistorialView | Grafica de ritmo de 24h + seccion Momentos (hitos de todos los tiempos) + dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
 | `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC con percentil OMS junto a cada valor y graficas de evolucion del percentil + tabla |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
 
