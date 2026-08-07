@@ -1,8 +1,16 @@
 /* main.css — Estilos globales de CarlotApp (CSS puro con variables) */
 
+/*
+ * Tokens. El aguamarina marca ACCIÓN y PROGRESO, no relleno:
+ * - --color-accion: fondo de botones primarios (texto blanco cumple AA)
+ * - --color-primario: gráficas, barras, acentos
+ * - --color-primario-suave: tinte de agrupación (hero, tiles)
+ */
 :root {
   --color-primario: #2aa595;
   --color-primario-oscuro: #1d8175;
+  --color-primario-suave: #dff3ee;
+  --color-accion: #17685e;
   --color-fondo: #eefaf7;
   --color-tarjeta: #ffffff;
   --color-texto: #2c423e;
@@ -11,20 +19,27 @@
   --color-ok: #4caf7d;
   --color-aviso: #e5a173;
   --color-peligro: #d95d5d;
-  --radio: 14px;
-  --sombra: 0 2px 10px rgb(29 129 117 / 0.08);
+  --radio: 18px;
+  --radio-s: 12px;
+  --sombra:
+    0 1px 2px rgb(23 104 94 / 0.06),
+    0 6px 18px rgb(23 104 94 / 0.08);
 }
 
 /* Modo noche (clase en <html>, la gestiona App.vue por horario o a mano) */
 .noche {
   --color-primario: #2aa595;
   --color-primario-oscuro: #7cd6c8;
+  --color-primario-suave: #1d3a34;
+  --color-accion: #1d8175;
   --color-fondo: #142120;
   --color-tarjeta: #1e2f2c;
   --color-texto: #e3f1ee;
   --color-texto-suave: #8fb3ab;
   --color-borde: #35504b;
-  --sombra: 0 2px 10px rgb(0 0 0 / 0.35);
+  --sombra:
+    0 1px 2px rgb(0 0 0 / 0.3),
+    0 6px 18px rgb(0 0 0 / 0.35);
 }
 
 * {
@@ -82,29 +97,56 @@ textarea {
   padding: 1rem;
 }
 
+/*
+ * Jerarquía de tarjetas (3 niveles):
+ * - .tarjeta: accionable — blanca, con sombra
+ * - .tarjeta-hero: estado — tinte aguamarina, sin borde ni sombra
+ * - .tarjeta-plana: secundario — sin sombra
+ */
 .tarjeta {
   background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio);
   box-shadow: var(--sombra);
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tarjeta-hero {
+  background: var(--color-primario-suave);
+  border: none;
+  box-shadow: none;
+}
+
+.tarjeta-plana {
+  box-shadow: none;
+}
+
+/* Etiqueta de sección dentro de una tarjeta */
+.etiqueta-seccion {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-texto-suave);
+  margin-bottom: 0.5rem;
 }
 
 .boton {
   display: inline-block;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radio-s);
   padding: 0.6rem 1rem;
   font-size: 1rem;
   font-weight: 600;
-  background: var(--color-primario);
+  background: var(--color-accion);
   color: #fff;
-  transition: background 0.15s;
+  transition: filter 0.15s;
 }
 
 .boton:hover {
-  background: var(--color-primario-oscuro);
+  filter: brightness(1.15);
 }
 
 .boton.secundario {
@@ -117,8 +159,8 @@ textarea {
   background: transparent;
   color: var(--color-peligro);
   border: none;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.85rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.9rem;
 }
 
 .campo {
@@ -174,4 +216,92 @@ textarea {
 
 .fila-registro .detalle {
   flex: 1;
+}
+
+/* ---- Skeletons de carga (siluetas de tarjeta con brillo) ---- */
+
+.esqueleto {
+  border-radius: var(--radio);
+  background: linear-gradient(
+    100deg,
+    var(--color-borde) 40%,
+    var(--color-primario-suave) 50%,
+    var(--color-borde) 60%
+  );
+  background-size: 200% 100%;
+  animation: esqueleto-brillo 1.4s ease-in-out infinite;
+  margin-bottom: 0.75rem;
+}
+
+@keyframes esqueleto-brillo {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+/* ---- Pulso para cronómetros en curso (sueño/toma) ---- */
+
+@keyframes pulso-suave {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(42 165 149 / 0.45);
+  }
+  55% {
+    box-shadow: 0 0 0 7px rgb(42 165 149 / 0);
+  }
+}
+
+.pulso {
+  animation: pulso-suave 2.2s ease-out infinite;
+}
+
+/* ---- Transiciones (Vue <Transition name="hoja"> y "aparecer") ---- */
+
+.hoja-enter-active,
+.hoja-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.hoja-enter-active .hoja-panel,
+.hoja-leave-active .hoja-panel {
+  transition: transform 0.22s ease;
+}
+
+.hoja-enter-from,
+.hoja-leave-to {
+  opacity: 0;
+}
+
+.hoja-enter-from .hoja-panel,
+.hoja-leave-to .hoja-panel {
+  transform: translateY(100%);
+}
+
+.aparecer-enter-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.aparecer-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto,
+  .pulso {
+    animation: none;
+  }
+
+  .hoja-enter-active,
+  .hoja-leave-active,
+  .hoja-enter-active .hoja-panel,
+  .hoja-leave-active .hoja-panel,
+  .aparecer-enter-active {
+    transition: none;
+  }
 }

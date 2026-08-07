@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  bandaOMS,
   edadTexto,
   edadCorta,
   duracionMinutos,
@@ -288,6 +289,15 @@ describe('edadDias / percentilOMS', () => {
     // P3 y P97 de la tabla generada (semana 8)
     expect(percentilOMS('peso', 3893, 56)!).toBeCloseTo(3, 0)
     expect(percentilOMS('altura', 60.4, 56)!).toBeCloseTo(97, 0)
+  })
+
+  it('bandaOMS coincide con la tabla generada en semanas exactas', () => {
+    // Semana 8 (dia 56) de la tabla: peso p3 3893 / p50 4996 / p97 6370
+    const banda = bandaOMS('peso', 56)!
+    expect(banda.p3).toBeCloseTo(3893, -1)
+    expect(banda.p50).toBeCloseTo(4996, -1)
+    expect(banda.p97).toBeCloseTo(6370, -1)
+    expect(bandaOMS('peso', 800)).toBeNull()
   })
 
   it('interpola entre semanas y limita el rango', () => {

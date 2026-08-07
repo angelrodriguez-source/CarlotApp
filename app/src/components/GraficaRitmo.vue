@@ -14,6 +14,9 @@ const props = defineProps<{
   tomas: Toma[]
 }>()
 
+// Tocar una fila avisa a la vista (que abre ese día en la lista)
+const emit = defineEmits<{ seleccionarDia: [dia: string] }>()
+
 const ANCHO = 320
 const IZQ = 42
 const DER = 8
@@ -87,7 +90,14 @@ function etiquetaDia(dia: string): string {
         <text :x="x(hora * 60)" :y="alto - 3" text-anchor="middle" class="eje">{{ hora }}h</text>
       </g>
 
-      <g v-for="fila in filas" :key="fila.dia">
+      <g
+        v-for="fila in filas"
+        :key="fila.dia"
+        class="fila-ritmo"
+        role="button"
+        :aria-label="`Abrir el día ${fila.dia}`"
+        @click="emit('seleccionarDia', fila.dia)"
+      >
         <text :x="IZQ - 6" :y="fila.y + ALTO_FILA - 3" text-anchor="end" class="eje">
           {{ etiquetaDia(fila.dia) }}
         </text>
@@ -133,6 +143,10 @@ function etiquetaDia(dia: string): string {
 .grafica {
   width: 100%;
   height: auto;
+}
+
+.fila-ritmo {
+  cursor: pointer;
 }
 
 .leyenda {

@@ -65,6 +65,14 @@ function actualizarApp() {
   swEsperando.value?.postMessage('SKIP_WAITING')
   swEsperando.value = null
 }
+
+/**
+ * FAB "+": registrar desde cualquier pantalla. Lleva a Hoy y le pide
+ * (via query, que HoyView observa y limpia) que abra la hoja de registro.
+ */
+function abrirRegistro() {
+  router.push({ name: 'hoy', query: { registrar: String(Date.now()) } })
+}
 </script>
 
 <template>
@@ -91,6 +99,7 @@ function actualizarApp() {
   <nav v-if="userStore.isLoggedIn" class="nav-inferior">
     <RouterLink :to="{ name: 'hoy' }">🍼<span>Hoy</span></RouterLink>
     <RouterLink :to="{ name: 'historial' }">📖<span>Historial</span></RouterLink>
+    <button class="fab" aria-label="Registrar" @click="abrirRegistro">＋</button>
     <RouterLink :to="{ name: 'evolucion' }">📈<span>Evolución</span></RouterLink>
     <RouterLink :to="{ name: 'citas' }">🗓️<span>Citas</span></RouterLink>
   </nav>
@@ -154,6 +163,25 @@ function actualizarApp() {
 .nav-inferior a.router-link-active {
   color: var(--color-primario-oscuro);
   font-weight: 600;
+}
+
+.fab {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  margin: -1.35rem 0.5rem 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-accion);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  box-shadow: var(--sombra);
+  transition: filter 0.15s;
+}
+
+.fab:hover {
+  filter: brightness(1.15);
 }
 
 .toast-sw {

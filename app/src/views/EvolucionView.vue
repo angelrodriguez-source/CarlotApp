@@ -4,24 +4,33 @@
  * alta de una medición, gráficas de evolución y tabla histórica.
  */
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import {
+  bandaOMS,
   edadDias,
   hoyLocal,
   percentilOMS,
   serieGrafica,
+  type BandaOMS,
   type MedidaOMS,
+  type PuntoGrafica,
 } from '../models/CarlotaModel'
 import type { Medida } from '../types'
 import GraficaLinea from '../components/GraficaLinea.vue'
 
 const bebeStore = useBebeStore()
+const route = useRoute()
+const router = useRouter()
 
 const cargando = ref(true)
 const error = ref('')
 const medidas = ref<Medida[]>([])
 const mostrarFormulario = ref(false)
+
+// Qué muestran las gráficas: el valor medido o su percentil OMS
+const modo = ref<'valor' | 'percentil'>('valor')
 
 const nuevaMedida = ref({
   fecha: hoyLocal(),
@@ -38,6 +47,11 @@ async function cargar() {
 }
 
 onMounted(async () => {
+  // El enlace "registra el peso" de Hoy llega con ?nueva=1: formulario abierto
+  if (route.query.nueva) {
+    mostrarFormulario.value = true
+    router.replace({ query: {} })
+  }
   try {
     await cargar()
   } catch (e) {
@@ -122,6 +136,17 @@ function etiquetaP(tipo: MedidaOMS, valor: number | null, fecha: string): string
   return p === null ? '' : ` (P${p})`
 }
 
+/** Franja OMS (P3-P97 y mediana) alineada con una serie de valores */
+function bandaDe(tipo: MedidaOMS, serie: PuntoGrafica[]): (BandaOMS | null)[] {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  if (!nacimiento) return []
+  return serie.map((p) => bandaOMS(tipo, edadDias(nacimiento, p.etiqueta)))
+}
+
+const bandaPeso = computed(() => bandaDe('peso', seriePeso.value))
+const bandaAltura = computed(() => bandaDe('altura', serieAltura.value))
+const bandaPerimetro = computed(() => bandaDe('pc', seriePerimetro.value))
+
 const seriePercentilPeso = computed(() =>
   serieGrafica(
     medidas.value,
@@ -154,7 +179,10 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
       <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Medida</button>
     </div>
 
-    <p v-if="cargando" class="suave">Cargando…</p>
+    <template v-if="cargando">
+      <div class="esqueleto" style="height: 200px"></div>
+      <div class="esqueleto" style="height: 200px"></div>
+    </template>
     <p v-if="error" class="error">{{ error }}</p>
 
     <form v-if="mostrarFormulario" class="tarjeta" @submit.prevent="guardarMedida">
@@ -194,27 +222,41 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
       <button class="boton" type="submit">Guardar</button>
     </form>
 
-    <GraficaLinea titulo="⚖️ Peso" :puntos="seriePeso" unidad="g" />
-    <GraficaLinea
-      v-if="seriePercentilPeso.length > 0"
-      titulo="📊 Percentil de peso (OMS niñas)"
-      :puntos="seriePercentilPeso"
-      unidad="P"
-    />
-    <GraficaLinea titulo="📏 Altura" :puntos="serieAltura" unidad="cm" />
-    <GraficaLinea
-      v-if="seriePercentilAltura.length > 0"
-      titulo="📊 Percentil de altura (OMS niñas)"
-      :puntos="seriePercentilAltura"
-      unidad="P"
-    />
-    <GraficaLinea titulo="👶 Perímetro craneal" :puntos="seriePerimetro" unidad="cm" />
-    <GraficaLinea
-      v-if="seriePercentilPerimetro.length > 0"
-      titulo="📊 Percentil de PC (OMS niñas)"
-      :puntos="seriePercentilPerimetro"
-      unidad="P"
-    />
+    <!-- Segmento: mismas 3 tarjetas, dos lentes (valor medido / percentil OMS) -->
+    <div v-if="!cargando" class="segmento" role="tablist" aria-label="Modo de las gráficas">
+      <button
+        role="tab"
+        :aria-selected="modo === 'valor'"
+        :class="{ activo: modo === 'valor' }"
+        @click="modo = 'valor'"
+      >
+        Valor
+      </button>
+      <button
+        role="tab"
+        :aria-selected="modo === 'percentil'"
+        :class="{ activo: modo === 'percentil' }"
+        @click="modo = 'percentil'"
+      >
+        Percentil OMS
+      </button>
+    </div>
+
+    <template v-if="modo === 'valor'">
+      <GraficaLinea titulo="⚖️ Peso" :puntos="seriePeso" unidad="g" :banda="bandaPeso" />
+      <GraficaLinea titulo="📏 Altura" :puntos="serieAltura" unidad="cm" :banda="bandaAltura" />
+      <GraficaLinea
+        titulo="👶 Perímetro craneal"
+        :puntos="seriePerimetro"
+        unidad="cm"
+        :banda="bandaPerimetro"
+      />
+    </template>
+    <template v-else>
+      <GraficaLinea titulo="⚖️ Percentil de peso" :puntos="seriePercentilPeso" unidad="P" />
+      <GraficaLinea titulo="📏 Percentil de altura" :puntos="seriePercentilAltura" unidad="P" />
+      <GraficaLinea titulo="👶 Percentil de PC" :puntos="seriePercentilPerimetro" unidad="P" />
+    </template>
 
     <div class="tarjeta">
       <h3>📋 Mediciones</h3>
@@ -246,5 +288,33 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* Segmento Valor | Percentil */
+.segmento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: var(--color-primario-suave);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.segmento button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--color-texto-suave);
+  transition: background 0.15s;
+}
+
+.segmento button.activo {
+  background: var(--color-tarjeta);
+  color: var(--color-primario-oscuro);
+  box-shadow: var(--sombra);
 }
 </style>

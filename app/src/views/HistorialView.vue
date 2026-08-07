@@ -21,6 +21,7 @@ import {
   ultimosDias,
 } from '../models/CarlotaModel'
 import GraficaRitmo from '../components/GraficaRitmo.vue'
+import HojaInferior from '../components/HojaInferior.vue'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
@@ -169,6 +170,21 @@ const hoy = ref(claveDia(new Date().toISOString()))
 
 const diasRitmo = computed(() => ultimosDias(dias.value))
 
+/** Resumen del día en una sola línea compacta */
+function resumenLinea(resumen: ReturnType<typeof resumenDia>): string {
+  const partes = [`🍼 ${resumen.numTomas}`]
+  if (resumen.mlBiberon > 0) partes.push(`${resumen.mlBiberon} ml`)
+  if (resumen.minutosPecho > 0) partes.push(`${formatoDuracion(resumen.minutosPecho)} pecho`)
+  partes.push(`😴 ${formatoDuracion(resumen.minutosSueno)}`)
+  partes.push(`🧷 ${resumen.numPanales}${resumen.numCacas > 0 ? ` (${resumen.numCacas} 💩)` : ''}`)
+  return partes.join(' · ')
+}
+
+/** Tocar una fila del ritmo de 24h abre ese día en la lista */
+function abrirDia(dia: string) {
+  diaAbierto.value = dia
+}
+
 // ---- Edición de registros ----
 
 interface Edicion {
@@ -225,6 +241,15 @@ function abrirEdicion(registro: RegistroDia) {
 }
 
 const edicionEsBiberon = computed(() => edicion.value?.tipoToma.startsWith('biberon') ?? false)
+
+const TITULOS_EDICION = {
+  toma: '🍼 Editar toma',
+  sueno: '😴 Editar sueño',
+  panal: '🧷 Editar pañal',
+  evento: '⭐ Editar evento',
+} as const
+
+const tituloEdicion = computed(() => (edicion.value ? TITULOS_EDICION[edicion.value.kind] : ''))
 
 async function ejecutar(accion: () => Promise<unknown>) {
   error.value = ''
@@ -309,7 +334,11 @@ function borrarRegistro() {
       </select>
     </div>
 
-    <p v-if="cargando" class="suave">Cargando…</p>
+    <template v-if="cargando">
+      <div class="esqueleto" style="height: 180px"></div>
+      <div class="esqueleto" style="height: 90px"></div>
+      <div class="esqueleto" style="height: 90px"></div>
+    </template>
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="!cargando && historial.length === 0" class="suave">Sin registros en este periodo.</p>
 
@@ -318,13 +347,17 @@ function borrarRegistro() {
       :dias="diasRitmo"
       :suenos="suenos"
       :tomas="tomas"
+      @seleccionar-dia="abrirDia"
     />
 
     <!-- Momentos: los hitos de todos los tiempos, siempre visibles -->
     <div v-if="!cargando" class="tarjeta">
       <h3>✨ Momentos</h3>
       <p v-if="momentos.length === 0" class="suave">
-        Todavía no hay momentos. Apunta el primero desde Hoy → ➕ Más → ✨ Momento.
+        Todavía no hay momentos.
+        <RouterLink :to="{ name: 'hoy', query: { registrar: '1' } }">
+          Apunta el primero ✨ →
+        </RouterLink>
       </p>
       <div v-for="momento in momentos" :key="momento.id" class="fila-registro">
         <span class="hora fecha-momento">{{ fechaMomento(momento.fecha) }}</span>
@@ -349,19 +382,7 @@ function borrarRegistro() {
         </strong>
         <span class="suave">{{ diaAbierto === diaHistorial.dia ? '▲' : '▼' }}</span>
       </button>
-      <div>
-        <span class="chip">🍼 {{ diaHistorial.resumen.numTomas }}</span>
-        <span v-if="diaHistorial.resumen.mlBiberon > 0" class="chip">
-          {{ diaHistorial.resumen.mlBiberon }} ml
-        </span>
-        <span v-if="diaHistorial.resumen.minutosPecho > 0" class="chip">
-          {{ formatoDuracion(diaHistorial.resumen.minutosPecho) }} pecho
-        </span>
-        <span class="chip">😴 {{ formatoDuracion(diaHistorial.resumen.minutosSueno) }}</span>
-        <span class="chip">
-          🧷 {{ diaHistorial.resumen.numPanales }} ({{ diaHistorial.resumen.numCacas }} 💩)
-        </span>
-      </div>
+      <p class="resumen-linea suave">{{ resumenLinea(diaHistorial.resumen) }}</p>
       <div v-if="diaAbierto === diaHistorial.dia">
         <template v-for="registro in diaHistorial.registros" :key="registro.id">
           <div class="fila-registro">
@@ -369,142 +390,111 @@ function borrarRegistro() {
             <span class="detalle">{{ registro.texto }}</span>
             <button
               class="boton peligro editar"
-              :aria-label="edicion?.id === registro.id ? 'Cerrar edición' : 'Editar registro'"
+              aria-label="Editar registro"
               @click="abrirEdicion(registro)"
             >
-              {{ edicion?.id === registro.id ? '✕' : '✎' }}
+              ✎
             </button>
           </div>
-
-          <!-- Formulario de edición del registro -->
-          <form
-            v-if="edicion && edicion.id === registro.id"
-            class="edicion"
-            @submit.prevent="guardarEdicion"
-          >
-            <template v-if="edicion.kind === 'toma'">
-              <div class="campo">
-                <label :for="`ed-tipo-${registro.id}`">Tipo</label>
-                <select :id="`ed-tipo-${registro.id}`" v-model="edicion.tipoToma">
-                  <option v-for="(etiqueta, valor) in ETIQUETAS_TOMA" :key="valor" :value="valor">
-                    {{ etiqueta }}
-                  </option>
-                </select>
-              </div>
-              <div class="campo">
-                <label :for="`ed-inicio-${registro.id}`">Hora de inicio</label>
-                <input
-                  :id="`ed-inicio-${registro.id}`"
-                  v-model="edicion.inicio"
-                  type="datetime-local"
-                  required
-                />
-              </div>
-              <div v-if="edicionEsBiberon" class="campo">
-                <label :for="`ed-ml-${registro.id}`">Cantidad (ml)</label>
-                <input
-                  :id="`ed-ml-${registro.id}`"
-                  v-model.number="edicion.cantidadMl"
-                  type="number"
-                  min="1"
-                />
-              </div>
-              <div v-else class="campo">
-                <label :for="`ed-min-${registro.id}`">Duración (min)</label>
-                <input
-                  :id="`ed-min-${registro.id}`"
-                  v-model.number="edicion.duracionMin"
-                  type="number"
-                  min="1"
-                />
-              </div>
-              <div class="campo">
-                <label :for="`ed-notas-${registro.id}`">Notas</label>
-                <input :id="`ed-notas-${registro.id}`" v-model="edicion.notas" type="text" />
-              </div>
-            </template>
-
-            <template v-else-if="edicion.kind === 'sueno'">
-              <div class="campo">
-                <label :for="`ed-inicio-${registro.id}`">Empezó</label>
-                <input
-                  :id="`ed-inicio-${registro.id}`"
-                  v-model="edicion.inicio"
-                  type="datetime-local"
-                  required
-                />
-              </div>
-              <div class="campo">
-                <label :for="`ed-fin-${registro.id}`">Terminó (vacío = en curso)</label>
-                <input :id="`ed-fin-${registro.id}`" v-model="edicion.fin" type="datetime-local" />
-              </div>
-            </template>
-
-            <template v-else-if="edicion.kind === 'panal'">
-              <div class="campo">
-                <label :for="`ed-tipo-${registro.id}`">Tipo</label>
-                <select :id="`ed-tipo-${registro.id}`" v-model="edicion.tipoPanal">
-                  <option v-for="(etiqueta, valor) in ETIQUETAS_PANAL" :key="valor" :value="valor">
-                    {{ etiqueta }}
-                  </option>
-                </select>
-              </div>
-              <div v-if="edicion.tipoPanal !== 'pis'" class="campo">
-                <label :for="`ed-cantidad-${registro.id}`">Cantidad</label>
-                <select :id="`ed-cantidad-${registro.id}`" v-model="edicion.cantidadPanal">
-                  <option value="">Sin especificar</option>
-                  <option
-                    v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
-                    :key="valor"
-                    :value="valor"
-                  >
-                    {{ etiqueta }}
-                  </option>
-                </select>
-              </div>
-              <div class="campo">
-                <label :for="`ed-inicio-${registro.id}`">Hora</label>
-                <input
-                  :id="`ed-inicio-${registro.id}`"
-                  v-model="edicion.inicio"
-                  type="datetime-local"
-                  required
-                />
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="campo">
-                <label :for="`ed-tipo-${registro.id}`">Tipo</label>
-                <select :id="`ed-tipo-${registro.id}`" v-model="edicion.tipoEvento">
-                  <option v-for="(etiqueta, valor) in ETIQUETAS_EVENTO" :key="valor" :value="valor">
-                    {{ etiqueta }}
-                  </option>
-                </select>
-              </div>
-              <div class="campo">
-                <label :for="`ed-desc-${registro.id}`">Descripción</label>
-                <input :id="`ed-desc-${registro.id}`" v-model="edicion.descripcion" type="text" />
-              </div>
-              <div class="campo">
-                <label :for="`ed-inicio-${registro.id}`">Hora</label>
-                <input
-                  :id="`ed-inicio-${registro.id}`"
-                  v-model="edicion.inicio"
-                  type="datetime-local"
-                  required
-                />
-              </div>
-            </template>
-
-            <div class="botones-edicion">
-              <button class="boton" type="submit">Guardar</button>
-              <button class="boton peligro" type="button" @click="borrarRegistro">Borrar</button>
-            </div>
-          </form>
         </template>
       </div>
     </div>
+    <!-- Edición en hoja inferior -->
+    <HojaInferior :abierta="edicion !== null" :titulo="tituloEdicion" @cerrar="edicion = null">
+      <template v-if="edicion">
+        <form @submit.prevent="guardarEdicion">
+          <template v-if="edicion.kind === 'toma'">
+            <div class="campo">
+              <label :for="'ed-tipo'">Tipo</label>
+              <select :id="'ed-tipo'" v-model="edicion.tipoToma">
+                <option v-for="(etiqueta, valor) in ETIQUETAS_TOMA" :key="valor" :value="valor">
+                  {{ etiqueta }}
+                </option>
+              </select>
+            </div>
+            <div class="campo">
+              <label :for="'ed-inicio'">Hora de inicio</label>
+              <input :id="'ed-inicio'" v-model="edicion.inicio" type="datetime-local" required />
+            </div>
+            <div v-if="edicionEsBiberon" class="campo">
+              <label :for="'ed-ml'">Cantidad (ml)</label>
+              <input :id="'ed-ml'" v-model.number="edicion.cantidadMl" type="number" min="1" />
+            </div>
+            <div v-else class="campo">
+              <label :for="'ed-min'">Duración (min)</label>
+              <input :id="'ed-min'" v-model.number="edicion.duracionMin" type="number" min="1" />
+            </div>
+            <div class="campo">
+              <label :for="'ed-notas'">Notas</label>
+              <input :id="'ed-notas'" v-model="edicion.notas" type="text" />
+            </div>
+          </template>
+
+          <template v-else-if="edicion.kind === 'sueno'">
+            <div class="campo">
+              <label :for="'ed-inicio'">Empezó</label>
+              <input :id="'ed-inicio'" v-model="edicion.inicio" type="datetime-local" required />
+            </div>
+            <div class="campo">
+              <label :for="'ed-fin'">Terminó (vacío = en curso)</label>
+              <input :id="'ed-fin'" v-model="edicion.fin" type="datetime-local" />
+            </div>
+          </template>
+
+          <template v-else-if="edicion.kind === 'panal'">
+            <div class="campo">
+              <label :for="'ed-tipo'">Tipo</label>
+              <select :id="'ed-tipo'" v-model="edicion.tipoPanal">
+                <option v-for="(etiqueta, valor) in ETIQUETAS_PANAL" :key="valor" :value="valor">
+                  {{ etiqueta }}
+                </option>
+              </select>
+            </div>
+            <div v-if="edicion.tipoPanal !== 'pis'" class="campo">
+              <label :for="'ed-cantidad'">Cantidad</label>
+              <select :id="'ed-cantidad'" v-model="edicion.cantidadPanal">
+                <option value="">Sin especificar</option>
+                <option
+                  v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
+                  :key="valor"
+                  :value="valor"
+                >
+                  {{ etiqueta }}
+                </option>
+              </select>
+            </div>
+            <div class="campo">
+              <label :for="'ed-inicio'">Hora</label>
+              <input :id="'ed-inicio'" v-model="edicion.inicio" type="datetime-local" required />
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="campo">
+              <label :for="'ed-tipo'">Tipo</label>
+              <select :id="'ed-tipo'" v-model="edicion.tipoEvento">
+                <option v-for="(etiqueta, valor) in ETIQUETAS_EVENTO" :key="valor" :value="valor">
+                  {{ etiqueta }}
+                </option>
+              </select>
+            </div>
+            <div class="campo">
+              <label :for="'ed-desc'">Descripción</label>
+              <input :id="'ed-desc'" v-model="edicion.descripcion" type="text" />
+            </div>
+            <div class="campo">
+              <label :for="'ed-inicio'">Hora</label>
+              <input :id="'ed-inicio'" v-model="edicion.inicio" type="datetime-local" required />
+            </div>
+          </template>
+
+          <div class="botones-edicion">
+            <button class="boton" type="submit">Guardar</button>
+            <button class="boton peligro" type="button" @click="borrarRegistro">Borrar</button>
+          </div>
+        </form>
+      </template>
+    </HojaInferior>
   </main>
 </template>
 

@@ -6,13 +6,28 @@
  * (ver serieGrafica en CarlotaModel) y la dibuja con eje Y autoajustado.
  */
 import { computed } from 'vue'
-import type { PuntoGrafica } from '../models/CarlotaModel'
+import type { BandaOMS, PuntoGrafica } from '../models/CarlotaModel'
 
 const props = defineProps<{
   titulo: string
   puntos: PuntoGrafica[]
   unidad: string
+  /**
+   * Franja de referencia OMS (P3-P97 + mediana), paralela a `puntos`
+   * (banda[i] corresponde a puntos[i]). Si algún punto no tiene banda,
+   * la franja no se pinta.
+   */
+  banda?: (BandaOMS | null)[]
 }>()
+
+const bandaValida = computed(() =>
+  props.banda &&
+  props.banda.length === props.puntos.length &&
+  props.puntos.length > 1 &&
+  props.banda.every((b) => b !== null)
+    ? (props.banda as BandaOMS[])
+    : null,
+)
 
 const ANCHO = 320
 const ALTO = 180
@@ -20,6 +35,10 @@ const MARGEN = { arriba: 12, abajo: 24, izquierda: 44, derecha: 12 }
 
 const escala = computed(() => {
   const valores = props.puntos.map((p) => p.valor)
+  // La franja OMS también entra en la escala para que quepa entera
+  for (const b of bandaValida.value ?? []) {
+    valores.push(b.p3, b.p97)
+  }
   let min = Math.min(...valores)
   let max = Math.max(...valores)
   if (min === max) {
@@ -44,6 +63,31 @@ const coords = computed(() => {
 })
 
 const polilinea = computed(() => coords.value.map((c) => `${c.x},${c.y}`).join(' '))
+
+/** Y en el SVG para un valor dado (misma escala que los puntos) */
+function aY(valor: number): number {
+  const altoUtil = ALTO - MARGEN.arriba - MARGEN.abajo
+  const { min, max } = escala.value
+  return MARGEN.arriba + altoUtil - ((valor - min) / (max - min)) * altoUtil
+}
+
+/** Polígono de la franja P3-P97: ida por arriba (p97) y vuelta por abajo (p3) */
+const poligonoBanda = computed(() => {
+  const banda = bandaValida.value
+  if (!banda) return ''
+  const ida = coords.value.map((c, i) => `${c.x},${aY(banda[i]!.p97)}`)
+  const vuelta = [...coords.value].reverse().map((c, i) => {
+    const original = banda[coords.value.length - 1 - i]!
+    return `${c.x},${aY(original.p3)}`
+  })
+  return [...ida, ...vuelta].join(' ')
+})
+
+const lineaMediana = computed(() => {
+  const banda = bandaValida.value
+  if (!banda) return ''
+  return coords.value.map((c, i) => `${c.x},${aY(banda[i]!.p50)}`).join(' ')
+})
 
 function fechaCorta(iso: string): string {
   const [, mes, dia] = iso.split('-')
@@ -78,6 +122,10 @@ function fechaCorta(iso: string): string {
         class="linea-eje"
       />
 
+      <!-- Franja de referencia OMS (P3-P97) con la mediana punteada -->
+      <polygon v-if="poligonoBanda" :points="poligonoBanda" class="banda-oms" />
+      <polyline v-if="lineaMediana" :points="lineaMediana" class="mediana-oms" />
+
       <polyline :points="polilinea" class="linea-serie" />
 
       <g v-for="c in coords" :key="c.punto.etiqueta">
@@ -111,6 +159,9 @@ function fechaCorta(iso: string): string {
         puntos[puntos.length - 1]!.etiqueta
       }})
     </p>
+    <p v-if="poligonoBanda" class="suave leyenda-banda">
+      Franja: P3–P97 OMS niñas · punteada: mediana (P50)
+    </p>
   </div>
 </template>
 
@@ -136,6 +187,24 @@ function fechaCorta(iso: string): string {
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.banda-oms {
+  fill: var(--color-primario);
+  opacity: 0.14;
+}
+
+.mediana-oms {
+  fill: none;
+  stroke: var(--color-primario);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+
+.leyenda-banda {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
 }
 
 .punto {

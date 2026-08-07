@@ -105,7 +105,10 @@ function icono(tipo: TipoCita): string {
       <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Cita</button>
     </div>
 
-    <p v-if="cargando" class="suave">Cargando…</p>
+    <template v-if="cargando">
+      <div class="esqueleto" style="height: 120px"></div>
+      <div class="esqueleto" style="height: 70px"></div>
+    </template>
     <p v-if="error" class="error">{{ error }}</p>
 
     <form v-if="mostrarFormulario" class="tarjeta" @submit.prevent="guardarCita">
