@@ -439,6 +439,27 @@ function abrirMas() {
 // ---- Evento ----
 const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '' })
 
+// ---- Momento (evento tipo hito con nombre propio) ----
+const nuevoMomento = ref('')
+
+function guardarMomento() {
+  const bebe = bebeStore.bebe
+  if (!bebe || !nuevoMomento.value.trim()) return
+  registrarYOfrecer(
+    'Momento guardado ✨',
+    () =>
+      servicio.registrarEvento({
+        bebe_id: bebe.id,
+        fecha: new Date().toISOString(),
+        tipo: 'hito',
+        descripcion: nuevoMomento.value.trim(),
+      }),
+    (evento) => () => servicio.eliminarEvento(evento.id),
+  )
+  formulario.value = null
+  nuevoMomento.value = ''
+}
+
 function guardarEvento() {
   const bebe = bebeStore.bebe
   if (!bebe) return
@@ -694,9 +715,23 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <button class="boton" type="submit">Guardar</button>
       </form>
 
-      <!-- Panel "Más": pañal pis/mixto + sueño a posteriori + evento -->
+      <!-- Panel "Más": momento + pañal pis/mixto + sueño a posteriori + evento -->
       <div v-if="formulario === 'mas'" class="tarjeta">
-        <div class="acciones">
+        <form @submit.prevent="guardarMomento">
+          <h3>✨ Momento</h3>
+          <div class="campo">
+            <label for="momento-desc">¿Qué ha hecho?</label>
+            <input
+              id="momento-desc"
+              v-model="nuevoMomento"
+              type="text"
+              placeholder="Dijo «ajo» por primera vez 🥰"
+              required
+            />
+          </div>
+          <button class="boton" type="submit">Guardar momento</button>
+        </form>
+        <div class="acciones bloque-mas">
           <span class="suave">Pañal:</span>
           <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
           <button class="boton secundario" @click="pedirCantidadPanal('mixto')">💧💩 Mixto</button>

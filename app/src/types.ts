@@ -101,7 +101,7 @@ export const ETIQUETAS_EVENTO: Record<TipoEvento, string> = {
   bano: 'Baño',
   vitamina_d: 'Vitamina D',
   medicacion: 'Medicación',
-  hito: 'Hito',
+  hito: 'Momento',
   otro: 'Otro',
 }
 

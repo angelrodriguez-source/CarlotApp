@@ -46,6 +46,8 @@ const tomas = ref<Toma[]>([])
 const suenos = ref<Sueno[]>([])
 const panales = ref<Panal[]>([])
 const eventos = ref<Evento[]>([])
+// Momentos (eventos tipo hito) de todos los tiempos, no solo del rango visible
+const momentos = ref<Evento[]>([])
 
 const diaAbierto = ref<string | null>(null)
 
@@ -61,11 +63,12 @@ async function cargar() {
     desde.setDate(desde.getDate() - (dias.value - 1))
     desde.setHours(0, 0, 0, 0)
     const desdeIso = desde.toISOString()
-    ;[tomas.value, suenos.value, panales.value, eventos.value] = await Promise.all([
+    ;[tomas.value, suenos.value, panales.value, eventos.value, momentos.value] = await Promise.all([
       servicio.listarTomas(bebe.id, desdeIso),
       servicio.listarSuenos(bebe.id, desdeIso),
       servicio.listarPanales(bebe.id, desdeIso),
       servicio.listarEventos(bebe.id, desdeIso),
+      servicio.listarMomentos(bebe.id),
     ])
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
@@ -99,6 +102,10 @@ function fechaLegible(dia: string): string {
     day: 'numeric',
     month: 'long',
   })
+}
+
+function fechaMomento(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
 const historial = computed<DiaHistorial[]>(() => {
@@ -313,6 +320,25 @@ function borrarRegistro() {
       :tomas="tomas"
     />
 
+    <!-- Momentos: los hitos de todos los tiempos, siempre visibles -->
+    <div v-if="!cargando" class="tarjeta">
+      <h3>✨ Momentos</h3>
+      <p v-if="momentos.length === 0" class="suave">
+        Todavía no hay momentos. Apunta el primero desde Hoy → ➕ Más → ✨ Momento.
+      </p>
+      <div v-for="momento in momentos" :key="momento.id" class="fila-registro">
+        <span class="hora fecha-momento">{{ fechaMomento(momento.fecha) }}</span>
+        <span class="detalle">{{ momento.descripcion ?? 'Hito' }}</span>
+        <button
+          class="boton peligro"
+          :aria-label="`Borrar momento: ${momento.descripcion ?? 'hito'}`"
+          @click="ejecutar(() => servicio.eliminarEvento(momento.id))"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+
     <div v-for="diaHistorial in historial" :key="diaHistorial.dia" class="tarjeta">
       <button
         class="dia-boton"
@@ -507,6 +533,10 @@ function borrarRegistro() {
 
 .fila-registro .editar {
   color: var(--color-texto-suave);
+}
+
+.fecha-momento {
+  min-width: 3.6rem;
 }
 
 .edicion {
