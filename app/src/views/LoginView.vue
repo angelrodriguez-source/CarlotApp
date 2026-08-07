@@ -5,6 +5,7 @@
  */
 import { ref } from 'vue'
 import { useUserStore } from '../stores/userStore'
+import { logoUrl } from '../assets/branding'
 
 const userStore = useUserStore()
 const error = ref('')
@@ -18,7 +19,7 @@ async function entrar() {
 
 <template>
   <main class="pantalla login">
-    <img src="/icon.svg" alt="" class="logo" />
+    <img :src="logoUrl" alt="" class="logo" />
     <h1>CarlotApp</h1>
     <p class="suave">Tomas, sueño, medidas y citas de Carlota</p>
 

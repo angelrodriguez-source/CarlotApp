@@ -2,14 +2,17 @@
 /**
  * HoyView.vue — Dashboard de inicio.
  *
- * Mitad superior: resumen de Carlota con números en grande — edad/peso/altura,
- * sueño del día (incluye el sueño en curso) y leche tomada.
- * Mitad inferior: accesos directos Sueño / Toma / Caca + botón "Más" para el
- * resto (pañal pis/mixto y eventos). Debajo, la línea de tiempo del día.
+ * Card 1 "La bebé": carita + nombre + edad/peso/altura + semana 🌱.
+ * Card 2 "Datos de Hoy": objetivos del día, últimos hitos (configurables
+ * por usuario) y registro del día (2 últimos, expandible).
+ * Card 3 "Accesos directos": las acciones que configure cada usuario;
+ * el ＋ de la nav abre la hoja con TODOS los tipos de registro.
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
+import { useUserStore } from '../stores/userStore'
+import { logoUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
@@ -51,6 +54,7 @@ import {
 } from '../types'
 
 const bebeStore = useBebeStore()
+const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -70,10 +74,13 @@ const ultimaToma = ref<Toma | null>(null)
 const ultimoPanal = ref<Panal | null>(null)
 const ultimoSuenoTerminado = ref<Sueno | null>(null)
 const citas = ref<Cita[]>([])
-const ultimoCorteUnas = ref<Evento | null>(null)
+// Último evento de cada tipo (baño, vitamina D, medicación, uñas, momento…)
+const ultimosEventos = ref<Partial<Record<TipoEvento, Evento | null>>>({})
 
-// Qué formulario rápido está abierto
-const formulario = ref<'toma' | 'fin-toma' | 'mas' | null>(null)
+// Qué hoja está abierta: 'registro' es la del + (todos los tipos)
+const formulario = ref<
+  'toma' | 'fin-toma' | 'registro' | 'momento' | 'sueno-post' | 'evento' | null
+>(null)
 
 // Reloj para que la edad y el sueño en curso se actualicen solos
 const ahora = ref(new Date())
@@ -103,7 +110,7 @@ async function cargarDia() {
     ultimoPanal.value,
     ultimoSuenoTerminado.value,
     citas.value,
-    ultimoCorteUnas.value,
+    ultimosEventos.value,
   ] = await Promise.all([
     servicio.listarTomas(bebe.id, desde),
     servicio.listarSuenos(bebe.id, inicioDiaIso(1)),
@@ -116,24 +123,30 @@ async function cargarDia() {
     servicio.getUltimoPanal(bebe.id),
     servicio.getUltimoSuenoTerminado(bebe.id),
     servicio.listarCitas(bebe.id),
-    servicio.getUltimoEventoDeTipo(bebe.id, 'unas'),
+    servicio.getUltimosEventosPorTipo(bebe.id),
   ])
 }
 
 // El FAB "+" de la nav (y el CTA de Momentos del Historial) llegan con
-// ?registrar=...: abrimos la hoja "Más" y limpiamos la query
-function atenderQueryRegistrar() {
+// ?registrar=...: abrimos la hoja de registro y limpiamos la query
+function atenderQueries() {
   if (route.query.registrar) {
-    abrirMas()
+    formulario.value = 'registro'
+    router.replace({ query: {} })
+  }
+  if (route.query.config) {
+    mostrarConfig.value = true
     router.replace({ query: {} })
   }
 }
 
-watch(() => route.query.registrar, atenderQueryRegistrar)
+watch(() => [route.query.registrar, route.query.config], atenderQueries)
 
 onMounted(async () => {
   temporizador = window.setInterval(() => (ahora.value = new Date()), 60_000)
-  atenderQueryRegistrar()
+  atenderQueries()
+  cargarConfigHitos()
+  cargarConfigAccesos()
   try {
     await cargarDia()
   } catch (e) {
@@ -279,43 +292,127 @@ const minutosTomaAbierta = computed(() =>
     : 0,
 )
 
-interface ContadorAhora {
+// ---- "Últimos hitos": el último registro de cada tipo ----
+// Los que se ven sin desplegar los configura cada usuario (⚙, se guarda
+// por usuario en este dispositivo); al expandir salen todos.
+
+interface FilaHito {
+  id: string
   etiqueta: string
   valor: string
   vivo?: boolean // en curso (durmiendo / toma con cronómetro)
 }
 
-/** El bloque "Ahora": lo que un padre consulta 20 veces al día, en grande */
-const contadoresAhora = computed<ContadorAhora[]>(() => {
-  const filas: ContadorAhora[] = []
+/** Catálogo completo (define también el orden y la lista del configurador) */
+const CATALOGO_HITOS = [
+  { id: 'toma', etiqueta: '🍼 Última toma' },
+  { id: 'sueno', etiqueta: '😴 Sueño' },
+  { id: 'panal', etiqueta: '🧷 Último pañal' },
+  { id: 'bano', etiqueta: '🛁 Último baño' },
+  { id: 'vitamina_d', etiqueta: '☀️ Vitamina D' },
+  { id: 'medicacion', etiqueta: '💊 Medicación' },
+  { id: 'unas', etiqueta: '✂️ Uñas cortadas' },
+  { id: 'hito', etiqueta: '✨ Último momento' },
+  { id: 'otro', etiqueta: '⭐ Otro evento' },
+] as const
+
+const HITOS_VISIBLES_POR_DEFECTO = ['toma', 'sueno', 'panal']
+
+/**
+ * Lista de ids persistida en localStorage por usuario (cada padre la suya
+ * en este dispositivo). La lista vacía también se respeta al recargar
+ * (deseleccionarlo todo es una elección válida): los valores por defecto
+ * solo aplican si nunca se guardó nada o la config está corrupta.
+ */
+function listaPersistida(prefijo: string, porDefecto: readonly string[]) {
+  const clave = computed(() => `${prefijo}-${userStore.user?.id ?? 'anon'}`)
+  const valor = ref<string[]>([...porDefecto])
+  function cargar() {
+    try {
+      const guardado = JSON.parse(localStorage.getItem(clave.value) ?? 'null')
+      if (Array.isArray(guardado)) valor.value = guardado
+    } catch {
+      // config corrupta: se queda la de por defecto
+    }
+  }
+  watch(valor, (v) => localStorage.setItem(clave.value, JSON.stringify(v)), { deep: true })
+  return { valor, cargar }
+}
+
+// Config por usuario (guardada en el dispositivo, cada padre la suya)
+const { valor: hitosVisiblesConfig, cargar: cargarConfigHitos } = listaPersistida(
+  'carlotapp-hitos',
+  HITOS_VISIBLES_POR_DEFECTO,
+)
+const hitosExpandidos = ref(false)
+
+const todasLasFilasHitos = computed<FilaHito[]>(() => {
+  const filas: FilaHito[] = []
+  // Toma
   if (tomaAbierta.value) {
     filas.push({
+      id: 'toma',
       etiqueta: '🍼 Toma en curso',
       valor: formatoDuracion(minutosTomaAbierta.value),
       vivo: true,
     })
-  } else if (ultimaToma.value) {
-    filas.push({ etiqueta: '🍼 Última toma', valor: haceTexto(ultimaToma.value.inicio) })
   } else {
-    filas.push({ etiqueta: '🍼 Tomas', valor: 'sin registros aún' })
+    filas.push({
+      id: 'toma',
+      etiqueta: '🍼 Última toma',
+      valor: ultimaToma.value ? haceTexto(ultimaToma.value.inicio) : 'sin registros aún',
+    })
   }
+  // Sueño
   if (suenoAbierto.value) {
     filas.push({
+      id: 'sueno',
       etiqueta: '😴 Durmiendo',
       valor: `desde ${haceTexto(suenoAbierto.value.inicio)}`,
       vivo: true,
     })
-  } else if (ultimoSuenoTerminado.value?.fin) {
+  } else {
     filas.push({
+      id: 'sueno',
       etiqueta: '😴 Despierta',
-      valor: `desde ${haceTexto(ultimoSuenoTerminado.value.fin)}`,
+      valor: ultimoSuenoTerminado.value?.fin
+        ? `desde ${haceTexto(ultimoSuenoTerminado.value.fin)}`
+        : 'sin registros aún',
     })
   }
-  if (ultimoPanal.value) {
-    filas.push({ etiqueta: '🧷 Último pañal', valor: haceTexto(ultimoPanal.value.fecha) })
+  // Pañal
+  filas.push({
+    id: 'panal',
+    etiqueta: '🧷 Último pañal',
+    valor: ultimoPanal.value ? haceTexto(ultimoPanal.value.fecha) : 'sin registros aún',
+  })
+  // Eventos por tipo (baño, vitamina D, medicación, uñas, momento, otro)
+  for (const entrada of CATALOGO_HITOS) {
+    if (entrada.id === 'toma' || entrada.id === 'sueno' || entrada.id === 'panal') continue
+    const evento = ultimosEventos.value[entrada.id as TipoEvento]
+    filas.push({
+      id: entrada.id,
+      etiqueta: entrada.etiqueta,
+      valor: evento ? haceDiasTexto(evento.fecha) : 'sin registros aún',
+    })
   }
   return filas
 })
+
+const filasHitosVisibles = computed(() =>
+  hitosExpandidos.value
+    ? todasLasFilasHitos.value
+    : todasLasFilasHitos.value.filter((f) => hitosVisiblesConfig.value.includes(f.id)),
+)
+
+// ---- Registro del día (sección 3 de "Datos de Hoy") ----
+// Plegado muestra los 2 últimos; expandido, todo el día
+const registroExpandido = ref(false)
+
+// ---- Hora actual (cabecera de "Datos de Hoy") ----
+const horaActual = computed(() =>
+  ahora.value.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+)
 
 // ---- Percentiles OMS para los tiles de peso/altura ----
 function percentilTile(tipo: 'peso' | 'altura', dato: { valor: number; fecha: string } | null) {
@@ -467,10 +564,6 @@ function alternarSueno() {
 // Pis se registra al toque; caca y mixto piden antes la cantidad (poco/medio/mucho)
 const panalPendiente = ref<TipoPanal | null>(null)
 
-function pedirCantidadPanal(tipo: TipoPanal) {
-  panalPendiente.value = panalPendiente.value === tipo ? null : tipo
-}
-
 function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) {
   const bebe = bebeStore.bebe
   if (!bebe) return
@@ -487,7 +580,6 @@ function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) 
     (panal) => () => servicio.eliminarPanal(panal.id),
   )
   panalPendiente.value = null
-  if (formulario.value === 'mas') formulario.value = null
 }
 
 // ---- Sueño a posteriori ----
@@ -510,10 +602,10 @@ function guardarSueno() {
   formulario.value = null
 }
 
-function abrirMas() {
+function prepararSuenoPosteriori() {
   const ahoraInput = aInputLocal(new Date())
   nuevoSueno.value = { inicio: ahoraInput, fin: ahoraInput }
-  formulario.value = formulario.value === 'mas' ? null : 'mas'
+  formulario.value = 'sueno-post'
 }
 
 // ---- Evento ----
@@ -540,31 +632,125 @@ function guardarMomento() {
   nuevoMomento.value = ''
 }
 
-// ---- Uñas (un toque desde "Más") ----
-/** 'hace N días' legible para cosas que se miden en días, no en horas */
+/**
+ * 'hace N días' legible para cosas que se miden en días, no en horas.
+ * Cuenta días naturales locales (no bloques de 24 h): la vitamina D de
+ * ayer a las 22:00 debe salir como 'ayer' a la mañana siguiente, no 'hoy'.
+ */
 function haceDiasTexto(iso: string): string {
-  const dias = Math.floor((ahora.value.getTime() - new Date(iso).getTime()) / 86_400_000)
+  const dias = edadDias(claveDia(iso), hoyLocal(ahora.value))
   if (dias <= 0) return 'hoy'
   if (dias === 1) return 'ayer'
   return `hace ${dias} días`
 }
 
-function registrarCorteUnas() {
+// ---- Eventos de un toque (baño, vitamina D, medicación, uñas) ----
+const TEXTOS_EVENTO_RAPIDO: Partial<Record<TipoEvento, string>> = {
+  bano: 'Baño registrado 🛁',
+  vitamina_d: 'Vitamina D registrada ☀️',
+  medicacion: 'Medicación registrada 💊',
+  unas: 'Uñas cortadas ✂️',
+}
+
+function registrarEventoRapido(tipo: TipoEvento) {
   const bebe = bebeStore.bebe
   if (!bebe) return
   registrarYOfrecer(
-    'Uñas cortadas ✂️',
+    TEXTOS_EVENTO_RAPIDO[tipo] ?? 'Evento registrado',
     () =>
       servicio.registrarEvento({
         bebe_id: bebe.id,
         fecha: new Date().toISOString(),
-        tipo: 'unas',
+        tipo,
         descripcion: null,
       }),
     (evento) => () => servicio.eliminarEvento(evento.id),
   )
   formulario.value = null
 }
+
+// ---- Catálogo de acciones de registro ----
+// El + de la nav las despliega todas; la card "Accesos directos" muestra
+// solo las que configure cada usuario (⚙, guardada por usuario).
+
+interface AccionRegistro {
+  id: string
+  icono: string
+  etiqueta: string
+  vivo?: boolean
+}
+
+const accionesRegistro = computed<AccionRegistro[]>(() => [
+  {
+    id: 'sueno',
+    icono: '😴',
+    etiqueta: suenoAbierto.value ? 'Termina sueño' : 'Empieza sueño',
+    vivo: !!suenoAbierto.value,
+  },
+  {
+    id: 'toma',
+    icono: '🍼',
+    etiqueta: tomaAbierta.value ? `Termina toma (${minutosTomaAbierta.value} min)` : 'Toma',
+    vivo: !!tomaAbierta.value,
+  },
+  { id: 'pis', icono: '💧', etiqueta: 'Pis' },
+  { id: 'caca', icono: '💩', etiqueta: 'Caca' },
+  { id: 'mixto', icono: '💧💩', etiqueta: 'Mixto' },
+  { id: 'sueno_post', icono: '🛌', etiqueta: 'Sueño a posteriori' },
+  { id: 'momento', icono: '✨', etiqueta: 'Momento' },
+  { id: 'bano', icono: '🛁', etiqueta: 'Baño' },
+  { id: 'vitamina_d', icono: '☀️', etiqueta: 'Vitamina D' },
+  { id: 'medicacion', icono: '💊', etiqueta: 'Medicación' },
+  { id: 'unas', icono: '✂️', etiqueta: 'Uñas' },
+  { id: 'otro', icono: '⭐', etiqueta: 'Otro evento' },
+])
+
+function ejecutarAccion(id: string) {
+  formulario.value = null
+  switch (id) {
+    case 'sueno':
+      alternarSueno()
+      break
+    case 'toma':
+      pulsarAccesoToma()
+      break
+    case 'pis':
+      registrarPanal('pis')
+      break
+    case 'caca':
+    case 'mixto':
+      panalPendiente.value = id
+      break
+    case 'sueno_post':
+      prepararSuenoPosteriori()
+      break
+    case 'momento':
+      formulario.value = 'momento'
+      break
+    case 'bano':
+    case 'vitamina_d':
+    case 'medicacion':
+    case 'unas':
+      registrarEventoRapido(id)
+      break
+    case 'otro':
+      nuevoEvento.value.tipo = 'otro'
+      formulario.value = 'evento'
+      break
+  }
+}
+
+// Accesos directos configurados (por usuario, en este dispositivo)
+const ACCESOS_POR_DEFECTO = ['sueno', 'toma', 'caca', 'pis']
+const { valor: accesosConfig, cargar: cargarConfigAccesos } = listaPersistida(
+  'carlotapp-accesos',
+  ACCESOS_POR_DEFECTO,
+)
+const mostrarConfig = ref(false)
+
+const accesosVisibles = computed(() =>
+  accionesRegistro.value.filter((a) => accesosConfig.value.includes(a.id)),
+)
 
 function guardarEvento() {
   const bebe = bebeStore.bebe
@@ -661,15 +847,64 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     </template>
 
     <template v-if="bebeStore.bebe">
-      <!-- Hero: el bloque "Ahora" con los datos que más se consultan -->
+      <!-- Card 1 · La bebé: carita + nombre completo + edad/peso/altura -->
       <section class="tarjeta tarjeta-hero">
-        <h2>👶 {{ bebeStore.bebe.nombre }}</h2>
-        <span class="etiqueta-seccion">Ahora</span>
-        <div class="ahora">
-          <div v-for="contador in contadoresAhora" :key="contador.etiqueta" class="fila-ahora">
-            <span class="que">{{ contador.etiqueta }}</span>
-            <strong class="cuanto" :class="{ vivo: contador.vivo }">{{ contador.valor }}</strong>
+        <div class="cabecera-bebe">
+          <img :src="logoUrl" alt="" class="avatar-bebe" />
+          <h2>{{ bebeStore.bebe.nombre }}</h2>
+        </div>
+        <div class="stats tres">
+          <div class="stat">
+            <span class="etiqueta">Edad</span>
+            <span class="valor">{{ edadCorta(bebeStore.bebe.fecha_nacimiento, ahora) }}</span>
           </div>
+          <RouterLink :to="{ name: 'evolucion' }" class="stat enlazado">
+            <span class="chev">›</span>
+            <span class="etiqueta">Peso</span>
+            <span class="valor">{{ ultimoPeso ? formatoPeso(ultimoPeso.valor) : '—' }}</span>
+            <span class="sub">
+              {{
+                ultimoPeso
+                  ? `${percentilPeso !== null ? `P${percentilPeso} · ` : ''}${fechaCorta(ultimoPeso.fecha)}`
+                  : 'sin datos'
+              }}
+            </span>
+          </RouterLink>
+          <RouterLink :to="{ name: 'evolucion' }" class="stat enlazado">
+            <span class="chev">›</span>
+            <span class="etiqueta">Altura</span>
+            <span class="valor">{{ ultimaAltura ? `${ultimaAltura.valor} cm` : '—' }}</span>
+            <span class="sub">
+              {{
+                ultimaAltura
+                  ? `${percentilAltura !== null ? `P${percentilAltura} · ` : ''}${fechaCorta(ultimaAltura.fecha)}`
+                  : 'sin datos'
+              }}
+            </span>
+          </RouterLink>
+        </div>
+
+        <!-- ¿Qué hay de nuevo esta semana? -->
+        <div v-if="etapaSemana" class="bloque-semana">
+          <button class="cabecera-semana" @click="mostrarSemana = !mostrarSemana">
+            <span>
+              🌱 <strong>Semana {{ semanaActual }}</strong> · {{ etapaSemana.titulo }}
+            </span>
+            <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
+          </button>
+          <template v-if="mostrarSemana">
+            <ul class="lista-cambios">
+              <li v-for="cambio in etapaSemana.cambios" :key="cambio">{{ cambio }}</li>
+            </ul>
+            <p class="ajuste">😴 {{ etapaSemana.sueno }}</p>
+            <p class="ajuste">🍼 {{ etapaSemana.tomas }}</p>
+            <button class="boton secundario" @click="formulario = 'momento'">
+              ✨ Guardar un momento
+            </button>
+            <p class="suave nota-semana">
+              Orientativo (hitos CDC/AAP/NHS): cada bebé va a su ritmo. Las dudas, al pediatra.
+            </p>
+          </template>
         </div>
       </section>
 
@@ -683,147 +918,132 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <span class="suave">→</span>
       </RouterLink>
 
-      <!-- Hoy: objetivos con su progreso (valor y barra fusionados) -->
+      <!-- Card 2 · Datos de Hoy: objetivos del día + últimos hitos -->
       <section class="tarjeta">
-        <span class="etiqueta-seccion">Hoy · objetivos</span>
-        <BarraObjetivo
-          :valor-texto="valorSuenoTexto"
-          :objetivo-texto="objetivoSuenoTexto"
-          :valor="minutosSuenoHoy"
-          :min="objetivoSueno.min"
-          :max="objetivoSueno.max"
-        />
-        <BarraObjetivo
-          v-if="objetivoLeche"
-          :valor-texto="valorLecheTexto"
-          :objetivo-texto="objetivoLecheTexto"
-          :valor="resumen.mlBiberon"
-          :min="objetivoLeche.min"
-          :max="objetivoLeche.max"
-        />
-        <RouterLink
-          v-else
-          :to="{ name: 'evolucion', query: { nueva: '1' } }"
-          class="suave sin-peso"
-        >
-          Registra el peso para calcular el objetivo de leche →
-        </RouterLink>
-        <RouterLink :to="{ name: 'historial' }" class="ver-patron suave">
-          ver el patrón de 24 h →
-        </RouterLink>
+        <div class="cabecera-datos-hoy">
+          <h3>📅 Datos de Hoy</h3>
+          <span class="hora-actual suave">{{ horaActual }}</span>
+        </div>
+
+        <div class="seccion-hoy">
+          <span class="etiqueta-seccion">Objetivos del día</span>
+          <BarraObjetivo
+            :valor-texto="valorSuenoTexto"
+            :objetivo-texto="objetivoSuenoTexto"
+            :valor="minutosSuenoHoy"
+            :min="objetivoSueno.min"
+            :max="objetivoSueno.max"
+          />
+          <BarraObjetivo
+            v-if="objetivoLeche"
+            :valor-texto="valorLecheTexto"
+            :objetivo-texto="objetivoLecheTexto"
+            :valor="resumen.mlBiberon"
+            :min="objetivoLeche.min"
+            :max="objetivoLeche.max"
+          />
+          <RouterLink
+            v-else
+            :to="{ name: 'evolucion', query: { nueva: '1' } }"
+            class="suave sin-peso"
+          >
+            Registra el peso para calcular el objetivo de leche →
+          </RouterLink>
+          <RouterLink :to="{ name: 'historial' }" class="ver-patron suave">
+            ver el patrón de 24 h →
+          </RouterLink>
+        </div>
+
+        <div class="seccion-hoy">
+          <div class="cabecera-hitos">
+            <span class="etiqueta-seccion">Últimos hitos</span>
+            <div class="botones-hitos">
+              <button
+                class="boton-suave"
+                aria-label="Configurar hitos visibles"
+                @click="mostrarConfig = true"
+              >
+                ⚙
+              </button>
+              <button
+                class="boton-suave"
+                :aria-label="hitosExpandidos ? 'Ver menos hitos' : 'Ver todos los hitos'"
+                @click="hitosExpandidos = !hitosExpandidos"
+              >
+                {{ hitosExpandidos ? '▲' : '▼' }}
+              </button>
+            </div>
+          </div>
+          <div class="ahora">
+            <div v-for="fila in filasHitosVisibles" :key="fila.id" class="fila-ahora">
+              <span class="que">{{ fila.etiqueta }}</span>
+              <strong class="cuanto" :class="{ vivo: fila.vivo }">{{ fila.valor }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion-hoy">
+          <div class="cabecera-hitos">
+            <span class="etiqueta-seccion">📋 Registro del día</span>
+            <button
+              v-if="lineaDeTiempo.length > 2"
+              class="boton-suave"
+              :aria-label="registroExpandido ? 'Ver menos registros' : 'Ver todo el día'"
+              @click="registroExpandido = !registroExpandido"
+            >
+              {{ registroExpandido ? '▲' : `▼ (${lineaDeTiempo.length})` }}
+            </button>
+          </div>
+          <p v-if="lineaDeTiempo.length === 0" class="suave">Todavía no hay registros hoy.</p>
+          <div
+            v-for="registro in registroExpandido ? lineaDeTiempo : lineaDeTiempo.slice(0, 2)"
+            :key="registro.id"
+            class="fila-registro deslizable"
+            :class="{ deslizada: filaDeslizada === registro.id }"
+            @touchstart.passive="inicioToqueFila"
+            @touchend.passive="finToqueFila($event, registro.id)"
+          >
+            <span class="hora">{{ horaCorta(registro.hora) }}</span>
+            <span class="detalle">{{ registro.texto }}</span>
+            <button
+              class="boton peligro borrar-fila"
+              aria-label="Borrar registro"
+              @click="ejecutar(registro.borrar)"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       </section>
 
-      <!-- Edad / peso / altura (peso y altura enlazan a Evolución) -->
-      <div class="stats tres">
-        <div class="stat">
-          <span class="etiqueta">Edad</span>
-          <span class="valor">{{ edadCorta(bebeStore.bebe.fecha_nacimiento, ahora) }}</span>
-        </div>
-        <RouterLink :to="{ name: 'evolucion' }" class="stat enlazado">
-          <span class="chev">›</span>
-          <span class="etiqueta">Peso</span>
-          <span class="valor">{{ ultimoPeso ? formatoPeso(ultimoPeso.valor) : '—' }}</span>
-          <span class="sub">
-            {{
-              ultimoPeso
-                ? `${percentilPeso !== null ? `P${percentilPeso} · ` : ''}${fechaCorta(ultimoPeso.fecha)}`
-                : 'sin datos'
-            }}
-          </span>
-        </RouterLink>
-        <RouterLink :to="{ name: 'evolucion' }" class="stat enlazado">
-          <span class="chev">›</span>
-          <span class="etiqueta">Altura</span>
-          <span class="valor">{{ ultimaAltura ? `${ultimaAltura.valor} cm` : '—' }}</span>
-          <span class="sub">
-            {{
-              ultimaAltura
-                ? `${percentilAltura !== null ? `P${percentilAltura} · ` : ''}${fechaCorta(ultimaAltura.fecha)}`
-                : 'sin datos'
-            }}
-          </span>
-        </RouterLink>
-      </div>
-
-      <!-- Registrar -->
+      <!-- Accesos directos (configurables por usuario; el + de la nav lo tiene todo) -->
       <section class="tarjeta">
-        <span class="etiqueta-seccion">📝 Registrar</span>
+        <div class="cabecera-hitos">
+          <span class="etiqueta-seccion">⚡ Accesos directos</span>
+          <button
+            class="boton-suave"
+            aria-label="Configurar accesos directos"
+            @click="mostrarConfig = true"
+          >
+            ⚙
+          </button>
+        </div>
+        <p v-if="accesosVisibles.length === 0" class="suave">
+          Elige tus accesos con ⚙ — y recuerda que el ＋ de abajo lo tiene todo.
+        </p>
         <div class="accesos">
           <button
+            v-for="accion in accesosVisibles"
+            :key="accion.id"
             class="acceso"
-            :class="{ activo: suenoAbierto, pulso: suenoAbierto }"
-            @click="alternarSueno"
+            :class="{ activo: accion.vivo, pulso: accion.vivo }"
+            @click="ejecutarAccion(accion.id)"
           >
-            <span class="icono">😴</span>
-            {{ suenoAbierto ? 'Termina sueño' : 'Empieza sueño' }}
-          </button>
-          <button
-            class="acceso"
-            :class="{ activo: !!tomaAbierta || formulario === 'toma', pulso: !!tomaAbierta }"
-            @click="pulsarAccesoToma"
-          >
-            <span class="icono">🍼</span>
-            {{ tomaAbierta ? `Termina toma (${minutosTomaAbierta} min)` : 'Toma' }}
-          </button>
-          <button
-            class="acceso"
-            :class="{ activo: panalPendiente === 'caca' }"
-            @click="pedirCantidadPanal('caca')"
-          >
-            <span class="icono">💩</span>
-            Caca
-          </button>
-          <button class="acceso" :class="{ activo: formulario === 'mas' }" @click="abrirMas">
-            <span class="icono">➕</span>
-            Más
+            <span class="icono">{{ accion.icono }}</span>
+            {{ accion.etiqueta }}
           </button>
         </div>
       </section>
-
-      <!-- ¿Qué hay de nuevo esta semana? -->
-      <section v-if="etapaSemana" class="tarjeta tarjeta-plana">
-        <button class="cabecera-semana" @click="mostrarSemana = !mostrarSemana">
-          <span>
-            🌱 <strong>Semana {{ semanaActual }}</strong> · {{ etapaSemana.titulo }}
-          </span>
-          <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
-        </button>
-        <template v-if="mostrarSemana">
-          <ul class="lista-cambios">
-            <li v-for="cambio in etapaSemana.cambios" :key="cambio">{{ cambio }}</li>
-          </ul>
-          <p class="ajuste">😴 {{ etapaSemana.sueno }}</p>
-          <p class="ajuste">🍼 {{ etapaSemana.tomas }}</p>
-          <button class="boton secundario" @click="abrirMas">✨ Guardar un momento</button>
-          <p class="suave nota-semana">
-            Orientativo (hitos CDC/AAP/NHS): cada bebé va a su ritmo. Las dudas, al pediatra.
-          </p>
-        </template>
-      </section>
-
-      <!-- Línea de tiempo de hoy (desliza a la izquierda para borrar) -->
-      <div class="tarjeta">
-        <h3>📋 Registro del día</h3>
-        <p v-if="lineaDeTiempo.length === 0" class="suave">Todavía no hay registros hoy.</p>
-        <div
-          v-for="registro in lineaDeTiempo"
-          :key="registro.id"
-          class="fila-registro deslizable"
-          :class="{ deslizada: filaDeslizada === registro.id }"
-          @touchstart.passive="inicioToqueFila"
-          @touchend.passive="finToqueFila($event, registro.id)"
-        >
-          <span class="hora">{{ horaCorta(registro.hora) }}</span>
-          <span class="detalle">{{ registro.texto }}</span>
-          <button
-            class="boton peligro borrar-fila"
-            aria-label="Borrar registro"
-            @click="ejecutar(registro.borrar)"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
 
       <!-- Hojas inferiores (formularios) -->
       <HojaInferior
@@ -904,13 +1124,33 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </form>
       </HojaInferior>
 
+      <!-- Hoja del ＋: todos los tipos de registro -->
       <HojaInferior
-        :abierta="formulario === 'mas'"
-        titulo="➕ Más registros"
+        :abierta="formulario === 'registro'"
+        titulo="📝 Registrar"
+        @cerrar="formulario = null"
+      >
+        <div class="accesos rejilla-registro">
+          <button
+            v-for="accion in accionesRegistro"
+            :key="accion.id"
+            class="acceso"
+            :class="{ activo: accion.vivo, pulso: accion.vivo }"
+            @click="ejecutarAccion(accion.id)"
+          >
+            <span class="icono">{{ accion.icono }}</span>
+            {{ accion.etiqueta }}
+          </button>
+        </div>
+      </HojaInferior>
+
+      <!-- Momento -->
+      <HojaInferior
+        :abierta="formulario === 'momento'"
+        titulo="✨ Momento"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarMomento">
-          <h3>✨ Momento</h3>
           <div class="campo">
             <label for="momento-desc">¿Qué ha hecho?</label>
             <input
@@ -923,19 +1163,15 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
           <button class="boton" type="submit">Guardar momento</button>
         </form>
-        <div class="acciones bloque-mas">
-          <span class="suave">Pañal:</span>
-          <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
-          <button class="boton secundario" @click="pedirCantidadPanal('mixto')">💧💩 Mixto</button>
-        </div>
-        <div class="acciones bloque-mas">
-          <button class="boton secundario" @click="registrarCorteUnas">✂️ Uñas cortadas</button>
-          <span v-if="ultimoCorteUnas" class="suave">
-            última vez {{ haceDiasTexto(ultimoCorteUnas.fecha) }}
-          </span>
-        </div>
-        <form class="bloque-mas" @submit.prevent="guardarSueno">
-          <h3>😴 Sueño a posteriori</h3>
+      </HojaInferior>
+
+      <!-- Sueño a posteriori -->
+      <HojaInferior
+        :abierta="formulario === 'sueno-post'"
+        titulo="🛌 Sueño a posteriori"
+        @cerrar="formulario = null"
+      >
+        <form @submit.prevent="guardarSueno">
           <div class="campo">
             <label for="sueno-inicio">Empezó</label>
             <input id="sueno-inicio" v-model="nuevoSueno.inicio" type="datetime-local" required />
@@ -946,8 +1182,15 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
           <button class="boton" type="submit">Guardar sueño</button>
         </form>
-        <form class="bloque-mas" @submit.prevent="guardarEvento">
-          <h3>⭐ Nuevo evento</h3>
+      </HojaInferior>
+
+      <!-- Otro evento -->
+      <HojaInferior
+        :abierta="formulario === 'evento'"
+        titulo="⭐ Nuevo evento"
+        @cerrar="formulario = null"
+      >
+        <form @submit.prevent="guardarEvento">
           <div class="campo">
             <label for="evento-tipo">Tipo</label>
             <select id="evento-tipo" v-model="nuevoEvento.tipo">
@@ -963,6 +1206,28 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <button class="boton" type="submit">Guardar</button>
         </form>
       </HojaInferior>
+
+      <!-- Configuración por usuario: hitos visibles + accesos directos -->
+      <HojaInferior
+        :abierta="mostrarConfig"
+        titulo="⚙ Configuración"
+        @cerrar="mostrarConfig = false"
+      >
+        <p class="suave">
+          Se guarda para tu usuario en este dispositivo — cada uno puede tener la suya.
+        </p>
+        <span class="etiqueta-seccion">Últimos hitos visibles sin desplegar</span>
+        <label v-for="entrada in CATALOGO_HITOS" :key="entrada.id" class="opcion-hito">
+          <input v-model="hitosVisiblesConfig" type="checkbox" :value="entrada.id" />
+          <span>{{ entrada.etiqueta }}</span>
+        </label>
+        <span class="etiqueta-seccion seccion-config">Accesos directos de la card</span>
+        <label v-for="accion in accionesRegistro" :key="accion.id" class="opcion-hito">
+          <input v-model="accesosConfig" type="checkbox" :value="accion.id" />
+          <span>{{ accion.icono }} {{ accion.etiqueta }}</span>
+        </label>
+        <button class="boton" @click="mostrarConfig = false">Listo</button>
+      </HojaInferior>
     </template>
 
     <!-- Toast de deshacer -->
@@ -974,6 +1239,104 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 </template>
 
 <style scoped>
+/* Card 1 · La bebé */
+.cabecera-bebe {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.cabecera-bebe h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.avatar-bebe {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.tarjeta-hero .stats {
+  margin-bottom: 0;
+}
+
+/* La semana 🌱 dentro de la tarjeta de la bebé */
+.bloque-semana {
+  border-top: 1px solid var(--color-borde);
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+}
+
+/* Card 2 · Datos de Hoy */
+.cabecera-datos-hoy {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.cabecera-datos-hoy h3 {
+  margin: 0;
+}
+
+.hora-actual {
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+
+.seccion-hoy {
+  margin-top: 0.75rem;
+}
+
+.seccion-hoy + .seccion-hoy {
+  border-top: 1px solid var(--color-borde);
+  padding-top: 0.75rem;
+}
+
+.cabecera-hitos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.botones-hitos {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.boton-suave {
+  background: none;
+  border: none;
+  color: var(--color-texto-suave);
+  font-size: 0.95rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.opcion-hito {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.opcion-hito input {
+  width: auto;
+}
+
+.opcion-hito:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0.75rem;
+}
+
+.seccion-config {
+  margin-top: 1rem;
+}
+
 /* Bloque "Ahora" del hero */
 .ahora {
   display: flex;
@@ -1131,6 +1494,17 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.6rem;
+}
+
+/* La hoja del ＋: rejilla con todos los tipos de registro */
+.rejilla-registro {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.rejilla-registro .acceso {
+  font-size: 0.8rem;
+  padding: 0.6rem 0.3rem;
 }
 
 .bloque-mas {

@@ -8,7 +8,16 @@
  * error; las vistas capturan y muestran el mensaje.
  */
 import { supabase } from './supabase'
-import type { Bebe, Cita, Evento, Medida, Panal, Sueno, Toma } from '../types'
+import {
+  ETIQUETAS_EVENTO,
+  type Bebe,
+  type Cita,
+  type Evento,
+  type Medida,
+  type Panal,
+  type Sueno,
+  type Toma,
+} from '../types'
 
 function lanzarSi(error: { message: string } | null): void {
   if (error) throw new Error(error.message)
@@ -271,6 +280,20 @@ export async function getUltimoEventoDeTipo(
     .maybeSingle()
   lanzarSi(error)
   return data as Evento | null
+}
+
+/**
+ * El último evento de CADA tipo (para la sección "Últimos hitos" de Hoy):
+ * varias consultas pequeñas en paralelo — la tabla es diminuta y está
+ * indexada por (bebe_id, fecha).
+ */
+export async function getUltimosEventosPorTipo(
+  bebeId: string,
+): Promise<Partial<Record<Evento['tipo'], Evento | null>>> {
+  // Derivado de ETIQUETAS_EVENTO: un tipo nuevo entra aquí solo
+  const tipos = Object.keys(ETIQUETAS_EVENTO) as Evento['tipo'][]
+  const resultados = await Promise.all(tipos.map((tipo) => getUltimoEventoDeTipo(bebeId, tipo)))
+  return Object.fromEntries(tipos.map((tipo, i) => [tipo, resultados[i]]))
 }
 
 /**

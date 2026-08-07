@@ -17,7 +17,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Dashboard: bloque "Ahora" (hace X en grande) + banda de proxima cita (&lt;7 dias → Citas) + objetivos diarios con barra fusionada + tiles edad/peso/altura con percentil (peso/altura enlazan a Evolucion) + accesos rapidos con pulso en cronometros + semana 🌱 plegada + linea de tiempo con swipe para borrar. Formularios en hoja inferior (HojaInferior). ?registrar=1 abre la hoja "Mas" (FAB de la nav) |
+| `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion) + semana 🌱 plegable; (2) "📅 Datos de Hoy" con hora actual y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
 | `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior |
 | `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil (3 graficas) con bandas P3-P97 de la OMS y mediana punteada + tabla con percentiles |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
@@ -109,7 +109,17 @@ borde), `.tarjeta-plana` (sin sombra). Navegacion inferior fija (App.vue)
 con FAB central "+" (abre el registro desde cualquier pantalla) y
 safe-area para iPhone.
 
+**Cabecera (App.vue)**: logo + "CarlotApp" (enlaza a Hoy desde cualquier
+pantalla) y la bolita de usuario (inicial de la cuenta) con el menu:
+nombre/email, ⚙ Configuracion (→ hoja de Hoy via ?config), tema
+(auto → oscuro → claro, localStorage `carlotapp-tema`) y salir.
+
 **Modo noche**: clase `.noche` en `<html>` que redefine las variables de
-color (paleta oscura). La gestiona App.vue: automatica de 22:00 a 08:00,
-con boton en la cabecera para forzar (auto → oscuro → claro, persistido
-en localStorage `carlotapp-tema`).
+color (paleta oscura); automatica de 22:00 a 08:00, forzable desde el
+menu de usuario.
+
+**Configuracion por usuario** (hoja "⚙ Configuracion" en Hoy): hitos
+visibles sin desplegar y accesos directos de la card, persistidos en
+localStorage con clave por usuario (`carlotapp-hitos-<uid>` /
+`carlotapp-accesos-<uid>`) via el helper `listaPersistida`. La URL del
+logo (respetando BASE_URL) vive en `assets/branding.ts`.
