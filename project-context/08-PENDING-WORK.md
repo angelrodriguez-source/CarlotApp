@@ -6,9 +6,11 @@
 - [x] Crear el proyecto Supabase nuevo: `aolbgcuvgcjpogdarpmg` (2026-08-07)
 - [x] Rellenar los `TODO(config)` (2026-08-07): emails (Angel y Cristina),
       fecha de nacimiento (2026-06-05), URL + publishable key
-- [ ] Secret `SUPABASE_DB_URL` en el repo + lanzar workflow de migraciones
-- [ ] Google OAuth en Supabase + Site URL
-- [ ] Activar GitHub Pages (rama `gh-pages`) tras el primer deploy
+- [x] Secret `SUPABASE_DB_URL` en el repo + lanzar workflow de migraciones (2026-08-07)
+- [x] Google OAuth en Supabase + Site URL (2026-08-07)
+- [x] Activar GitHub Pages (rama `gh-pages`) tras el primer deploy (2026-08-07)
+- [ ] Secrets `MAIL_USERNAME` y `MAIL_PASSWORD` (contrasena de aplicacion
+      Gmail) para el recordatorio nocturno por email (ver 07-DEPLOYMENT)
 
 ## Proximas features (brainstorming 2026-08-07)
 
@@ -31,6 +33,10 @@
 - [ ] Recordatorio de vitamina D: marca visual en Hoy si a mediodia no
       esta registrada
 - [ ] Recordatorios de citas (notificaciones o export a Google Calendar)
+- [ ] Notificaciones push (Web Push) en la PWA instalada: tabla de
+      suscripciones en Supabase + claves VAPID + envio desde un cron de
+      Actions o una Edge Function. Android funciona bien; iOS >= 16.4
+      solo con la PWA anadida a pantalla de inicio y permiso concedido
 
 ### Recuerdos
 
@@ -50,6 +56,9 @@
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
 - [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
+- [x] Recordatorio nocturno por email (2026-08-07): recordatorio.yml a las
+      20:15 UTC con el resumen del dia leido de la BBDD; pendiente de los
+      secrets MAIL_* para activarse
 - [x] Seccion "¿Que hay de nuevo esta semana?" (2026-08-07): tarjeta plegable
       en Hoy con los cambios de desarrollo y ajustes de sueno/tomas de la
       semana actual, precargados para las semanas 0-100 por etapas

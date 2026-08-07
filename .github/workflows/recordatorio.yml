@@ -1,0 +1,75 @@
+# Recordatorio nocturno por email
+#
+# Cada noche envía un correo a Angel y Cristina recordando registrar las
+# cosas de Carlota, con el resumen de lo que ya hay apuntado hoy (consulta
+# la BBDD con el mismo secret SUPABASE_DB_URL de las migraciones).
+#
+# REQUIERE dos secrets nuevos (Settings > Secrets and variables > Actions):
+#   MAIL_USERNAME  el Gmail desde el que se envía (ej. el de Angel)
+#   MAIL_PASSWORD  una "contraseña de aplicación" de ese Gmail
+#                  (myaccount.google.com/apppasswords — exige tener 2FA)
+# Hasta que existan, el workflow falla y GitHub avisa por email (que, mira,
+# también funciona de recordatorio).
+#
+# El cron va en UTC: 20:15 UTC = 22:15 en verano / 21:15 en invierno (Madrid).
+name: Recordatorio nocturno
+
+on:
+  schedule:
+    - cron: '15 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  recordatorio:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resumen del día desde Supabase
+        id: resumen
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          FILA=$(psql "$DB_URL" -t -A -F'|' -c "
+            SELECT
+              (SELECT count(*) FROM tomas
+                 WHERE (inicio AT TIME ZONE 'Europe/Madrid')::date
+                     = (now()  AT TIME ZONE 'Europe/Madrid')::date),
+              (SELECT count(*) FROM panales
+                 WHERE (fecha AT TIME ZONE 'Europe/Madrid')::date
+                     = (now()  AT TIME ZONE 'Europe/Madrid')::date),
+              (SELECT coalesce(sum(extract(epoch FROM (coalesce(fin, now()) - inicio)) / 60)::int, 0)
+                 FROM suenos
+                 WHERE (inicio AT TIME ZONE 'Europe/Madrid')::date
+                     = (now()  AT TIME ZONE 'Europe/Madrid')::date)
+          ")
+          TOMAS=$(echo "$FILA" | cut -d'|' -f1)
+          PANALES=$(echo "$FILA" | cut -d'|' -f2)
+          MIN_SUENO=$(echo "$FILA" | cut -d'|' -f3)
+          SUENO="$((MIN_SUENO / 60)) h $((MIN_SUENO % 60)) min"
+          echo "tomas=$TOMAS" >> "$GITHUB_OUTPUT"
+          echo "panales=$PANALES" >> "$GITHUB_OUTPUT"
+          echo "sueno=$SUENO" >> "$GITHUB_OUTPUT"
+          echo "Hoy: $TOMAS tomas, $PANALES pañales, $SUENO de sueño"
+
+      - name: Enviar email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: CarlotApp 👶
+          to: angel.rodriguez@nfq.es,cristina.villarino.ledo@gmail.com
+          subject: '👶 CarlotApp — ¿todo apuntado hoy?'
+          body: |
+            ¡Buenas noches! Repaso rápido de lo que lleváis registrado hoy:
+
+            🍼 Tomas: ${{ steps.resumen.outputs.tomas }}
+            🧷 Pañales: ${{ steps.resumen.outputs.panales }}
+            😴 Sueño: ${{ steps.resumen.outputs.sueno }}
+
+            ¿Falta alguna toma, siesta o pañal por apuntar? Se puede añadir
+            a posteriori desde "Más" o corregir en el Historial:
+
+            https://angelrodriguez-source.github.io/CarlotApp/
+
+            — El recordatorio nocturno de CarlotApp (recordatorio.yml)
