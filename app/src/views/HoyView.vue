@@ -12,7 +12,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import { useUserStore } from '../stores/userStore'
-import { logoUrl } from '../assets/branding'
+import { fotoBebeUrl, logoUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
@@ -60,6 +60,10 @@ const router = useRouter()
 
 const cargando = ref(true)
 const error = ref('')
+
+// Avatar de la card "La bebé": la foto real si existe, la carita si no
+const avatarFallo = ref(false)
+const avatarUrl = computed(() => (avatarFallo.value ? logoUrl : fotoBebeUrl))
 
 const tomas = ref<Toma[]>([])
 // Sueños desde ayer a las 00:00: el nocturno que empezó ayer y terminó hoy
@@ -850,7 +854,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Card 1 · La bebé: carita + nombre completo + edad/peso/altura -->
       <section class="tarjeta tarjeta-hero">
         <div class="cabecera-bebe">
-          <img :src="logoUrl" alt="" class="avatar-bebe" />
+          <img :src="avatarUrl" alt="" class="avatar-bebe" @error="avatarFallo = true" />
           <h2>{{ bebeStore.bebe.nombre }}</h2>
         </div>
         <div class="stats tres">
@@ -1253,9 +1257,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 }
 
 .avatar-bebe {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-primario);
+  background: var(--color-tarjeta);
   flex-shrink: 0;
 }
 
