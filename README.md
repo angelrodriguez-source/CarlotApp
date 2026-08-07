@@ -14,24 +14,14 @@ automaticas al hacer push. Documentacion en [`project-context/`](project-context
 Este esqueleto nacio en el repo Mimes-Care-Corp (carpeta `carlotapp/` de la
 rama `claude/carlotapp-baby-tracking-0pq83p`). Pasos para dejarlo funcionando:
 
-### 1. Repo nuevo en GitHub
+### 1. Repo nuevo en GitHub — ✅ hecho (2026-08-07)
 
-1. Crea `CarlotApp` en [github.com/new](https://github.com/new) (publico, sin README).
-   ⚠️ El nombre debe ser EXACTAMENTE `CarlotApp` (case-sensitive): esta
-   hardcodeado en `app/vite.config.ts` (`base: '/CarlotApp/'`).
-2. Vuelca este esqueleto y sube:
+El esqueleto ya esta volcado en este repo. Siguen los pasos pendientes.
 
-```bash
-git clone --branch claude/carlotapp-baby-tracking-0pq83p \
-  https://github.com/angelrodriguez-source/Mimes-Care-Corp.git /tmp/mimes-rama
-cp -r /tmp/mimes-rama/carlotapp ~/CarlotApp
-cd ~/CarlotApp
-git init -b main
-git add -A
-git commit -m "Esqueleto inicial de CarlotApp"
-git remote add origin https://github.com/angelrodriguez-source/CarlotApp.git
-# ⛔ NO hagas push todavia: antes rellena los TODO(config) del paso 3
-```
+⚠️ Nota: las migraciones NO se aplicaran hasta que exista el secret
+`SUPABASE_DB_URL` (paso 4). Rellena los `TODO(config)` del paso 3 **antes**
+de crear el secret, para que la migracion inicial no se aplique con los
+placeholders.
 
 ### 2. Proyecto Supabase nuevo
 
