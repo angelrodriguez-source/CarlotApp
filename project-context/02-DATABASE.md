@@ -27,7 +27,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | `tomas` | inicio, fin, tipo, cantidad_ml, notas | tipo: pecho_izq/pecho_der/biberon_formula/biberon_materna. Pecho→duracion, biberon→ml |
 | `suenos` | inicio, fin, notas | `fin NULL` = sueno en curso |
 | `panales` | fecha, tipo, cantidad | tipo: pis/caca/mixto. cantidad (poco/medio/mucho, opcional) para caca/mixto |
-| `eventos` | fecha, tipo, descripcion | tipo: bano/vitamina_d/medicacion/hito/otro |
+| `eventos` | fecha, tipo, descripcion | tipo: bano/vitamina_d/medicacion/unas/hito/otro |
 | `citas` | fecha, titulo, tipo, lugar, notas, completada | tipo: medica/tramite/otro |
 | `usuarios_autorizados` | email, nota | Lista blanca (ver arriba) |
 | `_migrations` | name, applied_at | Control del runner de migraciones. RLS sin policies |
@@ -54,6 +54,8 @@ Migraciones existentes:
    placeholders, corregir con una migracion nueva.
 2. `202608071430_panales_cantidad.sql` — columna `cantidad` en `panales`
    (poco/medio/mucho, opcional).
+3. `202608072100_eventos_unas.sql` — tipo de evento 'unas' (corte de unas):
+   recrea el CHECK de `eventos` con el valor nuevo.
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

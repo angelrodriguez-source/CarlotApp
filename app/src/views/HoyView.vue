@@ -70,6 +70,7 @@ const ultimaToma = ref<Toma | null>(null)
 const ultimoPanal = ref<Panal | null>(null)
 const ultimoSuenoTerminado = ref<Sueno | null>(null)
 const citas = ref<Cita[]>([])
+const ultimoCorteUnas = ref<Evento | null>(null)
 
 // Qué formulario rápido está abierto
 const formulario = ref<'toma' | 'fin-toma' | 'mas' | null>(null)
@@ -102,6 +103,7 @@ async function cargarDia() {
     ultimoPanal.value,
     ultimoSuenoTerminado.value,
     citas.value,
+    ultimoCorteUnas.value,
   ] = await Promise.all([
     servicio.listarTomas(bebe.id, desde),
     servicio.listarSuenos(bebe.id, inicioDiaIso(1)),
@@ -114,6 +116,7 @@ async function cargarDia() {
     servicio.getUltimoPanal(bebe.id),
     servicio.getUltimoSuenoTerminado(bebe.id),
     servicio.listarCitas(bebe.id),
+    servicio.getUltimoEventoDeTipo(bebe.id, 'unas'),
   ])
 }
 
@@ -544,6 +547,32 @@ function guardarMomento() {
   nuevoMomento.value = ''
 }
 
+// ---- Uñas (un toque desde "Más") ----
+/** 'hace N días' legible para cosas que se miden en días, no en horas */
+function haceDiasTexto(iso: string): string {
+  const dias = Math.floor((ahora.value.getTime() - new Date(iso).getTime()) / 86_400_000)
+  if (dias <= 0) return 'hoy'
+  if (dias === 1) return 'ayer'
+  return `hace ${dias} días`
+}
+
+function registrarCorteUnas() {
+  const bebe = bebeStore.bebe
+  if (!bebe) return
+  registrarYOfrecer(
+    'Uñas cortadas ✂️',
+    () =>
+      servicio.registrarEvento({
+        bebe_id: bebe.id,
+        fecha: new Date().toISOString(),
+        tipo: 'unas',
+        descripcion: null,
+      }),
+    (evento) => () => servicio.eliminarEvento(evento.id),
+  )
+  formulario.value = null
+}
+
 function guardarEvento() {
   const bebe = bebeStore.bebe
   if (!bebe) return
@@ -905,6 +934,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <span class="suave">Pañal:</span>
           <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
           <button class="boton secundario" @click="pedirCantidadPanal('mixto')">💧💩 Mixto</button>
+        </div>
+        <div class="acciones bloque-mas">
+          <button class="boton secundario" @click="registrarCorteUnas">✂️ Uñas cortadas</button>
+          <span v-if="ultimoCorteUnas" class="suave">
+            última vez {{ haceDiasTexto(ultimoCorteUnas.fecha) }}
+          </span>
         </div>
         <form class="bloque-mas" @submit.prevent="guardarSueno">
           <h3>😴 Sueño a posteriori</h3>
