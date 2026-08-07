@@ -6,8 +6,6 @@
 -- dos ve y edita todo. El acceso se controla con una lista blanca de
 -- emails (usuarios_autorizados) + RLS en todas las tablas.
 --
--- TODO(config) ANTES del primer push: en el bloque de seeds del final,
--- pon el email de tu mujer y la fecha de nacimiento real de Carlota.
 --
 -- Convenciones (heredadas de Mimes-Care-Corp):
 --  - Idempotente: IF NOT EXISTS / CREATE OR REPLACE / ON CONFLICT
@@ -173,14 +171,14 @@ $$;
 -- Seeds
 -- ------------------------------------------------------------
 
--- TODO(config): pon aqui los DOS emails con los que hareis login con
--- Google, y la fecha de nacimiento real. Si ya hiciste el push y quieres
--- cambiarlos, crea OTRA migracion (nunca edites esta).
+-- Los emails de Google con los que hacen login los dos usuarios.
+-- Para cambiarlos una vez aplicada esta migracion: crear OTRA migracion
+-- con el INSERT/DELETE correspondiente (nunca editar esta).
 INSERT INTO public.usuarios_autorizados (email, nota) VALUES
   ('angel.rodriguez@nfq.es', 'Angel'),
-  ('EMAIL-DE-TU-MUJER@CAMBIAME.com', 'Mama')
+  ('cristina.villarino.ledo@gmail.com', 'Cristina')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO public.bebes (nombre, fecha_nacimiento)
-SELECT 'Carlota', DATE '2026-06-06'
+SELECT 'Carlota', DATE '2026-06-05'
 WHERE NOT EXISTS (SELECT 1 FROM public.bebes);
