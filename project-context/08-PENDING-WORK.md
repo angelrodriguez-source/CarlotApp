@@ -50,6 +50,18 @@
 
 ### Hechas
 
+- [x] Ronda de retoques de UI dirigida (2026-08-07/08): cabecera con logo +
+      "CarlotApp" enlazando a Hoy y bolita de menu de usuario (config, tema,
+      salir); Hoy reorganizada en 3 cards — "La bebe" (carita + nombre
+      completo via migracion + tiles + semana 🌱), "Datos de Hoy" (hora
+      actual + objetivos + ultimos hitos de cada tipo + registro del dia
+      plegado a 2) y "Accesos directos"; el FAB ＋ despliega TODOS los tipos
+      de registro (con banio/vitamina D/medicacion/unas de un toque); hitos
+      y accesos configurables POR USUARIO (localStorage por uid, hoja unica
+      de Configuracion); fix del logo con BASE_URL en Pages; revision con 5
+      arreglos (config vacia respetada, "hace N dias" por dia natural,
+      tipos de evento derivados, persistencia deduplicada, branding.ts)
+
 - [x] Reparto del sueno por dia natural en TODAS las vistas (2026-08-07):
       nuevo minutosSuenoEnDia en el modelo (con tests) — el resumen por dia
       del Historial ya reparte el nocturno entre los dos dias (antes lo

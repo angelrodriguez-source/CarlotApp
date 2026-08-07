@@ -8,15 +8,28 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
+import { logoUrl } from './assets/branding'
 
 const userStore = useUserStore()
 const bebeStore = useBebeStore()
 const router = useRouter()
 
 async function cerrarSesion() {
+  menuAbierto.value = false
   await userStore.logout()
   bebeStore.reset()
   router.push({ name: 'login' })
+}
+
+// ---- Menú de usuario (bolita de la cabecera) ----
+const menuAbierto = ref(false)
+
+const inicialUsuario = computed(() => userStore.nombre.trim().charAt(0).toUpperCase() || '👶')
+
+/** Abre la hoja de Configuración de Hoy (funciona desde cualquier pantalla) */
+function irConfiguracion() {
+  menuAbierto.value = false
+  router.push({ name: 'hoy', query: { config: String(Date.now()) } })
 }
 
 // ---- Modo noche ----
@@ -77,22 +90,32 @@ function abrirRegistro() {
 
 <template>
   <header v-if="userStore.isLoggedIn" class="cabecera">
-    <div>
-      <strong>{{ bebeStore.bebe?.nombre ?? 'CarlotApp' }}</strong>
-      <span v-if="bebeStore.edad" class="suave"> · {{ bebeStore.edad }}</span>
-    </div>
-    <div class="acciones-cabecera">
-      <button
-        class="boton-tema"
-        :title="`Tema: ${modoTema}`"
-        aria-label="Cambiar tema"
-        @click="alternarTema"
-      >
-        {{ iconoTema }}
-      </button>
-      <button class="boton peligro" @click="cerrarSesion">Salir</button>
-    </div>
+    <RouterLink :to="{ name: 'hoy' }" class="marca" aria-label="Ir al inicio">
+      <img :src="logoUrl" alt="" class="logo-cabecera" />
+      <strong>CarlotApp</strong>
+    </RouterLink>
+    <button
+      class="bolita"
+      aria-label="Menú de usuario"
+      :aria-expanded="menuAbierto"
+      @click="menuAbierto = !menuAbierto"
+    >
+      {{ inicialUsuario }}
+    </button>
   </header>
+
+  <!-- Menú de usuario -->
+  <div v-if="menuAbierto" class="menu-fondo" @click.self="menuAbierto = false">
+    <div class="menu-usuario" role="menu">
+      <p class="quien">
+        <strong>{{ userStore.nombre }}</strong>
+        <span v-if="userStore.user?.email" class="suave">{{ userStore.user.email }}</span>
+      </p>
+      <button role="menuitem" @click="irConfiguracion">⚙ Configuración</button>
+      <button role="menuitem" @click="alternarTema">{{ iconoTema }} Tema: {{ modoTema }}</button>
+      <button role="menuitem" class="salir" @click="cerrarSesion">🚪 Salir</button>
+    </div>
+  </div>
 
   <RouterView />
 
@@ -120,17 +143,83 @@ function abrirRegistro() {
   padding: 0.75rem 1rem 0;
 }
 
-.acciones-cabecera {
+.marca {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  font-size: 1.05rem;
 }
 
-.boton-tema {
+.logo-cabecera {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+/* Bolita del menú de usuario */
+.bolita {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-accion);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.menu-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+}
+
+.menu-usuario {
+  position: absolute;
+  top: 3.4rem;
+  right: max(1rem, calc((100vw - 540px) / 2 + 1rem));
+  min-width: 220px;
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-s);
+  box-shadow: var(--sombra);
+  padding: 0.35rem;
+}
+
+.menu-usuario .quien {
+  margin: 0.25rem 0.6rem 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-borde);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.menu-usuario .quien .suave {
+  font-size: 0.78rem;
+}
+
+.menu-usuario button {
+  display: block;
+  width: 100%;
+  text-align: left;
   background: none;
   border: none;
-  font-size: 1.1rem;
-  padding: 0.2rem 0.4rem;
+  border-radius: 8px;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.95rem;
+  color: var(--color-texto);
+}
+
+.menu-usuario button:hover {
+  background: var(--color-fondo);
+}
+
+.menu-usuario .salir {
+  color: var(--color-peligro);
 }
 
 .nav-inferior {
