@@ -309,24 +309,56 @@ export function edadDias(fechaNacimiento: string, fecha: string): number {
   return Math.round((dia.getTime() - nacimiento.getTime()) / 86_400_000)
 }
 
-/**
- * Percentil OMS (0.1-99.9) de una medida de niña a cierta edad en días.
- * `valor` en unidades de la app (peso en g, altura/PC en cm). Interpola los
- * parámetros LMS entre semanas; null fuera de rango (0-700 días).
- */
-export function percentilOMS(tipo: MedidaOMS, valor: number, dias: number): number | null {
-  if (valor <= 0 || dias < 0) return null
+/** Parámetros LMS de la OMS interpolados entre semanas, o null fuera de rango */
+function lmsInterpolado(tipo: MedidaOMS, dias: number): { l: number; m: number; s: number } | null {
+  if (dias < 0) return null
   const semanas = dias / 7
   const ref0 = REFERENCIA_OMS_NINAS[Math.floor(semanas)]
   const ref1 = REFERENCIA_OMS_NINAS[Math.ceil(semanas)]
   if (!ref0 || !ref1) return null
   const t = semanas - Math.floor(semanas)
   const interpolar = (a: number, b: number) => a + (b - a) * t
-  const l = interpolar(ref0.lms[tipo].l, ref1.lms[tipo].l)
-  const m = interpolar(ref0.lms[tipo].m, ref1.lms[tipo].m)
-  const s = interpolar(ref0.lms[tipo].s, ref1.lms[tipo].s)
+  return {
+    l: interpolar(ref0.lms[tipo].l, ref1.lms[tipo].l),
+    m: interpolar(ref0.lms[tipo].m, ref1.lms[tipo].m),
+    s: interpolar(ref0.lms[tipo].s, ref1.lms[tipo].s),
+  }
+}
+
+/**
+ * Percentil OMS (0.1-99.9) de una medida de niña a cierta edad en días.
+ * `valor` en unidades de la app (peso en g, altura/PC en cm). Interpola los
+ * parámetros LMS entre semanas; null fuera de rango (0-700 días).
+ */
+export function percentilOMS(tipo: MedidaOMS, valor: number, dias: number): number | null {
+  if (valor <= 0) return null
+  const lms = lmsInterpolado(tipo, dias)
+  if (!lms) return null
+  const { l, m, s } = lms
   const z = l === 0 ? Math.log(valor / m) / s : (Math.pow(valor / m, l) - 1) / (l * s)
   return Math.min(99.9, Math.max(0.1, cdfNormal(z) * 100))
+}
+
+export interface BandaOMS {
+  p3: number
+  p50: number
+  p97: number
+}
+
+const Z_P97 = 1.8807936081512509
+
+/**
+ * Banda de referencia OMS (P3/P50/P97) de una medida de niña a cierta edad,
+ * en unidades de la app — para pintar la franja de la cartilla en las
+ * gráficas. null fuera de rango (0-700 días).
+ */
+export function bandaOMS(tipo: MedidaOMS, dias: number): BandaOMS | null {
+  const lms = lmsInterpolado(tipo, dias)
+  if (!lms) return null
+  const { l, m, s } = lms
+  const valorEnZ = (z: number) =>
+    l === 0 ? m * Math.exp(s * z) : m * Math.pow(1 + l * s * z, 1 / l)
+  return { p3: valorEnZ(-Z_P97), p50: m, p97: valorEnZ(Z_P97) }
 }
 
 export interface PuntoGrafica {

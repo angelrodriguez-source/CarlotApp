@@ -20,9 +20,6 @@
 
 ### Analisis y graficas
 
-- [ ] Pintar las bandas P3-P97 de la OMS sobre las graficas de peso/altura/PC
-      (los datos ya estan en referenciaOMS.ts; GraficaLinea necesitaria
-      soporte de bandas)
 - [ ] Estadisticas semanales: media de ml/dia, nº tomas, horas de sueno,
       tendencia
 - [ ] Racha de noche: tramo mas largo de sueno nocturno (record historico)
@@ -52,6 +49,17 @@
 - [ ] Export de datos (CSV)
 
 ### Hechas
+
+- [x] Restyling completo tras auditoria UX (2026-08-07), fases F1-F4:
+      contraste AA en botones (--color-accion), bloque "Ahora" arriba con
+      contadores en grande, objetivos fusionados con sus barras, jerarquia
+      de tarjetas (hero/accion/plana), skeletons, enlaces cruzados
+      (peso/altura→Evolucion, aviso peso→formulario abierto, ver
+      patron→Historial, ritmo→dia, Momentos vacio→Hoy, banda proxima
+      cita→Citas, semana→momento), bottom sheets (HojaInferior) para todos
+      los formularios, FAB central "+", swipe para borrar en la linea de
+      tiempo, pulso en cronometros, segmento Valor|Percentil en Evolucion
+      y bandas P3-P97 OMS con mediana punteada (bandaOMS con test)
 
 - [x] Momentos (2026-08-07): alta dedicada en Hoy → Mas → "✨ Momento"
       (reutiliza eventos tipo hito, sin migracion; etiqueta renombrada a

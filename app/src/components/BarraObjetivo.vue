@@ -1,17 +1,18 @@
 <script setup lang="ts">
 /**
- * BarraObjetivo.vue — Barra de progreso hacia un objetivo diario con rango
- * (p. ej. sueño 14-17 h). La escala llega al máximo del rango; una marca
- * señala el mínimo. El relleno pasa a verde al entrar en el rango.
+ * BarraObjetivo.vue — Fila de objetivo diario: valor del día en negrita a
+ * la izquierda, objetivo a la derecha y barra de progreso debajo. La
+ * escala llega al máximo del rango; una marca señala el mínimo. El relleno
+ * pasa a verde al entrar en el rango.
  */
 import { computed } from 'vue'
 
 const props = defineProps<{
-  etiqueta: string
+  valorTexto: string // "😴 6 h 20 min"
+  objetivoTexto: string // "objetivo 14-17 h"
   valor: number
   min: number
   max: number
-  texto: string // "6 h 20 min · objetivo 14-17 h"
 }>()
 
 const porcentaje = computed(() => Math.min(100, (props.valor / props.max) * 100))
@@ -23,13 +24,15 @@ const excedido = computed(() => props.valor > props.max)
 <template>
   <div class="objetivo">
     <div class="fila-objetivo">
-      <span class="nombre">{{ etiqueta }}</span>
-      <span class="suave">{{ texto }}{{ excedido ? ' · por encima' : cumplido ? ' ✓' : '' }}</span>
+      <strong class="valor-dia">{{ valorTexto }}</strong>
+      <span class="suave">
+        {{ objetivoTexto }}{{ excedido ? ' · por encima' : cumplido ? ' ✓' : '' }}
+      </span>
     </div>
     <div
       class="pista"
       role="progressbar"
-      :aria-label="etiqueta"
+      :aria-label="valorTexto"
       :aria-valuenow="Math.round(valor)"
       :aria-valuemin="0"
       :aria-valuemax="max"
@@ -42,7 +45,11 @@ const excedido = computed(() => props.valor > props.max)
 
 <style scoped>
 .objetivo {
-  margin-top: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.objetivo:first-of-type {
+  margin-top: 0;
 }
 
 .fila-objetivo {
@@ -50,17 +57,22 @@ const excedido = computed(() => props.valor > props.max)
   justify-content: space-between;
   align-items: baseline;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
 }
 
-.nombre {
-  font-weight: 600;
-  font-size: 0.9rem;
+.valor-dia {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.fila-objetivo .suave {
+  font-size: 0.8rem;
+  text-align: right;
 }
 
 .pista {
   position: relative;
-  height: 10px;
+  height: 9px;
   border-radius: 999px;
   background: var(--color-fondo);
   border: 1px solid var(--color-borde);
@@ -85,5 +97,11 @@ const excedido = computed(() => props.valor > props.max)
   width: 2px;
   background: var(--color-texto-suave);
   opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relleno {
+    transition: none;
+  }
 }
 </style>

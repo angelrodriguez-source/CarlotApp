@@ -17,9 +17,9 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Dashboard: resumen en grande (edad/peso/altura, sueno del dia, leche) + barras de objetivo diario de sueno/leche segun edad + contadores "hace X" + accesos rapidos (Sueno, Toma con cronometro, Caca, Mas) + toast de deshacer + linea de tiempo |
-| `/historial` | HistorialView | Grafica de ritmo de 24h + seccion Momentos (hitos de todos los tiempos) + dias plegables con resumen y registros (7/14/30 dias); edicion y borrado inline de cada registro |
-| `/evolucion` | EvolucionView | Alta de medidas + graficas peso/altura/PC con percentil OMS junto a cada valor y graficas de evolucion del percentil + tabla |
+| `/hoy` | HoyView | Dashboard: bloque "Ahora" (hace X en grande) + banda de proxima cita (&lt;7 dias → Citas) + objetivos diarios con barra fusionada + tiles edad/peso/altura con percentil (peso/altura enlazan a Evolucion) + accesos rapidos con pulso en cronometros + semana 🌱 plegada + linea de tiempo con swipe para borrar. Formularios en hoja inferior (HojaInferior). ?registrar=1 abre la hoja "Mas" (FAB de la nav) |
+| `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior |
+| `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil (3 graficas) con bandas P3-P97 de la OMS y mediana punteada + tabla con percentiles |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
 
 Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
@@ -86,17 +86,28 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
 
 - **GraficaLinea.vue**: grafica de linea en SVG puro (sin librerias),
   eje Y autoajustado, tooltips nativos (`<title>`), responsive via viewBox.
+  Prop opcional `banda` (P3/P50/P97 OMS por punto) que pinta la franja de
+  la cartilla con la mediana punteada.
 - **GraficaRitmo.vue**: ritmo de 24h en SVG puro — una fila por dia,
-  tramos de sueno como bloques y tomas como puntos, con leyenda.
-- **BarraObjetivo.vue**: barra de progreso hacia un objetivo con rango
-  (marca en el minimo, relleno verde al entrar en rango).
+  tramos de sueno como bloques y tomas como puntos, con leyenda; emite
+  `seleccionarDia` al tocar una fila.
+- **BarraObjetivo.vue**: fila de objetivo diario (valor en negrita +
+  objetivo + barra con marca en el minimo; relleno verde al entrar en rango).
+- **HojaInferior.vue**: bottom sheet (Teleport a body) para formularios,
+  con transicion "hoja" y cierre por fondo o ✕.
 
 ## Estilos
 
 CSS puro. Variables y utilidades compartidas en `assets/main.css`
-(`.pantalla`, `.tarjeta`, `.boton`, `.campo`, `.chip`, `.fila-registro`).
-Paleta verde aguamarina (`--color-primario: #2aa595`). Navegacion inferior
-fija (App.vue) con safe-area para iPhone.
+(`.pantalla`, `.tarjeta`, `.boton`, `.campo`, `.chip`, `.fila-registro`,
+`.esqueleto`, `.pulso`, transiciones `hoja`/`aparecer` con
+prefers-reduced-motion). Paleta verde aguamarina con roles: `--color-accion`
+(#17685e, botones primarios — texto blanco cumple AA), `--color-primario`
+(graficas/barras), `--color-primario-suave` (tintes). Jerarquia de
+tarjetas: `.tarjeta` (accionable, con sombra), `.tarjeta-hero` (tinte, sin
+borde), `.tarjeta-plana` (sin sombra). Navegacion inferior fija (App.vue)
+con FAB central "+" (abre el registro desde cualquier pantalla) y
+safe-area para iPhone.
 
 **Modo noche**: clase `.noche` en `<html>` que redefine las variables de
 color (paleta oscura). La gestiona App.vue: automatica de 22:00 a 08:00,
