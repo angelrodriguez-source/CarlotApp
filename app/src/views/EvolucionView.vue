@@ -6,7 +6,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
-import { hoyLocal, serieGrafica } from '../models/CarlotaModel'
+import {
+  edadDias,
+  hoyLocal,
+  percentilOMS,
+  serieGrafica,
+  type MedidaOMS,
+} from '../models/CarlotaModel'
 import type { Medida } from '../types'
 import GraficaLinea from '../components/GraficaLinea.vue'
 
@@ -88,6 +94,36 @@ const seriePerimetro = computed(() =>
   serieGrafica(medidas.value, (m) => m.fecha, (m) => m.perimetro_craneal_cm),
 )
 
+// ---- Percentiles OMS (comparacion con el estandar de ninas) ----
+
+/** Percentil OMS redondeado de un valor medido en cierta fecha, o null */
+function percentilDe(tipo: MedidaOMS, valor: number | null, fecha: string): number | null {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  if (!valor || !nacimiento) return null
+  const p = percentilOMS(tipo, valor, edadDias(nacimiento, fecha))
+  return p === null ? null : Math.round(p)
+}
+
+/** " (P52)" para mostrar junto al valor, o cadena vacía */
+function etiquetaP(tipo: MedidaOMS, valor: number | null, fecha: string): string {
+  const p = percentilDe(tipo, valor, fecha)
+  return p === null ? '' : ` (P${p})`
+}
+
+const seriePercentilPeso = computed(() =>
+  serieGrafica(medidas.value, (m) => m.fecha, (m) => percentilDe('peso', m.peso_gramos, m.fecha)),
+)
+const seriePercentilAltura = computed(() =>
+  serieGrafica(medidas.value, (m) => m.fecha, (m) => percentilDe('altura', m.altura_cm, m.fecha)),
+)
+const seriePercentilPerimetro = computed(() =>
+  serieGrafica(
+    medidas.value,
+    (m) => m.fecha,
+    (m) => percentilDe('pc', m.perimetro_craneal_cm, m.fecha),
+  ),
+)
+
 const medidasRecientes = computed(() => [...medidas.value].reverse())
 </script>
 
@@ -139,8 +175,26 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
     </form>
 
     <GraficaLinea titulo="Peso" :puntos="seriePeso" unidad="g" />
+    <GraficaLinea
+      v-if="seriePercentilPeso.length > 0"
+      titulo="Percentil de peso (OMS niñas)"
+      :puntos="seriePercentilPeso"
+      unidad="P"
+    />
     <GraficaLinea titulo="Altura" :puntos="serieAltura" unidad="cm" />
+    <GraficaLinea
+      v-if="seriePercentilAltura.length > 0"
+      titulo="Percentil de altura (OMS niñas)"
+      :puntos="seriePercentilAltura"
+      unidad="P"
+    />
     <GraficaLinea titulo="Perímetro craneal" :puntos="seriePerimetro" unidad="cm" />
+    <GraficaLinea
+      v-if="seriePercentilPerimetro.length > 0"
+      titulo="Percentil de PC (OMS niñas)"
+      :puntos="seriePercentilPerimetro"
+      unidad="P"
+    />
 
     <div class="tarjeta">
       <h3>Mediciones</h3>
@@ -148,10 +202,15 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
       <div v-for="medida in medidasRecientes" :key="medida.id" class="fila-registro">
         <span class="hora">{{ medida.fecha }}</span>
         <span class="detalle">
-          <template v-if="medida.peso_gramos">{{ medida.peso_gramos }} g</template>
-          <template v-if="medida.altura_cm"> · {{ medida.altura_cm }} cm</template>
+          <template v-if="medida.peso_gramos">
+            {{ medida.peso_gramos }} g{{ etiquetaP('peso', medida.peso_gramos, medida.fecha) }}
+          </template>
+          <template v-if="medida.altura_cm">
+            · {{ medida.altura_cm }} cm{{ etiquetaP('altura', medida.altura_cm, medida.fecha) }}
+          </template>
           <template v-if="medida.perimetro_craneal_cm">
-            · PC {{ medida.perimetro_craneal_cm }} cm
+            · PC {{ medida.perimetro_craneal_cm }}
+            cm{{ etiquetaP('pc', medida.perimetro_craneal_cm, medida.fecha) }}
           </template>
           <template v-if="medida.notas"> · {{ medida.notas }}</template>
         </span>

@@ -3,8 +3,10 @@ import {
   edadTexto,
   edadCorta,
   duracionMinutos,
+  edadDias,
   formatoDuracion,
   formatoPeso,
+  percentilOMS,
   agruparPorDia,
   resumenDia,
   serieGrafica,
@@ -170,6 +172,36 @@ describe('texto de registros', () => {
     }
     expect(textoPanal(panal)).toBe('🧷 Pañal — Caca (mucho)')
     expect(textoPanal({ ...panal, tipo: 'pis', cantidad: null })).toBe('🧷 Pañal — Pis')
+  })
+})
+
+describe('edadDias / percentilOMS', () => {
+  it('calcula la edad en dias', () => {
+    expect(edadDias('2026-06-05', '2026-06-05')).toBe(0)
+    expect(edadDias('2026-06-05', '2026-08-07')).toBe(63)
+  })
+
+  it('la mediana OMS cae en el percentil 50', () => {
+    // Medianas oficiales OMS ninas: nacimiento 3232.2 g / 49.1477 cm; semana 8: 4995.9 g
+    expect(percentilOMS('peso', 3232.2, 0)).toBeCloseTo(50, 0)
+    expect(percentilOMS('altura', 49.1477, 0)).toBeCloseTo(50, 0)
+    expect(percentilOMS('peso', 4995.9, 56)).toBeCloseTo(50, 0)
+  })
+
+  it('los extremos caen en sus percentiles', () => {
+    // P3 y P97 de la tabla generada (semana 8)
+    expect(percentilOMS('peso', 3893, 56)!).toBeCloseTo(3, 0)
+    expect(percentilOMS('altura', 60.4, 56)!).toBeCloseTo(97, 0)
+  })
+
+  it('interpola entre semanas y limita el rango', () => {
+    const p = percentilOMS('peso', 4800, 59) // entre semana 8 y 9
+    expect(p).not.toBeNull()
+    expect(p!).toBeGreaterThan(20)
+    expect(p!).toBeLessThan(50)
+    expect(percentilOMS('peso', 5000, -1)).toBeNull()
+    expect(percentilOMS('peso', 12000, 800)).toBeNull() // > 100 semanas
+    expect(percentilOMS('peso', 0, 10)).toBeNull()
   })
 })
 

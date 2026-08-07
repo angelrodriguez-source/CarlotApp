@@ -26,7 +26,9 @@
 
 - [ ] Grafica de ritmo de 24h: barras horarias por dia con sueno/tomas,
       para ver el patron emerger semana a semana
-- [ ] Percentiles OMS en las graficas de peso/altura
+- [ ] Pintar las bandas P3-P97 de la OMS sobre las graficas de peso/altura/PC
+      (los datos ya estan en referenciaOMS.ts; GraficaLinea necesitaria
+      soporte de bandas)
 - [ ] Estadisticas semanales: media de ml/dia, nº tomas, horas de sueno,
       tendencia
 - [ ] Racha de noche: tramo mas largo de sueno nocturno (record historico)
@@ -56,6 +58,11 @@
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
 - [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
 - [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
+- [x] Percentiles OMS (2026-08-07): referencia oficial de ninas semanas 0-100
+      precargada (`referenciaOMS.ts`, generada con
+      `scripts/generar-referencia-oms.py` desde las tablas LMS del repo
+      oficial de la OMS), percentil junto a cada medida en Evolucion y
+      graficas de evolucion del percentil (peso/altura/PC)
 
 ## Deuda tecnica
 
