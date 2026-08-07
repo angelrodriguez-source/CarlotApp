@@ -1,0 +1,226 @@
+/**
+ * carlotaService.ts — Única puerta de acceso a los datos de Supabase
+ *
+ * Los componentes/vistas NUNCA llaman a Supabase directamente: importan
+ * estas funciones. Así todos los accesos a datos están en un solo sitio.
+ *
+ * Convención de errores: cada función lanza (throw) si Supabase devuelve
+ * error; las vistas capturan y muestran el mensaje.
+ */
+import { supabase } from './supabase'
+import type { Bebe, Cita, Evento, Medida, Panal, Sueno, Toma } from '../types'
+
+function lanzarSi(error: { message: string } | null): void {
+  if (error) throw new Error(error.message)
+}
+
+// ------------------------------------------------------------
+// Bebé
+// ------------------------------------------------------------
+
+/**
+ * Devuelve el bebé (Carlota). null significa "sin acceso": o el usuario
+ * no está en usuarios_autorizados (RLS devuelve 0 filas) o falta el seed.
+ */
+export async function getBebe(): Promise<Bebe | null> {
+  const { data, error } = await supabase
+    .from('bebes')
+    .select('id, nombre, fecha_nacimiento')
+    .order('created_at')
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data
+}
+
+// ------------------------------------------------------------
+// Tomas
+// ------------------------------------------------------------
+
+export async function registrarToma(
+  toma: Pick<Toma, 'bebe_id' | 'inicio' | 'fin' | 'tipo' | 'cantidad_ml' | 'notas'>,
+): Promise<Toma> {
+  const { data, error } = await supabase.from('tomas').insert(toma).select().single()
+  lanzarSi(error)
+  return data as Toma
+}
+
+export async function listarTomas(bebeId: string, desdeIso: string): Promise<Toma[]> {
+  const { data, error } = await supabase
+    .from('tomas')
+    .select()
+    .eq('bebe_id', bebeId)
+    .gte('inicio', desdeIso)
+    .order('inicio', { ascending: false })
+  lanzarSi(error)
+  return (data ?? []) as Toma[]
+}
+
+export async function eliminarToma(id: string): Promise<void> {
+  const { error } = await supabase.from('tomas').delete().eq('id', id)
+  lanzarSi(error)
+}
+
+// ------------------------------------------------------------
+// Sueño
+// ------------------------------------------------------------
+
+/** Inicia un sueño (fin = null). Si ya hay uno abierto, la vista debe cerrarlo antes. */
+export async function iniciarSueno(bebeId: string, inicioIso: string): Promise<Sueno> {
+  const { data, error } = await supabase
+    .from('suenos')
+    .insert({ bebe_id: bebeId, inicio: inicioIso })
+    .select()
+    .single()
+  lanzarSi(error)
+  return data as Sueno
+}
+
+export async function finalizarSueno(id: string, finIso: string): Promise<void> {
+  const { error } = await supabase.from('suenos').update({ fin: finIso }).eq('id', id)
+  lanzarSi(error)
+}
+
+/** El sueño abierto (sin fin) más reciente, si lo hay */
+export async function getSuenoAbierto(bebeId: string): Promise<Sueno | null> {
+  const { data, error } = await supabase
+    .from('suenos')
+    .select()
+    .eq('bebe_id', bebeId)
+    .is('fin', null)
+    .order('inicio', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as Sueno | null
+}
+
+export async function listarSuenos(bebeId: string, desdeIso: string): Promise<Sueno[]> {
+  const { data, error } = await supabase
+    .from('suenos')
+    .select()
+    .eq('bebe_id', bebeId)
+    .gte('inicio', desdeIso)
+    .order('inicio', { ascending: false })
+  lanzarSi(error)
+  return (data ?? []) as Sueno[]
+}
+
+export async function eliminarSueno(id: string): Promise<void> {
+  const { error } = await supabase.from('suenos').delete().eq('id', id)
+  lanzarSi(error)
+}
+
+// ------------------------------------------------------------
+// Pañales
+// ------------------------------------------------------------
+
+export async function registrarPanal(
+  panal: Pick<Panal, 'bebe_id' | 'fecha' | 'tipo' | 'notas'>,
+): Promise<Panal> {
+  const { data, error } = await supabase.from('panales').insert(panal).select().single()
+  lanzarSi(error)
+  return data as Panal
+}
+
+export async function listarPanales(bebeId: string, desdeIso: string): Promise<Panal[]> {
+  const { data, error } = await supabase
+    .from('panales')
+    .select()
+    .eq('bebe_id', bebeId)
+    .gte('fecha', desdeIso)
+    .order('fecha', { ascending: false })
+  lanzarSi(error)
+  return (data ?? []) as Panal[]
+}
+
+export async function eliminarPanal(id: string): Promise<void> {
+  const { error } = await supabase.from('panales').delete().eq('id', id)
+  lanzarSi(error)
+}
+
+// ------------------------------------------------------------
+// Eventos (baño, vitamina D, medicación, hitos...)
+// ------------------------------------------------------------
+
+export async function registrarEvento(
+  evento: Pick<Evento, 'bebe_id' | 'fecha' | 'tipo' | 'descripcion'>,
+): Promise<Evento> {
+  const { data, error } = await supabase.from('eventos').insert(evento).select().single()
+  lanzarSi(error)
+  return data as Evento
+}
+
+export async function listarEventos(bebeId: string, desdeIso: string): Promise<Evento[]> {
+  const { data, error } = await supabase
+    .from('eventos')
+    .select()
+    .eq('bebe_id', bebeId)
+    .gte('fecha', desdeIso)
+    .order('fecha', { ascending: false })
+  lanzarSi(error)
+  return (data ?? []) as Evento[]
+}
+
+export async function eliminarEvento(id: string): Promise<void> {
+  const { error } = await supabase.from('eventos').delete().eq('id', id)
+  lanzarSi(error)
+}
+
+// ------------------------------------------------------------
+// Medidas (peso / altura / perímetro craneal)
+// ------------------------------------------------------------
+
+export async function registrarMedida(
+  medida: Pick<
+    Medida,
+    'bebe_id' | 'fecha' | 'peso_gramos' | 'altura_cm' | 'perimetro_craneal_cm' | 'notas'
+  >,
+): Promise<Medida> {
+  const { data, error } = await supabase.from('medidas').insert(medida).select().single()
+  lanzarSi(error)
+  return data as Medida
+}
+
+export async function listarMedidas(bebeId: string): Promise<Medida[]> {
+  const { data, error } = await supabase
+    .from('medidas')
+    .select()
+    .eq('bebe_id', bebeId)
+    .order('fecha')
+  lanzarSi(error)
+  return (data ?? []) as Medida[]
+}
+
+export async function eliminarMedida(id: string): Promise<void> {
+  const { error } = await supabase.from('medidas').delete().eq('id', id)
+  lanzarSi(error)
+}
+
+// ------------------------------------------------------------
+// Citas y trámites
+// ------------------------------------------------------------
+
+export async function crearCita(
+  cita: Pick<Cita, 'bebe_id' | 'fecha' | 'titulo' | 'tipo' | 'lugar' | 'notas'>,
+): Promise<Cita> {
+  const { data, error } = await supabase.from('citas').insert(cita).select().single()
+  lanzarSi(error)
+  return data as Cita
+}
+
+export async function listarCitas(bebeId: string): Promise<Cita[]> {
+  const { data, error } = await supabase.from('citas').select().eq('bebe_id', bebeId).order('fecha')
+  lanzarSi(error)
+  return (data ?? []) as Cita[]
+}
+
+export async function marcarCita(id: string, completada: boolean): Promise<void> {
+  const { error } = await supabase.from('citas').update({ completada }).eq('id', id)
+  lanzarSi(error)
+}
+
+export async function eliminarCita(id: string): Promise<void> {
+  const { error } = await supabase.from('citas').delete().eq('id', id)
+  lanzarSi(error)
+}

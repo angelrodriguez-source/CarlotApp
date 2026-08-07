@@ -1,0 +1,45 @@
+# Keepalive de Supabase
+#
+# El free tier de Supabase PAUSA el proyecto tras ~7 dias sin actividad.
+# Este workflow hace una consulta trivial cada 3 dias para mantenerlo
+# despierto. Usa la anon key (publica, la misma del frontend) — no
+# necesita secrets.
+#
+# Bonus: si Supabase esta caido o pausado, el workflow falla y GitHub
+# te avisa por email — funciona tambien como monitorizacion gratuita.
+#
+# TODO(config): sustituye ANON_KEY y la URL por las de TU proyecto
+# Supabase de CarlotApp (Dashboard > Settings > API). Son los mismos
+# valores que en app/src/services/supabase.ts.
+#
+# Nota: GitHub deshabilita los crons si el repo lleva 60 dias sin
+# commits. Si eso pasa, se reactiva con un click en la pestana Actions.
+name: Keepalive Supabase
+
+on:
+  schedule:
+    # Cada 3 dias a las 09:43 UTC (hora "rara" para no coincidir con los
+    # picos de crons de GitHub, que se retrasan)
+    - cron: '43 9 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consulta trivial a Supabase
+        run: |
+          ANON_KEY='PEGA-AQUI-LA-ANON-KEY'
+          # '|| true' para que un fallo de curl (ej. DNS de proyecto
+          # pausado, exit 6) no aborte el script antes del mensaje claro
+          STATUS=$(curl -s -o /tmp/resp.json -w '%{http_code}' \
+            "https://PEGA-AQUI-TU-PROYECTO.supabase.co/rest/v1/bebes?select=id&limit=1" \
+            -H "apikey: $ANON_KEY" \
+            -H "Authorization: Bearer $ANON_KEY" || true)
+          echo "HTTP ${STATUS:-sin respuesta}"
+          cat /tmp/resp.json 2>/dev/null || true
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Supabase no responde (HTTP ${STATUS:-000} — si es 000 el dominio no resuelve, tipico de proyecto PAUSADO). Entra en https://supabase.com/dashboard, pulsa 'Restore project' y relanza este workflow."
+            exit 1
+          fi
+          echo "Supabase despierto ✔"

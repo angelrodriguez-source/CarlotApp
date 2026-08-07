@@ -1,0 +1,52 @@
+# CI/CD del frontend
+#
+# En cada push a main (y en PRs): instala, testea, type-checkea y buildea.
+# Si es un push a main y todo pasa, publica dist/ en la rama gh-pages
+# (GitHub Pages ya sirve esa rama, no hay que tocar nada mas).
+#
+# Resultado: desplegar = hacer git push.
+name: CI y Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-y-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Tests
+        run: npm run test
+
+      - name: Type-check + build
+        run: npm run build
+
+      - name: Publicar en GitHub Pages (rama gh-pages)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: app/dist

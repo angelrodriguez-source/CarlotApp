@@ -1,0 +1,20 @@
+{
+  "name": "CarlotApp",
+  "short_name": "CarlotApp",
+  "description": "Seguimiento de Carlota: tomas, sueño, medidas y citas",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf2f6",
+  "theme_color": "#e57398",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

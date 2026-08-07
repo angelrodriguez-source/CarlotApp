@@ -1,0 +1,36 @@
+# Migraciones automaticas de Supabase
+#
+# Se dispara cuando cambia algo en supabase/migrations/ (o a mano desde la
+# pestana Actions > "Migraciones Supabase" > Run workflow).
+#
+# Aplica SOLO las migraciones nuevas: lleva la cuenta en la tabla
+# public._migrations de tu base de datos (ver scripts/apply-migrations.sh).
+#
+# REQUISITO (una sola vez): crear el secret SUPABASE_DB_URL en
+# Settings > Secrets and variables > Actions, con la connection string de
+# Supabase Dashboard > Settings (engranaje) > Database > Connection string
+# (URI, session pooler). Sin el secret, el workflow avisa y no hace nada.
+name: Migraciones Supabase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar migraciones nuevas
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::Falta el secret SUPABASE_DB_URL — no se aplican migraciones. Crealo en Settings > Secrets and variables > Actions."
+            exit 0
+          fi
+          bash scripts/apply-migrations.sh

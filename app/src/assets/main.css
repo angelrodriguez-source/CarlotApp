@@ -1,0 +1,165 @@
+/* main.css — Estilos globales de CarlotApp (CSS puro con variables) */
+
+:root {
+  --color-primario: #e57398;
+  --color-primario-oscuro: #c94f78;
+  --color-fondo: #fdf2f6;
+  --color-tarjeta: #ffffff;
+  --color-texto: #4a3540;
+  --color-texto-suave: #96788a;
+  --color-borde: #f3d7e2;
+  --color-ok: #4caf7d;
+  --color-aviso: #e5a173;
+  --color-peligro: #d95d5d;
+  --radio: 14px;
+  --sombra: 0 2px 10px rgb(201 79 120 / 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  /* Hueco para la barra de navegación inferior fija */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-texto);
+  width: 100%;
+}
+
+/* ---- Utilidades compartidas entre vistas ---- */
+
+.pantalla {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.tarjeta {
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.boton {
+  display: inline-block;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: var(--color-primario);
+  color: #fff;
+  transition: background 0.15s;
+}
+
+.boton:hover {
+  background: var(--color-primario-oscuro);
+}
+
+.boton.secundario {
+  background: #fff;
+  color: var(--color-primario-oscuro);
+  border: 1px solid var(--color-primario);
+}
+
+.boton.peligro {
+  background: transparent;
+  color: var(--color-peligro);
+  border: none;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.85rem;
+}
+
+.campo {
+  margin-bottom: 0.75rem;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-texto-suave);
+  margin-bottom: 0.25rem;
+}
+
+.error {
+  color: var(--color-peligro);
+  font-size: 0.9rem;
+}
+
+.suave {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.chip {
+  display: inline-block;
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  margin-right: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.fila-registro {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.fila-registro:last-child {
+  border-bottom: none;
+}
+
+.fila-registro .hora {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+  min-width: 3rem;
+}
+
+.fila-registro .detalle {
+  flex: 1;
+}
