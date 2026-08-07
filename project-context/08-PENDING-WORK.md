@@ -10,15 +10,52 @@
 - [ ] Google OAuth en Supabase + Site URL
 - [ ] Activar GitHub Pages (rama `gh-pages`) tras el primer deploy
 
-## Proximas features (ideas)
+## Proximas features (brainstorming 2026-08-07)
+
+### Registro mas rapido / util
+
+- [ ] Contadores "hace X" en el dashboard: tiempo desde la ultima toma,
+      ultimo panal y ultimo sueno (el dato que mas se consulta)
+- [ ] Deshacer rapido: toast con "deshacer" unos segundos tras registrar
+      (para toques accidentales)
+- [ ] Cronometro de toma en vivo (empezar/parar como el sueno; al parar,
+      pregunta los ml si es biberon)
+- [ ] Modo noche: tema oscuro automatico por horario (tomas nocturnas)
+
+### Analisis y graficas
+
+- [ ] Grafica de ritmo de 24h: barras horarias por dia con sueno/tomas,
+      para ver el patron emerger semana a semana
+- [ ] Percentiles OMS en las graficas de peso/altura
+- [ ] Estadisticas semanales: media de ml/dia, nº tomas, horas de sueno,
+      tendencia
+- [ ] Racha de noche: tramo mas largo de sueno nocturno (record historico)
+
+### Salud y citas
+
+- [ ] Calendario de vacunas espanol precargado con checks y proxima dosis
+- [ ] Recordatorio de vitamina D: marca visual en Hoy si a mediodia no
+      esta registrada
+- [ ] Recordatorios de citas (notificaciones o export a Google Calendar)
+
+### Recuerdos
+
+- [ ] Hitos con foto via Supabase Storage (el free tier incluye 1 GB de
+      archivos y 5 GB de egress/mes: sobra para 2 usuarios SI se comprimen
+      las fotos al subir, ~300-500 KB)
+- [ ] Diario del dia: texto libre por dia ("hoy ha sonreido a papa")
+
+### Familia y datos
+
+- [ ] Registrar quien anoto cada cosa en la UI (`registrado_por` ya se guarda)
+- [ ] Modo abuelos: enlace de solo lectura con el resumen del dia
+- [ ] Export de datos (CSV)
+
+### Hechas
 
 - [x] Editar registros (2026-08-07: edicion y borrado inline en Historial)
-- [ ] Cronometro de toma de pecho en vivo (como el de sueno, con inicio/fin)
-- [ ] Percentiles OMS en las graficas de peso/altura
-- [ ] Recordatorios de citas (notificaciones o export a Google Calendar)
-- [ ] Grafica de tomas/sueno por dia en Historial
-- [ ] Export de datos (CSV)
-- [ ] Registrar quien anoto cada cosa en la UI (`registrado_por` ya se guarda)
+- [x] Dashboard de inicio con resumen en grande y accesos rapidos (2026-08-07)
+- [x] Niveles de caca (poco/medio/mucho) y sueno a posteriori (2026-08-07)
 
 ## Deuda tecnica
 
