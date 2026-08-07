@@ -16,49 +16,38 @@ rama `claude/carlotapp-baby-tracking-0pq83p`). Pasos para dejarlo funcionando:
 
 ### 1. Repo nuevo en GitHub — ✅ hecho (2026-08-07)
 
-El esqueleto ya esta volcado en este repo. Siguen los pasos pendientes.
+El esqueleto ya esta volcado en este repo.
 
-⚠️ Nota: las migraciones NO se aplicaran hasta que exista el secret
-`SUPABASE_DB_URL` (paso 4). Rellena los `TODO(config)` del paso 3 **antes**
-de crear el secret, para que la migracion inicial no se aplique con los
-placeholders.
+### 2. Proyecto Supabase — ✅ hecho (2026-08-07)
 
-### 2. Proyecto Supabase nuevo
+Proyecto creado: `https://aolbgcuvgcjpogdarpmg.supabase.co`. Queda por
+configurar en su dashboard (paso 4):
 
-1. [supabase.com/dashboard](https://supabase.com/dashboard) > **New project**
-   (misma cuenta; el free tier permite 2 proyectos y Mimes usa 1).
-   - Region: la de Mimes (eu-west)
-   - Contrasena de BBDD: fuerte pero **sin caracteres especiales** (`@ # / : ?`)
-2. Apunta de **Project Settings > API** (o Connect): la **Project URL**
-   (`https://xxxx.supabase.co`) y la **anon key** (`eyJ...`).
-3. **Authentication > URL Configuration**:
-   - Site URL: `https://angelrodriguez-source.github.io/CarlotApp/`
-   - Redirect URLs: anade tambien `http://localhost:5173/**` (para dev)
-4. **Authentication > Sign In / Providers > Google**: activalo reutilizando
-   el client ID/secret de Google Cloud que ya usas en Mimes, y en
-   [console.cloud.google.com](https://console.cloud.google.com) > Credentials >
-   tu OAuth client > Authorized redirect URIs anade:
-   `https://xxxx.supabase.co/auth/v1/callback` (la URL del proyecto NUEVO).
+- **Authentication > URL Configuration**:
+  - Site URL: `https://angelrodriguez-source.github.io/CarlotApp/`
+  - Redirect URLs: anade tambien `http://localhost:5173/**` (para dev)
+- **Authentication > Sign In / Providers > Google**: activalo reutilizando
+  el client ID/secret de Google Cloud que ya usas en Mimes, y en
+  [console.cloud.google.com](https://console.cloud.google.com) > Credentials >
+  tu OAuth client > Authorized redirect URIs anade:
+  `https://aolbgcuvgcjpogdarpmg.supabase.co/auth/v1/callback`
 
-### 3. Rellenar los TODO(config) del codigo
+### 3. Rellenar los TODO(config) del codigo — ✅ hecho (2026-08-07)
 
-Busca `TODO(config)` (hay 3 archivos) y sustituye:
+URL + publishable key en `app/src/services/supabase.ts` y `keepalive.yml`;
+emails autorizados (Angel y Cristina) y fecha de nacimiento (2026-06-05)
+en la migracion inicial.
 
-| Archivo | Que poner |
-|---------|-----------|
-| `supabase/migrations/202608061800_esquema_inicial.sql` | Email de Google de tu mujer y fecha de nacimiento real de Carlota. **Hazlo ANTES del primer push** (una migracion aplicada no se edita: habria que corregir con otra migracion) |
-| `app/src/services/supabase.ts` | Project URL y anon key (los fallbacks hardcoded) |
-| `.github/workflows/keepalive.yml` | La misma URL y anon key |
-
-### 4. Secret de migraciones y push
+### 4. Secret de migraciones
 
 1. En el repo `CarlotApp`: **Settings > Secrets and variables > Actions >
    New repository secret**, nombre `SUPABASE_DB_URL`, valor: la connection
    string **URI del session pooler** (Dashboard > boton **Connect** arriba >
    Session pooler), con tu contrasena en lugar de `[YOUR-PASSWORD]`.
-2. `git add -A && git commit -m "Config de Supabase" && git push -u origin main`
-3. El push dispara los dos workflows: **Migraciones Supabase** (crea todo el
-   esquema) y **CI y Deploy** (publica la rama `gh-pages`).
+   ⚠️ La contrasena no debe llevar caracteres especiales (`@ # / : ?`).
+2. Lanza a mano el workflow **Migraciones Supabase** (pestana Actions >
+   Run workflow) — creara todo el esquema. Configura tambien lo del paso 2
+   (Google + Site URL) en el dashboard de Supabase.
 
 ### 5. Activar GitHub Pages (solo la primera vez)
 

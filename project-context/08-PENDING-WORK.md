@@ -2,14 +2,11 @@
 
 ## Configuracion inicial (bloqueante — lo hace Angel, ver README.md raiz)
 
-- [ ] Crear el repo `CarlotApp` en GitHub y volcar este esqueleto
-- [ ] Crear el proyecto Supabase nuevo (free tier: es el 2º y ultimo)
-- [ ] Rellenar los `TODO(config)`:
-  - [ ] `supabase/migrations/202608061800_esquema_inicial.sql` — email de
-        la madre + fecha de nacimiento real de Carlota (ANTES del primer push)
-  - [ ] `app/src/services/supabase.ts` — URL + anon key
-  - [ ] `.github/workflows/keepalive.yml` — URL + anon key
-- [ ] Secret `SUPABASE_DB_URL` en el repo nuevo
+- [x] Crear el repo `CarlotApp` en GitHub y volcar este esqueleto (2026-08-07)
+- [x] Crear el proyecto Supabase nuevo: `aolbgcuvgcjpogdarpmg` (2026-08-07)
+- [x] Rellenar los `TODO(config)` (2026-08-07): emails (Angel y Cristina),
+      fecha de nacimiento (2026-06-05), URL + publishable key
+- [ ] Secret `SUPABASE_DB_URL` en el repo + lanzar workflow de migraciones
 - [ ] Google OAuth en Supabase + Site URL
 - [ ] Activar GitHub Pages (rama `gh-pages`) tras el primer deploy
 
