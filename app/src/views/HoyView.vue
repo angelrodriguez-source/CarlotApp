@@ -11,17 +11,22 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import {
-  duracionMinutos,
+  aInputLocal,
   edadCorta,
   formatoDuracion,
   formatoPeso,
   resumenDia,
+  textoEvento,
+  textoPanal,
+  textoSueno,
+  textoToma,
   ultimoValor,
 } from '../models/CarlotaModel'
 import {
+  ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
-  ETIQUETAS_PANAL,
   ETIQUETAS_TOMA,
+  type CantidadPanal,
   type Evento,
   type Medida,
   type Panal,
@@ -56,13 +61,6 @@ function inicioHoyIso(): string {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
   return hoy.toISOString()
-}
-
-/** Date → valor para <input type="datetime-local"> en hora local */
-function aInputLocal(fecha: Date): string {
-  const dia = fecha.toLocaleDateString('sv-SE')
-  const hora = fecha.toTimeString().slice(0, 5)
-  return `${dia}T${hora}`
 }
 
 async function cargarDia() {
@@ -136,7 +134,7 @@ function fechaCorta(fechaIso: string): string {
 
 // ---- Toma ----
 const nuevaToma = ref({
-  tipo: 'pecho_izq' as TipoToma,
+  tipo: 'biberon_formula' as TipoToma,
   inicio: aInputLocal(new Date()),
   duracionMin: null as number | null,
   cantidadMl: null as number | null,
@@ -184,8 +182,15 @@ function alternarSueno() {
   }
 }
 
-// ---- Pañal (un toque) ----
-function registrarPanal(tipo: TipoPanal) {
+// ---- Pañal ----
+// Pis se registra al toque; caca y mixto piden antes la cantidad (poco/medio/mucho)
+const panalPendiente = ref<TipoPanal | null>(null)
+
+function pedirCantidadPanal(tipo: TipoPanal) {
+  panalPendiente.value = panalPendiente.value === tipo ? null : tipo
+}
+
+function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) {
   const bebe = bebeStore.bebe
   if (!bebe) return
   ejecutar(() =>
@@ -193,10 +198,35 @@ function registrarPanal(tipo: TipoPanal) {
       bebe_id: bebe.id,
       fecha: new Date().toISOString(),
       tipo,
+      cantidad,
       notas: null,
     }),
   )
+  panalPendiente.value = null
   if (formulario.value === 'mas') formulario.value = null
+}
+
+// ---- Sueño a posteriori ----
+const nuevoSueno = ref({ inicio: aInputLocal(new Date()), fin: aInputLocal(new Date()) })
+
+function guardarSueno() {
+  const bebe = bebeStore.bebe
+  if (!bebe) return
+  ejecutar(() =>
+    servicio.registrarSueno({
+      bebe_id: bebe.id,
+      inicio: new Date(nuevoSueno.value.inicio).toISOString(),
+      fin: new Date(nuevoSueno.value.fin).toISOString(),
+      notas: null,
+    }),
+  )
+  formulario.value = null
+}
+
+function abrirMas() {
+  const ahoraInput = aInputLocal(new Date())
+  nuevoSueno.value = { inicio: ahoraInput, fin: ahoraInput }
+  formulario.value = formulario.value === 'mas' ? null : 'mas'
 }
 
 // ---- Evento ----
@@ -230,46 +260,32 @@ function horaCorta(iso: string): string {
 }
 
 const lineaDeTiempo = computed<Registro[]>(() => {
-  const registros: Registro[] = []
-  for (const t of tomas.value) {
-    const minutos = duracionMinutos(t.inicio, t.fin)
-    const detalle = t.cantidad_ml
-      ? `${t.cantidad_ml} ml`
-      : minutos !== null
-        ? formatoDuracion(minutos)
-        : ''
-    registros.push({
+  const registros: Registro[] = [
+    ...tomas.value.map((t) => ({
       id: t.id,
       hora: t.inicio,
-      texto: `🍼 ${ETIQUETAS_TOMA[t.tipo]}${detalle ? ` — ${detalle}` : ''}${t.notas ? ` · ${t.notas}` : ''}`,
+      texto: textoToma(t),
       borrar: () => servicio.eliminarToma(t.id),
-    })
-  }
-  for (const s of suenos.value) {
-    const minutos = duracionMinutos(s.inicio, s.fin)
-    registros.push({
+    })),
+    ...suenos.value.map((s) => ({
       id: s.id,
       hora: s.inicio,
-      texto: `😴 Sueño${minutos !== null ? ` — ${formatoDuracion(minutos)}` : ' (en curso)'}`,
+      texto: textoSueno(s),
       borrar: () => servicio.eliminarSueno(s.id),
-    })
-  }
-  for (const p of panales.value) {
-    registros.push({
+    })),
+    ...panales.value.map((p) => ({
       id: p.id,
       hora: p.fecha,
-      texto: `🧷 Pañal — ${ETIQUETAS_PANAL[p.tipo]}`,
+      texto: textoPanal(p),
       borrar: () => servicio.eliminarPanal(p.id),
-    })
-  }
-  for (const e of eventos.value) {
-    registros.push({
+    })),
+    ...eventos.value.map((e) => ({
       id: e.id,
       hora: e.fecha,
-      texto: `⭐ ${ETIQUETAS_EVENTO[e.tipo]}${e.descripcion ? ` — ${e.descripcion}` : ''}`,
+      texto: textoEvento(e),
       borrar: () => servicio.eliminarEvento(e.id),
-    })
-  }
+    })),
+  ]
   return registros.sort((a, b) => b.hora.localeCompare(a.hora))
 })
 </script>
@@ -351,20 +367,39 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <span class="icono">🍼</span>
             Toma
           </button>
-          <button class="acceso" @click="registrarPanal('caca')">
+          <button
+            class="acceso"
+            :class="{ activo: panalPendiente === 'caca' }"
+            @click="pedirCantidadPanal('caca')"
+          >
             <span class="icono">💩</span>
             Caca
           </button>
           <button
             class="acceso"
             :class="{ activo: formulario === 'mas' }"
-            @click="formulario = formulario === 'mas' ? null : 'mas'"
+            @click="abrirMas"
           >
             <span class="icono">➕</span>
             Más
           </button>
         </div>
       </section>
+
+      <!-- Selector de cantidad para caca / mixto -->
+      <div v-if="panalPendiente" class="tarjeta">
+        <h3>💩 {{ panalPendiente === 'mixto' ? 'Pis + caca' : 'Caca' }} — ¿cuánta?</h3>
+        <div class="cantidades">
+          <button
+            v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
+            :key="valor"
+            class="acceso"
+            @click="registrarPanal(panalPendiente!, valor)"
+          >
+            {{ etiqueta }}
+          </button>
+        </div>
+      </div>
 
       <!-- Formulario: toma -->
       <form v-if="formulario === 'toma'" class="tarjeta" @submit.prevent="guardarToma">
@@ -396,14 +431,28 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <button class="boton" type="submit">Guardar</button>
       </form>
 
-      <!-- Panel "Más": pañal pis/mixto + evento -->
+      <!-- Panel "Más": pañal pis/mixto + sueño a posteriori + evento -->
       <div v-if="formulario === 'mas'" class="tarjeta">
         <div class="acciones">
           <span class="suave">Pañal:</span>
           <button class="boton secundario" @click="registrarPanal('pis')">💧 Pis</button>
-          <button class="boton secundario" @click="registrarPanal('mixto')">💧💩 Mixto</button>
+          <button class="boton secundario" @click="pedirCantidadPanal('mixto')">
+            💧💩 Mixto
+          </button>
         </div>
-        <form @submit.prevent="guardarEvento">
+        <form class="bloque-mas" @submit.prevent="guardarSueno">
+          <h3>Sueño a posteriori</h3>
+          <div class="campo">
+            <label for="sueno-inicio">Empezó</label>
+            <input id="sueno-inicio" v-model="nuevoSueno.inicio" type="datetime-local" required />
+          </div>
+          <div class="campo">
+            <label for="sueno-fin">Terminó</label>
+            <input id="sueno-fin" v-model="nuevoSueno.fin" type="datetime-local" required />
+          </div>
+          <button class="boton" type="submit">Guardar sueño</button>
+        </form>
+        <form class="bloque-mas" @submit.prevent="guardarEvento">
           <h3>Nuevo evento</h3>
           <div class="campo">
             <label for="evento-tipo">Tipo</label>
@@ -525,5 +574,18 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+/* Selector de cantidad de caca */
+.cantidades {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.bloque-mas {
+  border-top: 1px solid var(--color-borde);
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
 }
 </style>

@@ -8,6 +8,9 @@ import {
   agruparPorDia,
   resumenDia,
   serieGrafica,
+  textoPanal,
+  textoSueno,
+  textoToma,
   ultimoValor,
 } from '../CarlotaModel'
 import type { Toma, Sueno, Panal } from '../../types'
@@ -114,8 +117,8 @@ describe('resumenDia', () => {
       { id: 's', bebe_id: 'b', inicio: '2026-08-06T12:00:00Z', fin: '2026-08-06T13:30:00Z', notas: null },
     ]
     const panales: Panal[] = [
-      { id: 'p1', bebe_id: 'b', fecha: '2026-08-06T11:00:00Z', tipo: 'pis', notas: null },
-      { id: 'p2', bebe_id: 'b', fecha: '2026-08-06T15:00:00Z', tipo: 'mixto', notas: null },
+      { id: 'p1', bebe_id: 'b', fecha: '2026-08-06T11:00:00Z', tipo: 'pis', cantidad: null, notas: null },
+      { id: 'p2', bebe_id: 'b', fecha: '2026-08-06T15:00:00Z', tipo: 'mixto', cantidad: 'poco', notas: null },
     ]
     const resumen = resumenDia(tomas, suenos, panales)
     expect(resumen.numTomas).toBe(3)
@@ -124,6 +127,49 @@ describe('resumenDia', () => {
     expect(resumen.minutosSueno).toBe(90)
     expect(resumen.numPanales).toBe(2)
     expect(resumen.numCacas).toBe(1)
+  })
+})
+
+describe('texto de registros', () => {
+  it('describe tomas con ml o duracion', () => {
+    const base: Toma = {
+      id: '1',
+      bebe_id: 'b',
+      inicio: '2026-08-06T10:00:00Z',
+      fin: null,
+      tipo: 'biberon_formula',
+      cantidad_ml: 120,
+      notas: null,
+    }
+    expect(textoToma(base)).toBe('🍼 Biberón (fórmula) — 120 ml')
+    expect(
+      textoToma({ ...base, tipo: 'pecho_izq', cantidad_ml: null, fin: '2026-08-06T10:20:00Z' }),
+    ).toBe('🍼 Pecho izq. — 20 min')
+  })
+
+  it('describe suenos terminados y en curso', () => {
+    const sueno: Sueno = {
+      id: 's',
+      bebe_id: 'b',
+      inicio: '2026-08-06T12:00:00Z',
+      fin: '2026-08-06T13:30:00Z',
+      notas: null,
+    }
+    expect(textoSueno(sueno)).toBe('😴 Sueño — 1 h 30 min')
+    expect(textoSueno({ ...sueno, fin: null })).toBe('😴 Sueño (en curso)')
+  })
+
+  it('describe panales con y sin cantidad', () => {
+    const panal: Panal = {
+      id: 'p',
+      bebe_id: 'b',
+      fecha: '2026-08-06T11:00:00Z',
+      tipo: 'caca',
+      cantidad: 'mucho',
+      notas: null,
+    }
+    expect(textoPanal(panal)).toBe('🧷 Pañal — Caca (mucho)')
+    expect(textoPanal({ ...panal, tipo: 'pis', cantidad: null })).toBe('🧷 Pañal — Pis')
   })
 })
 
