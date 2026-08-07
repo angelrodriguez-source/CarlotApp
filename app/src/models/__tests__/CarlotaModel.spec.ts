@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
   edadTexto,
+  edadCorta,
   duracionMinutos,
   formatoDuracion,
+  formatoPeso,
   agruparPorDia,
   resumenDia,
   serieGrafica,
+  ultimoValor,
 } from '../CarlotaModel'
 import type { Toma, Sueno, Panal } from '../../types'
 
@@ -19,6 +22,47 @@ describe('edadTexto', () => {
   it('cuenta en meses a partir de las 10 semanas', () => {
     expect(edadTexto('2026-06-06', new Date('2026-09-06T12:00:00'))).toBe('3 meses')
     expect(edadTexto('2026-06-06', new Date('2026-09-18T12:00:00'))).toBe('3 meses y 12 días')
+  })
+})
+
+describe('edadCorta', () => {
+  it('compacta dias, semanas y meses', () => {
+    expect(edadCorta('2026-06-06', new Date('2026-06-08T12:00:00'))).toBe('2 d')
+    expect(edadCorta('2026-06-06', new Date('2026-06-13T12:00:00'))).toBe('1 sem')
+    expect(edadCorta('2026-06-06', new Date('2026-08-06T12:00:00'))).toBe('8 sem 5 d')
+    expect(edadCorta('2026-06-06', new Date('2026-09-06T12:00:00'))).toBe('3 m')
+    expect(edadCorta('2026-06-06', new Date('2026-09-18T12:00:00'))).toBe('3 m 12 d')
+  })
+})
+
+describe('formatoPeso', () => {
+  it('usa gramos por debajo de 1 kg y kilos con coma a partir de ahi', () => {
+    expect(formatoPeso(830)).toBe('830 g')
+    expect(formatoPeso(4320)).toBe('4,32 kg')
+    expect(formatoPeso(5000)).toBe('5,0 kg')
+  })
+})
+
+describe('ultimoValor', () => {
+  const medidas = [
+    { fecha: '2026-07-01', peso: 4400, altura: 55 },
+    { fecha: '2026-08-01', peso: 5200, altura: null },
+    { fecha: '2026-07-15', peso: null, altura: 56.5 },
+  ]
+
+  it('devuelve el valor no nulo mas reciente por fecha', () => {
+    expect(ultimoValor(medidas, (m) => m.fecha, (m) => m.peso)).toEqual({
+      valor: 5200,
+      fecha: '2026-08-01',
+    })
+    expect(ultimoValor(medidas, (m) => m.fecha, (m) => m.altura)).toEqual({
+      valor: 56.5,
+      fecha: '2026-07-15',
+    })
+  })
+
+  it('devuelve null si no hay ningun valor', () => {
+    expect(ultimoValor(medidas, (m) => m.fecha, () => null)).toBeNull()
   })
 })
 
