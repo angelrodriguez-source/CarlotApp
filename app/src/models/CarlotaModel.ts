@@ -379,6 +379,33 @@ export function bandaOMS(tipo: MedidaOMS, dias: number): BandaOMS | null {
   return { p3: valorEnZ(-Z_P97), p50: m, p97: valorEnZ(Z_P97) }
 }
 
+// z de los percentiles decilares (cuantiles de la normal estándar)
+const Z_DECILES: Record<number, number> = {
+  10: -1.2815515655,
+  20: -0.8416212336,
+  30: -0.5244005127,
+  40: -0.2533471031,
+  50: 0,
+  60: 0.2533471031,
+  70: 0.5244005127,
+  80: 0.8416212336,
+  90: 1.2815515655,
+}
+
+/**
+ * Valor de un percentil decilar OMS (10, 20, ... 90) de una medida de niña
+ * a cierta edad, en unidades de la app — para pintar las curvas estándar
+ * de fondo en las gráficas de crecimiento. null fuera de rango.
+ */
+export function valorPercentilOMS(tipo: MedidaOMS, percentil: number, dias: number): number | null {
+  const z = Z_DECILES[percentil]
+  if (z === undefined) return null
+  const lms = lmsInterpolado(tipo, dias)
+  if (!lms) return null
+  const { l, m, s } = lms
+  return l === 0 ? m * Math.exp(s * z) : m * Math.pow(1 + l * s * z, 1 / l)
+}
+
 export interface PuntoGrafica {
   etiqueta: string // fecha 'YYYY-MM-DD'
   valor: number

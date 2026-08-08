@@ -21,6 +21,7 @@ import {
   tramoEnDia,
   ultimosDias,
   ultimoValor,
+  valorPercentilOMS,
 } from '../CarlotaModel'
 import type { Toma, Sueno, Panal } from '../../types'
 
@@ -338,6 +339,25 @@ describe('edadDias / percentilOMS', () => {
     expect(percentilOMS('peso', 5000, -1)).toBeNull()
     expect(percentilOMS('peso', 12000, 800)).toBeNull() // > 100 semanas
     expect(percentilOMS('peso', 0, 10)).toBeNull()
+  })
+
+  it('valorPercentilOMS: P50 es la mediana y los deciles crecen', () => {
+    // La mediana de la banda y el decil 50 son el mismo valor
+    expect(valorPercentilOMS('peso', 50, 56)!).toBeCloseTo(bandaOMS('peso', 56)!.p50, 5)
+    // Deciles estrictamente crecientes y dentro de P3-P97
+    const banda = bandaOMS('peso', 56)!
+    let anterior = banda.p3
+    for (const decil of [10, 20, 30, 40, 50, 60, 70, 80, 90]) {
+      const valor = valorPercentilOMS('peso', decil, 56)!
+      expect(valor).toBeGreaterThan(anterior)
+      anterior = valor
+    }
+    expect(anterior).toBeLessThan(banda.p97)
+    // El valor del decil devuelve su percentil al pasar por percentilOMS
+    expect(percentilOMS('peso', valorPercentilOMS('peso', 30, 56)!, 56)!).toBeCloseTo(30, 0)
+    // Percentil no decilar o edad fuera de rango → null
+    expect(valorPercentilOMS('peso', 55, 56)).toBeNull()
+    expect(valorPercentilOMS('peso', 50, 800)).toBeNull()
   })
 })
 
