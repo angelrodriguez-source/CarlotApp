@@ -12,7 +12,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import { useUserStore } from '../stores/userStore'
-import { fotoBebeUrl, iconoDiaUrl, logoUrl, urlPublica } from '../assets/branding'
+import { fotoBebeUrl, ICONOS_REGISTRO, iconoDiaUrl, logoUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
@@ -36,6 +36,7 @@ import {
   objetivoSuenoMinutos,
   percentilRedondeado,
   resumenDia,
+  sinEmojiInicial,
   textoEvento,
   textoPanal,
   textoSueno,
@@ -361,6 +362,7 @@ const minutosTomaAbierta = computed(() =>
 // por usuario en este dispositivo); al expandir salen todos.
 
 interface FilaHito {
+  img?: string
   id: string
   etiqueta: string
   valor: string
@@ -369,15 +371,15 @@ interface FilaHito {
 
 /** Catálogo completo (define también el orden y la lista del configurador) */
 const CATALOGO_HITOS = [
-  { id: 'toma', etiqueta: '🍼 Última toma' },
-  { id: 'sueno', etiqueta: '😴 Sueño' },
-  { id: 'panal', etiqueta: '🧷 Último pañal' },
-  { id: 'bano', etiqueta: '🛁 Último baño' },
-  { id: 'vitamina_d', etiqueta: '☀️ Vitamina D' },
-  { id: 'medicacion', etiqueta: '💊 Medicación' },
-  { id: 'unas', etiqueta: '✂️ Uñas cortadas' },
-  { id: 'hito', etiqueta: '✨ Último momento' },
-  { id: 'otro', etiqueta: '⭐ Otro evento' },
+  { id: 'toma', etiqueta: 'Última toma', img: ICONOS_REGISTRO.toma },
+  { id: 'sueno', etiqueta: 'Sueño', img: ICONOS_REGISTRO.sueno },
+  { id: 'panal', etiqueta: '🧷 Último pañal', img: undefined },
+  { id: 'bano', etiqueta: 'Último baño', img: ICONOS_REGISTRO.bano },
+  { id: 'vitamina_d', etiqueta: 'Vitamina D', img: ICONOS_REGISTRO.vitamina_d },
+  { id: 'medicacion', etiqueta: 'Medicación', img: ICONOS_REGISTRO.medicacion },
+  { id: 'unas', etiqueta: '✂️ Uñas cortadas', img: undefined },
+  { id: 'hito', etiqueta: '✨ Último momento', img: undefined },
+  { id: 'otro', etiqueta: '⭐ Otro evento', img: undefined },
 ] as const
 
 const HITOS_VISIBLES_POR_DEFECTO = ['toma', 'sueno', 'panal']
@@ -416,14 +418,16 @@ const todasLasFilasHitos = computed<FilaHito[]>(() => {
   if (tomaAbierta.value) {
     filas.push({
       id: 'toma',
-      etiqueta: '🍼 Toma en curso',
+      etiqueta: 'Toma en curso',
+      img: ICONOS_REGISTRO.toma,
       valor: formatoDuracion(minutosTomaAbierta.value),
       vivo: true,
     })
   } else {
     filas.push({
       id: 'toma',
-      etiqueta: '🍼 Última toma',
+      etiqueta: 'Última toma',
+      img: ICONOS_REGISTRO.toma,
       valor: ultimaToma.value ? haceTexto(ultimaToma.value.inicio) : 'sin registros aún',
     })
   }
@@ -431,14 +435,16 @@ const todasLasFilasHitos = computed<FilaHito[]>(() => {
   if (suenoAbierto.value) {
     filas.push({
       id: 'sueno',
-      etiqueta: '😴 Durmiendo',
+      etiqueta: 'Durmiendo',
+      img: ICONOS_REGISTRO.sueno,
       valor: `desde ${haceTexto(suenoAbierto.value.inicio)}`,
       vivo: true,
     })
   } else {
     filas.push({
       id: 'sueno',
-      etiqueta: '😴 Despierta',
+      etiqueta: 'Despierta',
+      img: ICONOS_REGISTRO.sueno,
       valor: ultimoSuenoTerminado.value?.fin
         ? `desde ${haceTexto(ultimoSuenoTerminado.value.fin)}`
         : 'sin registros aún',
@@ -457,6 +463,7 @@ const todasLasFilasHitos = computed<FilaHito[]>(() => {
     filas.push({
       id: entrada.id,
       etiqueta: entrada.etiqueta,
+      img: entrada.img,
       valor: evento ? haceDiasTexto(evento.fecha) : 'sin registros aún',
     })
   }
@@ -768,14 +775,14 @@ const accionesRegistro = computed<AccionRegistro[]>(() => [
   {
     id: 'sueno',
     icono: '😴',
-    img: urlPublica('icono-sueno.png'),
+    img: ICONOS_REGISTRO.sueno,
     etiqueta: suenoAbierto.value ? 'Termina sueño' : 'Empieza sueño',
     vivo: !!suenoAbierto.value,
   },
   {
     id: 'toma',
     icono: '🍼',
-    img: urlPublica('icono-toma.png'),
+    img: ICONOS_REGISTRO.toma,
     etiqueta: tomaAbierta.value ? `Termina toma (${minutosTomaAbierta.value} min)` : 'Toma',
     vivo: !!tomaAbierta.value,
   },
@@ -785,21 +792,21 @@ const accionesRegistro = computed<AccionRegistro[]>(() => [
   {
     id: 'sueno_post',
     icono: '🛌',
-    img: urlPublica('icono-sueno-post.png'),
+    img: ICONOS_REGISTRO.sueno_post,
     etiqueta: 'Sueño a posteriori',
   },
   { id: 'momento', icono: '✨', etiqueta: 'Momento' },
-  { id: 'bano', icono: '🛁', img: urlPublica('icono-bano.png'), etiqueta: 'Baño' },
+  { id: 'bano', icono: '🛁', img: ICONOS_REGISTRO.bano, etiqueta: 'Baño' },
   {
     id: 'vitamina_d',
     icono: '☀️',
-    img: urlPublica('icono-vitamina.png'),
+    img: ICONOS_REGISTRO.vitamina_d,
     etiqueta: 'Vitamina D',
   },
   {
     id: 'medicacion',
     icono: '💊',
-    img: urlPublica('icono-medicacion.png'),
+    img: ICONOS_REGISTRO.medicacion,
     etiqueta: 'Medicación',
   },
   { id: 'unas', icono: '✂️', etiqueta: 'Uñas' },
@@ -927,8 +934,14 @@ interface Registro {
   id: string
   hora: string // ISO
   texto: string
+  img?: string
   borrar: () => Promise<void>
   editable: RegistroEditable
+}
+
+/** Con icono propio el texto pierde su emoji inicial; sin él, se queda */
+function textoConIcono(texto: string, img: string | undefined): string {
+  return img ? sinEmojiInicial(texto) : texto
 }
 
 // El lápiz ✎ de una fila abre su edición (misma hoja que en el Historial)
@@ -958,14 +971,16 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     ...tomas.value.map((t): Registro => ({
       id: t.id,
       hora: t.inicio,
-      texto: textoToma(t),
+      texto: textoConIcono(textoToma(t), ICONOS_REGISTRO.toma),
+      img: ICONOS_REGISTRO.toma,
       borrar: () => servicio.eliminarToma(t.id),
       editable: { kind: 'toma', toma: t },
     })),
     ...suenos.value.map((s): Registro => ({
       id: s.id,
       hora: s.inicio,
-      texto: textoSueno(s),
+      texto: textoConIcono(textoSueno(s), ICONOS_REGISTRO.sueno),
+      img: ICONOS_REGISTRO.sueno,
       borrar: () => servicio.eliminarSueno(s.id),
       editable: { kind: 'sueno', sueno: s },
     })),
@@ -979,7 +994,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     ...eventos.value.map((e): Registro => ({
       id: e.id,
       hora: e.fecha,
-      texto: textoEvento(e),
+      texto: textoConIcono(textoEvento(e), ICONOS_REGISTRO[e.tipo]),
+      img: ICONOS_REGISTRO[e.tipo],
       borrar: () => servicio.eliminarEvento(e.id),
       editable: { kind: 'evento', evento: e },
     })),
@@ -1100,7 +1116,10 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </button>
           <div class="ahora">
             <div v-for="fila in filasHitosVisibles" :key="fila.id" class="fila-ahora">
-              <span class="que">{{ fila.etiqueta }}</span>
+              <span class="que">
+                <img v-if="fila.img" :src="fila.img" alt="" class="icono-linea" />
+                {{ fila.etiqueta }}
+              </span>
               <strong class="cuanto" :class="{ vivo: fila.vivo }">{{ fila.valor }}</strong>
             </div>
           </div>
@@ -1177,7 +1196,10 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             @touchend.passive="finToqueFila($event, registro.id)"
           >
             <span class="hora">{{ horaCorta(registro.hora) }}</span>
-            <span class="detalle">{{ registro.texto }}</span>
+            <span class="detalle">
+              <img v-if="registro.img" :src="registro.img" alt="" class="icono-linea" />
+              {{ registro.texto }}
+            </span>
             <button
               class="boton peligro editar"
               aria-label="Editar registro"
@@ -1259,7 +1281,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <HojaInferior
         :abierta="formulario === 'toma'"
-        titulo="🍼 Nueva toma"
+        titulo="Nueva toma"
+        :icono="ICONOS_REGISTRO.toma"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarToma">
@@ -1312,7 +1335,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <HojaInferior
         :abierta="formulario === 'fin-toma'"
-        titulo="🍼 Toma terminada — ¿cuántos ml?"
+        titulo="Toma terminada — ¿cuántos ml?"
+        :icono="ICONOS_REGISTRO.toma"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="terminarToma(numeroONull(mlFinToma))">
@@ -1374,7 +1398,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Sueño a posteriori -->
       <HojaInferior
         :abierta="formulario === 'sueno-post'"
-        titulo="🛌 Sueño a posteriori"
+        titulo="Sueño a posteriori"
+        :icono="ICONOS_REGISTRO.sueno_post"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarSueno">
@@ -1393,7 +1418,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Otro evento -->
       <HojaInferior
         :abierta="formulario === 'evento'"
-        :titulo="`⭐ ${ETIQUETAS_EVENTO[nuevoEvento.tipo]}`"
+        :titulo="
+          ICONOS_REGISTRO[nuevoEvento.tipo]
+            ? ETIQUETAS_EVENTO[nuevoEvento.tipo]
+            : `⭐ ${ETIQUETAS_EVENTO[nuevoEvento.tipo]}`
+        "
+        :icono="ICONOS_REGISTRO[nuevoEvento.tipo]"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarEvento">
@@ -1429,7 +1459,10 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <span class="etiqueta-seccion">Últimos hitos visibles sin desplegar</span>
         <label v-for="entrada in CATALOGO_HITOS" :key="entrada.id" class="opcion-hito">
           <input v-model="hitosVisiblesConfig" type="checkbox" :value="entrada.id" />
-          <span>{{ entrada.etiqueta }}</span>
+          <span class="opcion-texto">
+            <img v-if="entrada.img" :src="entrada.img" alt="" class="icono-opcion" />
+            {{ entrada.etiqueta }}
+          </span>
         </label>
         <span class="etiqueta-seccion seccion-config">Accesos directos de la card</span>
         <label v-for="accion in accionesRegistro" :key="accion.id" class="opcion-hito">

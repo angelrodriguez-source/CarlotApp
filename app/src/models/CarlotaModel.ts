@@ -139,6 +139,14 @@ export function numeroONull(valor: number | null): number | null {
   return Number.isNaN(Number(valor)) ? null : Number(valor)
 }
 
+/**
+ * Quita el emoji inicial de un texto de registro ("🍼 Biberón — 120 ml" →
+ * "Biberón — 120 ml") cuando la vista pinta su propio icono delante.
+ */
+export function sinEmojiInicial(texto: string): string {
+  return texto.replace(/^\S+\s+/u, '')
+}
+
 /** Mensaje legible de cualquier error capturado (patron comun de las vistas) */
 export function mensajeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e)

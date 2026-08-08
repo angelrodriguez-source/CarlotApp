@@ -234,6 +234,15 @@ textarea {
   align-items: center;
 }
 
+/* Icono propio delante del texto de una fila (hitos, líneas de tiempo) */
+.icono-linea {
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+  margin-right: 0.35rem;
+  flex-shrink: 0;
+}
+
 /* Checkboxes dentro de filas (marcar cita hecha): tamaño tocable */
 .fila-registro input[type='checkbox'] {
   width: 22px;

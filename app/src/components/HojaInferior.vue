@@ -9,7 +9,7 @@
  */
 import { nextTick, onUnmounted, ref, watch } from 'vue'
 
-const props = defineProps<{ abierta: boolean; titulo: string }>()
+const props = defineProps<{ abierta: boolean; titulo: string; icono?: string }>()
 
 const emit = defineEmits<{ cerrar: [] }>()
 
@@ -102,7 +102,10 @@ let hojasAbiertas = 0
         >
           <span class="asa" aria-hidden="true"></span>
           <div class="hoja-titulo">
-            <h3>{{ titulo }}</h3>
+            <h3>
+              <img v-if="icono" :src="icono" alt="" class="icono-titulo" />
+              {{ titulo }}
+            </h3>
             <button class="cerrar" aria-label="Cerrar" @click="emit('cerrar')">✕</button>
           </div>
           <slot />
@@ -155,6 +158,14 @@ let hojasAbiertas = 0
 
 .hoja-titulo h3 {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.icono-titulo {
+  width: 24px;
+  height: 24px;
 }
 
 .cerrar {

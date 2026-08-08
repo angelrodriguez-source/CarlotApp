@@ -16,12 +16,14 @@ import {
   minutosSuenoEnDia,
   rangoDesde,
   resumenDia,
+  sinEmojiInicial,
   textoEvento,
   textoPanal,
   textoSueno,
   textoToma,
   ultimosDias,
 } from '../models/CarlotaModel'
+import { ICONOS_REGISTRO } from '../assets/branding'
 import GraficaRitmo from '../components/GraficaRitmo.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import type { RegistroEditable } from '../components/registroEditable'
@@ -75,10 +77,15 @@ onMounted(cargar)
 watch(dias, cargar)
 
 type RegistroDia =
-  | { kind: 'toma'; id: string; hora: string; texto: string; toma: Toma }
-  | { kind: 'sueno'; id: string; hora: string; texto: string; sueno: Sueno }
-  | { kind: 'panal'; id: string; hora: string; texto: string; panal: Panal }
-  | { kind: 'evento'; id: string; hora: string; texto: string; evento: Evento }
+  | { kind: 'toma'; id: string; hora: string; texto: string; img?: string; toma: Toma }
+  | { kind: 'sueno'; id: string; hora: string; texto: string; img?: string; sueno: Sueno }
+  | { kind: 'panal'; id: string; hora: string; texto: string; img?: string; panal: Panal }
+  | { kind: 'evento'; id: string; hora: string; texto: string; img?: string; evento: Evento }
+
+/** Con icono propio el texto pierde su emoji inicial; sin él, se queda */
+function textoConIcono(texto: string, img: string | undefined): string {
+  return img ? sinEmojiInicial(texto) : texto
+}
 
 interface DiaHistorial {
   dia: string
@@ -117,14 +124,16 @@ const historial = computed<DiaHistorial[]>(() => {
         kind: 'toma',
         id: t.id,
         hora: t.inicio,
-        texto: textoToma(t),
+        texto: textoConIcono(textoToma(t), ICONOS_REGISTRO.toma),
+        img: ICONOS_REGISTRO.toma,
         toma: t,
       })),
       ...suenosDia.map((s): RegistroDia => ({
         kind: 'sueno',
         id: s.id,
         hora: s.inicio,
-        texto: textoSueno(s),
+        texto: textoConIcono(textoSueno(s), ICONOS_REGISTRO.sueno),
+        img: ICONOS_REGISTRO.sueno,
         sueno: s,
       })),
       ...panalesDia.map((p): RegistroDia => ({
@@ -138,7 +147,8 @@ const historial = computed<DiaHistorial[]>(() => {
         kind: 'evento',
         id: e.id,
         hora: e.fecha,
-        texto: textoEvento(e),
+        texto: textoConIcono(textoEvento(e), ICONOS_REGISTRO[e.tipo]),
+        img: ICONOS_REGISTRO[e.tipo],
         evento: e,
       })),
     ].sort((a, b) => a.hora.localeCompare(b.hora))
@@ -273,7 +283,10 @@ async function borrarMomento(momento: Evento) {
         <template v-for="registro in diaHistorial.registros" :key="registro.id">
           <div class="fila-registro">
             <span class="hora">{{ horaCorta(registro.hora) }}</span>
-            <span class="detalle">{{ registro.texto }}</span>
+            <span class="detalle">
+              <img v-if="registro.img" :src="registro.img" alt="" class="icono-linea" />
+              {{ registro.texto }}
+            </span>
             <button
               class="boton peligro editar"
               aria-label="Editar registro"

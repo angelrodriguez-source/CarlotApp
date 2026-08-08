@@ -9,6 +9,7 @@ import { computed, ref, watch } from 'vue'
 import * as servicio from '../services/carlotaService'
 import HojaInferior from './HojaInferior.vue'
 import { aInputLocal, duracionMinutos, mensajeError, numeroONull } from '../models/CarlotaModel'
+import { ICONOS_REGISTRO } from '../assets/branding'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
@@ -91,14 +92,16 @@ function construir(registro: RegistroEditable): Edicion {
   return base
 }
 
-const TITULOS: Record<RegistroEditable['kind'], string> = {
-  toma: '🍼 Editar toma',
-  sueno: '😴 Editar sueño',
-  panal: '🧷 Editar pañal',
-  evento: '⭐ Editar evento',
+// Con icono propio el título va limpio; sin él conserva su emoji
+const TITULOS: Record<RegistroEditable['kind'], { texto: string; icono?: string }> = {
+  toma: { texto: 'Editar toma', icono: ICONOS_REGISTRO.toma },
+  sueno: { texto: 'Editar sueño', icono: ICONOS_REGISTRO.sueno },
+  panal: { texto: '🧷 Editar pañal' },
+  evento: { texto: '⭐ Editar evento' },
 }
 
-const titulo = computed(() => (edicion.value ? TITULOS[edicion.value.kind] : ''))
+const titulo = computed(() => (edicion.value ? TITULOS[edicion.value.kind].texto : ''))
+const iconoTitulo = computed(() => (edicion.value ? TITULOS[edicion.value.kind].icono : undefined))
 
 const esBiberon = computed(() => edicion.value?.tipoToma.startsWith('biberon') ?? false)
 
@@ -190,7 +193,12 @@ function borrar() {
 </script>
 
 <template>
-  <HojaInferior :abierta="edicion !== null" :titulo="titulo" @cerrar="emit('cerrar')">
+  <HojaInferior
+    :abierta="edicion !== null"
+    :titulo="titulo"
+    :icono="iconoTitulo"
+    @cerrar="emit('cerrar')"
+  >
     <form v-if="edicion" @submit.prevent="guardar">
       <template v-if="edicion.kind === 'toma'">
         <div class="campo">
