@@ -231,20 +231,38 @@ async function ejecutarDeshacer() {
   await ejecutar(pendiente.accion)
 }
 
-/** Ejecuta un alta, recarga el día y ofrece deshacerla durante unos segundos */
+// Alta en vuelo: una doble pulsación con red lenta no debe crear el
+// registro dos veces (p. ej. dos sueños abiertos que duplican los minutos)
+const registrando = ref(false)
+
+/**
+ * Ejecuta un alta, recarga el día y ofrece deshacerla unos segundos.
+ * Devuelve true solo si el alta fue bien: quien llama decide entonces si
+ * limpia su formulario (si falla, lo escrito se conserva).
+ */
 async function registrarYOfrecer<T>(
   texto: string,
   accion: () => Promise<T>,
   deshacerDe: (resultado: T) => () => Promise<unknown>,
-) {
+): Promise<boolean> {
+  if (registrando.value) return false
+  registrando.value = true
   error.value = ''
   try {
     const resultado = await accion()
     ofrecerDeshacer(texto, deshacerDe(resultado))
+  } catch (e) {
+    error.value = mensajeError(e)
+    return false
+  } finally {
+    registrando.value = false
+  }
+  try {
     await cargarDia()
   } catch (e) {
     error.value = mensajeError(e)
   }
+  return true
 }
 
 // ---- Resumen (mitad superior) ----
@@ -512,7 +530,7 @@ function abrirFormularioToma() {
   formulario.value = formulario.value === 'toma' ? null : 'toma'
 }
 
-function guardarToma() {
+async function guardarToma() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   const inicio = new Date(nuevaToma.value.inicio)
@@ -520,7 +538,7 @@ function guardarToma() {
   // Pecho sin duración: se cierra con fin = inicio para que no quede como
   // "toma en curso" fantasma (solo el cronómetro crea tomas abiertas)
   const fin = esBiberon.value ? null : new Date(inicio.getTime() + (minutos ?? 0) * 60_000)
-  registrarYOfrecer(
+  const guardada = await registrarYOfrecer(
     'Toma registrada',
     () =>
       servicio.registrarToma({
@@ -528,11 +546,12 @@ function guardarToma() {
         inicio: inicio.toISOString(),
         fin: fin ? fin.toISOString() : null,
         tipo: nuevaToma.value.tipo,
-        cantidad_ml: esBiberon.value ? nuevaToma.value.cantidadMl : null,
+        cantidad_ml: esBiberon.value ? numeroONull(nuevaToma.value.cantidadMl) : null,
         notas: nuevaToma.value.notas || null,
       }),
     (toma) => () => servicio.eliminarToma(toma.id),
   )
+  if (!guardada) return
   formulario.value = null
   nuevaToma.value.notas = ''
 }
@@ -633,7 +652,7 @@ function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) 
 // ---- Sueño a posteriori ----
 const nuevoSueno = ref({ inicio: aInputLocal(new Date()), fin: aInputLocal(new Date()) })
 
-function guardarSueno() {
+async function guardarSueno() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   if (new Date(nuevoSueno.value.fin) <= new Date(nuevoSueno.value.inicio)) {
@@ -641,7 +660,7 @@ function guardarSueno() {
     return
   }
   error.value = ''
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     'Sueño registrado',
     () =>
       servicio.registrarSueno({
@@ -652,7 +671,7 @@ function guardarSueno() {
       }),
     (sueno) => () => servicio.eliminarSueno(sueno.id),
   )
-  formulario.value = null
+  if (guardado) formulario.value = null
 }
 
 function prepararSuenoPosteriori() {
@@ -667,10 +686,10 @@ const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '' })
 // ---- Momento (evento tipo hito con nombre propio) ----
 const nuevoMomento = ref('')
 
-function guardarMomento() {
+async function guardarMomento() {
   const bebe = bebeStore.bebe
   if (!bebe || !nuevoMomento.value.trim()) return
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     'Momento guardado ✨',
     () =>
       servicio.registrarEvento({
@@ -681,6 +700,7 @@ function guardarMomento() {
       }),
     (evento) => () => servicio.eliminarEvento(evento.id),
   )
+  if (!guardado) return
   formulario.value = null
   nuevoMomento.value = ''
 }
@@ -805,10 +825,10 @@ const accesosVisibles = computed(() =>
   accionesRegistro.value.filter((a) => accesosConfig.value.includes(a.id)),
 )
 
-function guardarEvento() {
+async function guardarEvento() {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     'Evento registrado',
     () =>
       servicio.registrarEvento({
@@ -819,6 +839,7 @@ function guardarEvento() {
       }),
     (evento) => () => servicio.eliminarEvento(evento.id),
   )
+  if (!guardado) return
   formulario.value = null
   nuevoEvento.value.descripcion = ''
 }
