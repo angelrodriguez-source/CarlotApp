@@ -892,6 +892,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </RouterLink>
         </div>
 
+        <!-- Próxima cita a menos de 7 días → Citas -->
+        <RouterLink v-if="proximaCita" :to="{ name: 'citas' }" class="cita-bebe">
+          <span>🗓️ {{ proximaCita.titulo }} · {{ fechaCita(proximaCita.fecha) }}</span>
+          <span class="suave">→</span>
+        </RouterLink>
+
         <!-- ¿Qué hay de nuevo esta semana? -->
         <div v-if="etapaSemana" class="bloque-semana">
           <button class="cabecera-semana" @click="mostrarSemana = !mostrarSemana">
@@ -923,16 +929,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </template>
         </div>
       </section>
-
-      <!-- Próxima cita a menos de 7 días -->
-      <RouterLink
-        v-if="proximaCita"
-        :to="{ name: 'citas' }"
-        class="tarjeta tarjeta-plana banda-cita"
-      >
-        <span>🗓️ {{ proximaCita.titulo }} · {{ fechaCita(proximaCita.fecha) }}</span>
-        <span class="suave">→</span>
-      </RouterLink>
 
       <!-- Card 2 · Datos de Hoy: objetivos del día + últimos hitos -->
       <section class="tarjeta">
@@ -1420,13 +1416,15 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   color: var(--color-ok);
 }
 
-/* Banda de próxima cita */
-.banda-cita {
+/* Próxima cita dentro de la card de la bebé */
+.cita-bebe {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--color-borde);
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
   text-decoration: none;
   color: inherit;
   font-size: 0.92rem;
