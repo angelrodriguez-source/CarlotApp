@@ -925,7 +925,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Card 2 · Datos de Hoy: objetivos del día + últimos hitos -->
       <section class="tarjeta">
         <div class="cabecera-datos-hoy">
-          <h3>📅 Datos de Hoy</h3>
+          <h3>📅 Cómo va el día</h3>
           <span class="hora-actual suave">{{ horaActual }}</span>
         </div>
 
@@ -959,25 +959,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </div>
 
         <div class="seccion-hoy">
-          <div class="cabecera-hitos">
+          <button
+            class="cabecera-toggle"
+            :aria-expanded="hitosExpandidos"
+            @click="hitosExpandidos = !hitosExpandidos"
+          >
             <span class="etiqueta-seccion">Últimos hitos</span>
-            <div class="botones-hitos">
-              <button
-                class="boton-suave"
-                aria-label="Configurar hitos visibles"
-                @click="mostrarConfig = true"
-              >
-                ⚙
-              </button>
-              <button
-                class="boton-suave"
-                :aria-label="hitosExpandidos ? 'Ver menos hitos' : 'Ver todos los hitos'"
-                @click="hitosExpandidos = !hitosExpandidos"
-              >
-                {{ hitosExpandidos ? '▲' : '▼' }}
-              </button>
-            </div>
-          </div>
+            <span class="suave">{{ hitosExpandidos ? '▲' : '▼' }}</span>
+          </button>
           <div class="ahora">
             <div v-for="fila in filasHitosVisibles" :key="fila.id" class="fila-ahora">
               <span class="que">{{ fila.etiqueta }}</span>
@@ -987,17 +976,17 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </div>
 
         <div class="seccion-hoy">
-          <div class="cabecera-hitos">
+          <button
+            class="cabecera-toggle"
+            :aria-expanded="registroExpandido"
+            :disabled="lineaDeTiempo.length <= 2"
+            @click="registroExpandido = !registroExpandido"
+          >
             <span class="etiqueta-seccion">📋 Registro del día</span>
-            <button
-              v-if="lineaDeTiempo.length > 2"
-              class="boton-suave"
-              :aria-label="registroExpandido ? 'Ver menos registros' : 'Ver todo el día'"
-              @click="registroExpandido = !registroExpandido"
-            >
+            <span v-if="lineaDeTiempo.length > 2" class="suave">
               {{ registroExpandido ? '▲' : `▼ (${lineaDeTiempo.length})` }}
-            </button>
-          </div>
+            </span>
+          </button>
           <p v-if="lineaDeTiempo.length === 0" class="suave">Todavía no hay registros hoy.</p>
           <div
             v-for="registro in registroExpandido ? lineaDeTiempo : lineaDeTiempo.slice(0, 2)"
@@ -1020,18 +1009,9 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </div>
       </section>
 
-      <!-- Accesos directos (configurables por usuario; el + de la nav lo tiene todo) -->
+      <!-- Accesos directos (configurables desde el menú de usuario; el + de la nav lo tiene todo) -->
       <section class="tarjeta">
-        <div class="cabecera-hitos">
-          <span class="etiqueta-seccion">⚡ Accesos directos</span>
-          <button
-            class="boton-suave"
-            aria-label="Configurar accesos directos"
-            @click="mostrarConfig = true"
-          >
-            ⚙
-          </button>
-        </div>
+        <span class="etiqueta-seccion">⚡ Accesos directos</span>
         <p v-if="accesosVisibles.length === 0" class="suave">
           Elige tus accesos con ⚙ — y recuerda que el ＋ de abajo lo tiene todo.
         </p>
@@ -1287,6 +1267,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
 .cabecera-datos-hoy h3 {
   margin: 0;
+  font-size: 1.2rem;
 }
 
 .hora-actual {
@@ -1303,24 +1284,26 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   padding-top: 0.75rem;
 }
 
-.cabecera-hitos {
+/* Cabecera de sección desplegable: toda la fila es el botón */
+.cabecera-toggle {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-}
-
-.botones-hitos {
-  display: flex;
-  gap: 0.15rem;
-}
-
-.boton-suave {
   background: none;
   border: none;
-  color: var(--color-texto-suave);
-  font-size: 0.95rem;
-  padding: 0.2rem 0.45rem;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.cabecera-toggle .etiqueta-seccion {
+  margin-bottom: 0;
+}
+
+.cabecera-toggle:disabled {
+  cursor: default;
 }
 
 .opcion-hito {
