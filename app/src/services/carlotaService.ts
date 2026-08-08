@@ -23,6 +23,17 @@ function lanzarSi(error: { message: string } | null): void {
   if (error) throw new Error(error.message)
 }
 
+/**
+ * Evento global que emite este servicio tras CUALQUIER escritura de
+ * tomas/sueños/pañales. Quien cachee derivados de esos datos (p. ej. la
+ * memoización del bocadillo de Ñeñeñi) lo escucha para invalidarse.
+ */
+export const EVENTO_DATOS_CAMBIADOS = 'carlotapp-datos-cambiados'
+
+function avisarDatosCambiados(): void {
+  window.dispatchEvent(new Event(EVENTO_DATOS_CAMBIADOS))
+}
+
 // ------------------------------------------------------------
 // Bebé
 // ------------------------------------------------------------
@@ -51,6 +62,7 @@ export async function registrarToma(
 ): Promise<Toma> {
   const { data, error } = await supabase.from('tomas').insert(toma).select().single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Toma
 }
 
@@ -105,11 +117,13 @@ export async function actualizarToma(
 ): Promise<void> {
   const { error } = await supabase.from('tomas').update(cambios).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 export async function eliminarToma(id: string): Promise<void> {
   const { error } = await supabase.from('tomas').delete().eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------
@@ -122,6 +136,7 @@ export async function registrarSueno(
 ): Promise<Sueno> {
   const { data, error } = await supabase.from('suenos').insert(sueno).select().single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Sueno
 }
 
@@ -133,12 +148,14 @@ export async function iniciarSueno(bebeId: string, inicioIso: string): Promise<S
     .select()
     .single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Sueno
 }
 
 export async function finalizarSueno(id: string, finIso: string): Promise<void> {
   const { error } = await supabase.from('suenos').update({ fin: finIso }).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 /** El sueño abierto (sin fin) más reciente, si lo hay */
@@ -190,11 +207,13 @@ export async function actualizarSueno(
 ): Promise<void> {
   const { error } = await supabase.from('suenos').update(cambios).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 export async function eliminarSueno(id: string): Promise<void> {
   const { error } = await supabase.from('suenos').delete().eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------
@@ -206,6 +225,7 @@ export async function registrarPanal(
 ): Promise<Panal> {
   const { data, error } = await supabase.from('panales').insert(panal).select().single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Panal
 }
 
@@ -228,6 +248,7 @@ export async function actualizarPanal(
 ): Promise<void> {
   const { error } = await supabase.from('panales').update(cambios).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 export async function listarPanales(bebeId: string, desdeIso: string): Promise<Panal[]> {
@@ -244,6 +265,7 @@ export async function listarPanales(bebeId: string, desdeIso: string): Promise<P
 export async function eliminarPanal(id: string): Promise<void> {
   const { error } = await supabase.from('panales').delete().eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------
@@ -423,9 +445,17 @@ export interface PrediccionGuardada {
 /**
  * Guarda (upsert por bebé: una única fila viva) el resultado de un
  * cálculo del predictor, con sus parámetros para diagnóstico.
+ * `registrado_por` va en el payload: el DEFAULT auth.uid() de la columna
+ * solo aplica en el INSERT inicial y el upsert no la tocaría — quedaría
+ * fosilizado el uid del primer padre que abrió el panel.
  */
 export async function guardarPrediccion(fila: Omit<PrediccionGuardada, 'id'>): Promise<void> {
-  const { error } = await supabase.from('predicciones').upsert(fila, { onConflict: 'bebe_id' })
+  // getSession lee el uid en local (getUser haría un round-trip al
+  // servidor de auth en cada guardado)
+  const { data } = await supabase.auth.getSession()
+  const { error } = await supabase
+    .from('predicciones')
+    .upsert({ ...fila, registrado_por: data.session?.user.id }, { onConflict: 'bebe_id' })
   lanzarSi(error)
 }
 

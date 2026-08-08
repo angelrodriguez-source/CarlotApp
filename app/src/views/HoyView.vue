@@ -703,6 +703,16 @@ function prepararSuenoPosteriori() {
   formulario.value = 'sueno-post'
 }
 
+/**
+ * Tope de los selectores de hora: ahora mismo. Registrar el pasado es lo
+ * normal; el futuro solo puede ser un error de tecleo (y una toma futura
+ * despistaría al Mime Predictor, aunque el modelo también la filtra).
+ * Es función (no computed) para que se reevalúe en cada render.
+ */
+function topeHora(): string {
+  return aInputLocal(new Date())
+}
+
 // ---- Evento ----
 const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '', hora: '' })
 
@@ -1260,7 +1270,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <template v-if="nuevoPanal">
           <div class="campo">
             <label for="panal-hora">Hora (por si no es ahora mismo)</label>
-            <input id="panal-hora" v-model="nuevoPanal.hora" type="datetime-local" required />
+            <input
+              id="panal-hora"
+              v-model="nuevoPanal.hora"
+              type="datetime-local"
+              :max="topeHora()"
+              required
+            />
           </div>
           <template v-if="nuevoPanal.tipo !== 'pis'">
             <span class="etiqueta-seccion">¿Cuánta?</span>
@@ -1299,7 +1315,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
           <div class="campo">
             <label for="toma-inicio">Hora de inicio</label>
-            <input id="toma-inicio" v-model="nuevaToma.inicio" type="datetime-local" required />
+            <input
+              id="toma-inicio"
+              v-model="nuevaToma.inicio"
+              type="datetime-local"
+              :max="topeHora()"
+              required
+            />
           </div>
           <!-- Obligatorio: un biberón guardado sin ml ni fin se confundiría con
                una toma en curso del cronómetro (getTomaAbierta) -->
@@ -1393,7 +1415,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
           <div class="campo">
             <label for="momento-hora">Hora (por si no es ahora mismo)</label>
-            <input id="momento-hora" v-model="horaMomento" type="datetime-local" required />
+            <input
+              id="momento-hora"
+              v-model="horaMomento"
+              type="datetime-local"
+              :max="topeHora()"
+              required
+            />
           </div>
           <button class="boton" type="submit" :disabled="registrando">Guardar momento</button>
         </form>
@@ -1409,11 +1437,23 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <form @submit.prevent="guardarSueno">
           <div class="campo">
             <label for="sueno-inicio">Empezó</label>
-            <input id="sueno-inicio" v-model="nuevoSueno.inicio" type="datetime-local" required />
+            <input
+              id="sueno-inicio"
+              v-model="nuevoSueno.inicio"
+              type="datetime-local"
+              :max="topeHora()"
+              required
+            />
           </div>
           <div class="campo">
             <label for="sueno-fin">Terminó</label>
-            <input id="sueno-fin" v-model="nuevoSueno.fin" type="datetime-local" required />
+            <input
+              id="sueno-fin"
+              v-model="nuevoSueno.fin"
+              type="datetime-local"
+              :max="topeHora()"
+              required
+            />
           </div>
           <button class="boton" type="submit" :disabled="registrando">Guardar sueño</button>
         </form>
@@ -1437,7 +1477,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
           <div class="campo">
             <label for="evento-hora">Hora (por si no es ahora mismo)</label>
-            <input id="evento-hora" v-model="nuevoEvento.hora" type="datetime-local" required />
+            <input
+              id="evento-hora"
+              v-model="nuevoEvento.hora"
+              type="datetime-local"
+              :max="topeHora()"
+              required
+            />
           </div>
           <button class="boton" type="submit" :disabled="registrando">Guardar</button>
         </form>

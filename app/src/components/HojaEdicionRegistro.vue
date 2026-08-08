@@ -92,6 +92,15 @@ function construir(registro: RegistroEditable): Edicion {
   return base
 }
 
+/**
+ * Tope de los selectores de fecha/hora: ahora mismo (editar hacia el
+ * futuro solo puede ser un error de tecleo). Función, no computed, para
+ * que se reevalúe en cada render.
+ */
+function topeHora(): string {
+  return aInputLocal(new Date())
+}
+
 // Con icono propio el título va limpio; sin él conserva su emoji
 const TITULOS: Record<RegistroEditable['kind'], { texto: string; icono?: string }> = {
   toma: { texto: 'Editar toma', icono: ICONOS_REGISTRO.toma },
@@ -211,7 +220,13 @@ function borrar() {
         </div>
         <div class="campo">
           <label for="ed-inicio">Hora de inicio</label>
-          <input id="ed-inicio" v-model="edicion.inicio" type="datetime-local" required />
+          <input
+            id="ed-inicio"
+            v-model="edicion.inicio"
+            type="datetime-local"
+            :max="topeHora()"
+            required
+          />
         </div>
         <div v-if="esBiberon" class="campo">
           <label for="ed-ml">Cantidad (ml)</label>
@@ -230,11 +245,17 @@ function borrar() {
       <template v-else-if="edicion.kind === 'sueno'">
         <div class="campo">
           <label for="ed-inicio">Empezó</label>
-          <input id="ed-inicio" v-model="edicion.inicio" type="datetime-local" required />
+          <input
+            id="ed-inicio"
+            v-model="edicion.inicio"
+            type="datetime-local"
+            :max="topeHora()"
+            required
+          />
         </div>
         <div class="campo">
           <label for="ed-fin">Terminó (vacío = en curso)</label>
-          <input id="ed-fin" v-model="edicion.fin" type="datetime-local" />
+          <input id="ed-fin" v-model="edicion.fin" type="datetime-local" :max="topeHora()" />
         </div>
       </template>
 
@@ -262,7 +283,13 @@ function borrar() {
         </div>
         <div class="campo">
           <label for="ed-inicio">Hora</label>
-          <input id="ed-inicio" v-model="edicion.inicio" type="datetime-local" required />
+          <input
+            id="ed-inicio"
+            v-model="edicion.inicio"
+            type="datetime-local"
+            :max="topeHora()"
+            required
+          />
         </div>
       </template>
 
@@ -281,7 +308,13 @@ function borrar() {
         </div>
         <div class="campo">
           <label for="ed-inicio">Hora</label>
-          <input id="ed-inicio" v-model="edicion.inicio" type="datetime-local" required />
+          <input
+            id="ed-inicio"
+            v-model="edicion.inicio"
+            type="datetime-local"
+            :max="topeHora()"
+            required
+          />
         </div>
       </template>
 

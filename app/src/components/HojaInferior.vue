@@ -7,7 +7,8 @@
  * cicla dentro y el scroll del fondo queda bloqueado. Transición "hoja"
  * en main.css (respeta prefers-reduced-motion).
  */
-import { nextTick, onUnmounted, ref, watch } from 'vue'
+import { ref } from 'vue'
+import { atraparTab, usarModal } from './modal'
 
 const props = defineProps<{ abierta: boolean; titulo: string; icono?: string }>()
 
@@ -15,71 +16,8 @@ const emit = defineEmits<{ cerrar: [] }>()
 
 const panel = ref<HTMLElement | null>(null)
 
-const FOCUSABLES = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-
-// Quien tenía el foco al abrirse: al cerrar se le devuelve (WCAG 2.4.3)
-let origenFoco: HTMLElement | null = null
-
-// Si esta instancia contribuye al scroll-lock (el contador compartido está
-// a nivel de módulo, ver el <script> de abajo)
-let estaBloqueando = false
-
-function bloquear(abierta: boolean) {
-  if (abierta === estaBloqueando) return
-  estaBloqueando = abierta
-  hojasAbiertas += abierta ? 1 : -1
-  document.body.style.overflow = hojasAbiertas > 0 ? 'hidden' : ''
-}
-
-// immediate: una hoja puede montarse ya abierta (p. ej. ?config= mientras
-// cargaba la vista) y también debe bloquear el scroll y capturar el foco
-watch(
-  () => props.abierta,
-  async (abierta) => {
-    bloquear(abierta)
-    if (abierta) {
-      origenFoco = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      await nextTick()
-      panel.value?.focus()
-    } else {
-      origenFoco?.focus()
-      origenFoco = null
-    }
-  },
-  { immediate: true },
-)
-
-onUnmounted(() => {
-  bloquear(false)
-  origenFoco?.focus()
-})
-
-/** Trampa de foco: Tab desde el último enfocable vuelve al primero (y al revés) */
-function atraparTab(evento: KeyboardEvent) {
-  const raiz = panel.value
-  if (!raiz) return
-  const enfocables = [...raiz.querySelectorAll<HTMLElement>(FOCUSABLES)].filter(
-    (el) => el.offsetParent !== null,
-  )
-  if (enfocables.length === 0) return
-  const primero = enfocables[0]!
-  const ultimo = enfocables[enfocables.length - 1]!
-  const activo = document.activeElement
-  if (evento.shiftKey && (activo === primero || activo === raiz)) {
-    evento.preventDefault()
-    ultimo.focus()
-  } else if (!evento.shiftKey && activo === ultimo) {
-    evento.preventDefault()
-    primero.focus()
-  }
-}
-</script>
-
-<script lang="ts">
-// Contador de hojas abiertas COMPARTIDO entre instancias: cuando una hoja
-// sustituye a otra en el mismo tick, la que se cierra no debe desbloquear
-// el fondo de la que se abre
-let hojasAbiertas = 0
+// Ciclo de vida modal compartido (scroll-lock, foco, immediate): modal.ts
+usarModal(() => props.abierta, panel)
 </script>
 
 <template>
@@ -90,7 +28,7 @@ let hojasAbiertas = 0
         class="hoja-fondo"
         @click.self="emit('cerrar')"
         @keydown.esc="emit('cerrar')"
-        @keydown.tab="atraparTab"
+        @keydown.tab="atraparTab(panel, $event)"
       >
         <div
           ref="panel"
@@ -119,7 +57,7 @@ let hojasAbiertas = 0
 .hoja-fondo {
   position: fixed;
   inset: 0;
-  background: rgb(20 40 36 / 0.45);
+  background: var(--color-scrim);
   display: flex;
   align-items: flex-end;
   justify-content: center;

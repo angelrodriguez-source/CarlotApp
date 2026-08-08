@@ -4,12 +4,24 @@
  * barra de navegación inferior (solo con sesión iniciada).
  * También gestiona el toast de "versión nueva" de la PWA.
  */
-import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  watchEffect,
+} from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
 import HojaInferior from './components/HojaInferior.vue'
-import NeneniPanel from './components/NeneniPanel.vue'
+
+// Async: el panel arrastra el MimePredictor y las tablas OMS — cargarlo
+// bajo demanda los saca del chunk de entrada (que se descarga pre-login)
+const NeneniPanel = defineAsyncComponent(() => import('./components/NeneniPanel.vue'))
 import {
   iconoCitasUrl,
   iconoEvolucionUrl,
@@ -32,8 +44,33 @@ async function cerrarSesion() {
 
 // ---- Menú de usuario (bolita de la cabecera) ----
 const menuAbierto = ref(false)
+const bolita = ref<HTMLElement | null>(null)
+const menu = ref<HTMLElement | null>(null)
 
 const inicialUsuario = computed(() => userStore.nombre.trim().charAt(0).toUpperCase() || '👶')
+
+/** Ítems del menú visibles (para foco inicial y navegación con flechas) */
+function itemsMenu(): HTMLElement[] {
+  return [...(menu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
+}
+
+// Foco dentro al abrir, de vuelta a la bolita al cerrar (patrón menú WAI)
+watch(menuAbierto, async (abierto) => {
+  if (abierto) {
+    await nextTick()
+    itemsMenu()[0]?.focus()
+  } else {
+    bolita.value?.focus()
+  }
+})
+
+/** Flechas arriba/abajo ciclan por los ítems del menú */
+function moverFocoMenu(delta: number) {
+  const items = itemsMenu()
+  if (items.length === 0) return
+  const indice = items.indexOf(document.activeElement as HTMLElement)
+  items[(indice + delta + items.length) % items.length]?.focus()
+}
 
 /** Abre la hoja de Configuración de Hoy (funciona desde cualquier pantalla) */
 function irConfiguracion() {
@@ -124,8 +161,10 @@ function abrirRegistro() {
         <img :src="neneniUrl" alt="" />
       </button>
       <button
+        ref="bolita"
         class="bolita"
         aria-label="Menú de usuario"
+        aria-haspopup="menu"
         :aria-expanded="menuAbierto"
         @click="menuAbierto = !menuAbierto"
       >
@@ -135,8 +174,16 @@ function abrirRegistro() {
   </header>
 
   <!-- Menú de usuario -->
-  <div v-if="menuAbierto" class="menu-fondo" @click.self="menuAbierto = false">
-    <div class="menu-usuario" role="menu">
+  <div
+    v-if="menuAbierto"
+    class="menu-fondo"
+    @click.self="menuAbierto = false"
+    @keydown.esc="menuAbierto = false"
+    @keydown.tab.prevent="menuAbierto = false"
+    @keydown.down.prevent="moverFocoMenu(1)"
+    @keydown.up.prevent="moverFocoMenu(-1)"
+  >
+    <div ref="menu" class="menu-usuario" role="menu">
       <p class="quien">
         <strong>{{ userStore.nombre }}</strong>
         <span v-if="userStore.user?.email" class="suave">{{ userStore.user.email }}</span>
@@ -252,6 +299,15 @@ function abrirRegistro() {
   justify-self: center;
   flex-shrink: 0;
   transition: filter 0.15s;
+  position: relative;
+}
+
+/* Zona de toque ampliada a 44px sin crecer el círculo visual */
+.boton-nenei::after,
+.bolita::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
 }
 
 .boton-nenei img {
@@ -275,6 +331,7 @@ function abrirRegistro() {
   font-weight: 700;
   flex-shrink: 0;
   justify-self: end;
+  position: relative;
 }
 
 .menu-fondo {

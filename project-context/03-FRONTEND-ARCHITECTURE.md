@@ -96,7 +96,15 @@ Componentes):
   la capa actual; frio, cambiante e irregular acotados
 - `pronosticoNoche()` — en franja nocturna (21-07h), tomas que quedan
   hasta las 07:00 proyectando la cadencia nocturna (misma mezcla de 3
-  capas); `esHoraNocturna()` para que la UI sepa cuando mostrarlo
+  capas; el primer eslabon usa la cadencia DIURNA si la ultima toma fue
+  de dia); `esHoraNocturna()` para que la UI sepa cuando mostrarlo
+- Robustez: los anclas (ultima toma/panal) ignoran registros con hora
+  futura; los intervalos que cruzan franja (amanecer, tarde→noche) se
+  excluyen tambien del historico; banda de confianza = 1.0·IQR
+  (recalibrada por backtest tras esa exclusion, cobertura ~70-88%)
+- `models/frasesNeneni.ts` — las frases del bocadillo y la nota de
+  aprendizaje como funciones puras (frasesNeneni, notaAprendizaje),
+  testeadas en frasesNeneni.spec.ts
 - Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
   (upsert de una fila viva por bebe en `predicciones`) +
   `aFilaPrediccion()` para serializar
@@ -131,12 +139,23 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   con transicion "hoja" y cierre por fondo o ✕.
 - **NeneniPanel.vue**: el bocadillo de Ñeñeñi (public/nenei.png, mascota
   Mime experta en bebes) — la UI del Mime Predictor. Se abre desde su
-  icono de la cabecera (App.vue), carga los ultimos 8 dias via servicio,
-  ejecuta `predecir()` y lo cuenta en primera persona (proxima toma con
-  franja, proxima siesta, pronostico de la noche si es de noche), con
-  nota de cuanto pesa ya el patron personal. Boton "¿Por que llora?" con
-  barras Sueno/Hambre/Incomodidad + explicaciones. Persiste el calculo
-  en `predicciones` en segundo plano (si falla, el bocadillo funciona).
+  icono de la cabecera (App.vue), carga los ultimos 8 dias via servicio
+  (memoizado 60 s: reabrir no repite consultas), ejecuta `predecir()` y
+  lo cuenta en primera persona con las frases de models/frasesNeneni.ts
+  (proxima toma con franja, proxima siesta, pronostico de la noche si es
+  de noche), con nota de cuanto pesa ya el patron personal. Boton
+  "¿Por que llora?" con barras Sueno/Hambre/Incomodidad + explicaciones.
+  Es un modal completo (mismo patron que HojaInferior: foco, trampa de
+  Tab, Escape, scroll-lock via components/modal.ts, Teleport). Persiste
+  el calculo en `predicciones` en segundo plano con boton de reintento
+  si falla la carga.
+- **modal.ts** (components/): el ciclo de vida modal compartido —
+  `usarModal(abierta, panel, {alAbrir, alCerrar})` (scroll-lock con
+  contador comun, captura/devolucion de foco, `immediate: true` para
+  dialogos que se montan ya abiertos) y `atraparTab()`. Lo usan
+  HojaInferior y NeneniPanel, que ademas invalida su memoizacion con el
+  evento `EVENTO_DATOS_CAMBIADOS` que emite carlotaService en cada
+  escritura de tomas/suenos/panales.
 - **HojaEdicionRegistro.vue**: hoja de edicion/borrado de cualquier
   registro (toma, sueno, panal, evento). Prop `registro:
   RegistroEditable | null` (union discriminada de
@@ -158,9 +177,12 @@ safe-area para iPhone.
 
 **Cabecera (App.vue)**: logo + "CarlotApp" (enlaza a Hoy desde cualquier
 pantalla), el icono de Ñeñeñi (abre su bocadillo de predicciones,
-NeneniPanel) y la bolita de usuario (inicial de la cuenta) con el menu:
+NeneniPanel, cargado con defineAsyncComponent para no engordar el chunk
+de entrada) y la bolita de usuario (inicial de la cuenta) con el menu:
 nombre/email, ⚙ Configuracion (→ hoja de Hoy via ?config), tema
-(auto → oscuro → claro, localStorage `carlotapp-tema`) y salir.
+(auto → oscuro → claro, localStorage `carlotapp-tema`), 💚 Acerca de
+(hoja inferior con la marca) y salir. El menu es navegable con teclado
+(foco al abrir/cerrar, flechas, Escape).
 
 **Modo noche**: clase `.noche` en `<html>` que redefine las variables de
 color (paleta oscura); automatica de 22:00 a 08:00, forzable desde el
