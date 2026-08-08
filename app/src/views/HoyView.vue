@@ -20,6 +20,13 @@ import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import type { RegistroEditable } from '../components/registroEditable'
 import { desarrolloSemana } from '../models/semanasDesarrollo'
 import {
+  LIMITES_ENTRADA,
+  primerError,
+  validarFechaRegistro,
+  validarRango,
+  validarTramoSueno,
+} from '../models/validacion'
+import {
   aInputLocal,
   claveDia,
   duracionMinutos,
@@ -546,6 +553,16 @@ async function guardarToma() {
   if (!bebe) return
   const inicio = new Date(nuevaToma.value.inicio)
   const minutos = nuevaToma.value.duracionMin
+  const problema = primerError(
+    validarFechaRegistro(inicio, bebe.fecha_nacimiento),
+    esBiberon.value
+      ? validarRango(numeroONull(nuevaToma.value.cantidadMl), LIMITES_ENTRADA.tomaMl)
+      : validarRango(numeroONull(minutos), LIMITES_ENTRADA.tomaPechoMin),
+  )
+  if (problema) {
+    error.value = problema
+    return
+  }
   // Pecho sin duración: se cierra con fin = inicio para que no quede como
   // "toma en curso" fantasma (solo el cronómetro crea tomas abiertas)
   const fin = esBiberon.value ? null : new Date(inicio.getTime() + (minutos ?? 0) * 60_000)
@@ -609,6 +626,11 @@ function pulsarAccesoToma() {
 async function terminarToma(ml: number | null) {
   const toma = tomaAbierta.value
   if (!toma) return
+  const problema = validarRango(ml, LIMITES_ENTRADA.tomaMl)
+  if (problema) {
+    error.value = problema
+    return
+  }
   const guardado = await registrarYOfrecer(
     'Toma terminada',
     () => servicio.actualizarToma(toma.id, { fin: new Date().toISOString(), cantidad_ml: ml }),
@@ -657,6 +679,11 @@ async function registrarPanal(cantidad: CantidadPanal | null = null) {
   const bebe = bebeStore.bebe
   const panal = nuevoPanal.value
   if (!bebe || !panal) return
+  const problema = validarFechaRegistro(new Date(panal.hora), bebe.fecha_nacimiento)
+  if (problema) {
+    error.value = problema
+    return
+  }
   const guardado = await registrarYOfrecer(
     'Pañal registrado',
     () =>
@@ -678,8 +705,14 @@ const nuevoSueno = ref({ inicio: aInputLocal(new Date()), fin: aInputLocal(new D
 async function guardarSueno() {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  if (new Date(nuevoSueno.value.fin) <= new Date(nuevoSueno.value.inicio)) {
-    error.value = 'El fin del sueño debe ser posterior al inicio (revisa la fecha)'
+  const inicio = new Date(nuevoSueno.value.inicio)
+  const fin = new Date(nuevoSueno.value.fin)
+  const problema = primerError(
+    validarFechaRegistro(inicio, bebe.fecha_nacimiento),
+    validarTramoSueno(inicio, fin),
+  )
+  if (problema) {
+    error.value = problema
     return
   }
   error.value = ''
@@ -713,6 +746,12 @@ function topeHora(): string {
   return aInputLocal(new Date())
 }
 
+/** Suelo de los selectores de hora: el día del nacimiento */
+function sueloHora(): string {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  return nacimiento ? nacimiento + 'T00:00' : ''
+}
+
 // ---- Evento ----
 const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '', hora: '' })
 
@@ -728,6 +767,11 @@ function abrirMomento() {
 async function guardarMomento() {
   const bebe = bebeStore.bebe
   if (!bebe || !nuevoMomento.value.trim()) return
+  const problema = validarFechaRegistro(new Date(horaMomento.value), bebe.fecha_nacimiento)
+  if (problema) {
+    error.value = problema
+    return
+  }
   const guardado = await registrarYOfrecer(
     'Momento guardado ✨',
     () =>
@@ -867,6 +911,11 @@ const accesosVisibles = computed(() =>
 async function guardarEvento() {
   const bebe = bebeStore.bebe
   if (!bebe) return
+  const problema = validarFechaRegistro(new Date(nuevoEvento.value.hora), bebe.fecha_nacimiento)
+  if (problema) {
+    error.value = problema
+    return
+  }
   const guardado = await registrarYOfrecer(
     TEXTOS_EVENTO_RAPIDO[nuevoEvento.value.tipo] ?? 'Evento registrado',
     () =>
@@ -1274,6 +1323,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="panal-hora"
               v-model="nuevoPanal.hora"
               type="datetime-local"
+              :min="sueloHora()"
               :max="topeHora()"
               required
             />
@@ -1319,6 +1369,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="toma-inicio"
               v-model="nuevaToma.inicio"
               type="datetime-local"
+              :min="sueloHora()"
               :max="topeHora()"
               required
             />
@@ -1331,7 +1382,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="toma-ml"
               v-model.number="nuevaToma.cantidadMl"
               type="number"
-              min="1"
+              :min="LIMITES_ENTRADA.tomaMl.min"
+              :max="LIMITES_ENTRADA.tomaMl.max"
               required
             />
           </div>
@@ -1341,7 +1393,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="toma-min"
               v-model.number="nuevaToma.duracionMin"
               type="number"
-              min="1"
+              :min="LIMITES_ENTRADA.tomaPechoMin.min"
+              :max="LIMITES_ENTRADA.tomaPechoMin.max"
               required
             />
           </div>
@@ -1367,7 +1420,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <form @submit.prevent="terminarToma(numeroONull(mlFinToma))">
           <div class="campo">
             <label for="fin-toma-ml">Cantidad (ml)</label>
-            <input id="fin-toma-ml" v-model.number="mlFinToma" type="number" min="1" />
+            <input
+              id="fin-toma-ml"
+              v-model.number="mlFinToma"
+              type="number"
+              :min="LIMITES_ENTRADA.tomaMl.min"
+              :max="LIMITES_ENTRADA.tomaMl.max"
+            />
           </div>
           <button class="boton" type="submit" :disabled="registrando">Guardar</button>
         </form>
@@ -1419,6 +1478,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="momento-hora"
               v-model="horaMomento"
               type="datetime-local"
+              :min="sueloHora()"
               :max="topeHora()"
               required
             />
@@ -1441,6 +1501,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="sueno-inicio"
               v-model="nuevoSueno.inicio"
               type="datetime-local"
+              :min="sueloHora()"
               :max="topeHora()"
               required
             />
@@ -1451,6 +1512,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="sueno-fin"
               v-model="nuevoSueno.fin"
               type="datetime-local"
+              :min="sueloHora()"
               :max="topeHora()"
               required
             />
@@ -1481,6 +1543,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               id="evento-hora"
               v-model="nuevoEvento.hora"
               type="datetime-local"
+              :min="sueloHora()"
               :max="topeHora()"
               required
             />

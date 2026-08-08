@@ -29,6 +29,7 @@ import {
   type MedidaOMS,
   type PuntoGrafica,
 } from '../models/CarlotaModel'
+import { LIMITES_ENTRADA, primerError, validarFechaDia, validarRango } from '../models/validacion'
 import {
   ETIQUETAS_ORIGEN_MEDIDA,
   type Medida,
@@ -93,6 +94,24 @@ onMounted(async () => {
   }
 })
 
+/**
+ * Rangos aceptables de una medición (models/validacion.ts): fecha dentro
+ * de la vida de la bebé y valores plausibles. Devuelve el error o null.
+ */
+function validarMedida(
+  fecha: string,
+  peso: number | null,
+  altura: number | null,
+  perimetro: number | null,
+): string | null {
+  return primerError(
+    validarFechaDia(fecha, bebeStore.bebe?.fecha_nacimiento ?? '', hoyLocal()),
+    validarRango(peso, LIMITES_ENTRADA.pesoGramos),
+    validarRango(altura, LIMITES_ENTRADA.alturaCm),
+    validarRango(perimetro, LIMITES_ENTRADA.perimetroCm),
+  )
+}
+
 async function guardarMedida() {
   const bebe = bebeStore.bebe
   if (!bebe) return
@@ -101,6 +120,11 @@ async function guardarMedida() {
   const perimetro = numeroONull(nuevaMedida.value.perimetroCm)
   if (peso === null && altura === null && perimetro === null) {
     error.value = 'Apunta al menos un valor (peso, altura o perímetro)'
+    return
+  }
+  const problema = validarMedida(nuevaMedida.value.fecha, peso, altura, perimetro)
+  if (problema) {
+    error.value = problema
     return
   }
   error.value = ''
@@ -176,6 +200,11 @@ function guardarEdicionMedida() {
   const perimetro = numeroONull(e.perimetroCm)
   if (peso === null && altura === null && perimetro === null) {
     errorEdicion.value = 'Apunta al menos un valor (peso, altura o perímetro)'
+    return
+  }
+  const problema = validarMedida(e.fecha, peso, altura, perimetro)
+  if (problema) {
+    errorEdicion.value = problema
     return
   }
   ejecutarEdicion(() =>
@@ -396,11 +425,24 @@ const franjaLeche = computed(() => {
       <h3>📏 Nueva medida</h3>
       <div class="campo">
         <label for="medida-fecha">Fecha</label>
-        <input id="medida-fecha" v-model="nuevaMedida.fecha" type="date" required />
+        <input
+          id="medida-fecha"
+          v-model="nuevaMedida.fecha"
+          type="date"
+          :min="bebeStore.bebe?.fecha_nacimiento"
+          :max="hoyLocal()"
+          required
+        />
       </div>
       <div class="campo">
         <label for="medida-peso">Peso (gramos)</label>
-        <input id="medida-peso" v-model.number="nuevaMedida.pesoGramos" type="number" min="1" />
+        <input
+          id="medida-peso"
+          v-model.number="nuevaMedida.pesoGramos"
+          type="number"
+          :min="LIMITES_ENTRADA.pesoGramos.min"
+          :max="LIMITES_ENTRADA.pesoGramos.max"
+        />
       </div>
       <div class="campo">
         <label for="medida-altura">Altura (cm)</label>
@@ -408,7 +450,8 @@ const franjaLeche = computed(() => {
           id="medida-altura"
           v-model.number="nuevaMedida.alturaCm"
           type="number"
-          min="1"
+          :min="LIMITES_ENTRADA.alturaCm.min"
+          :max="LIMITES_ENTRADA.alturaCm.max"
           step="0.1"
         />
       </div>
@@ -418,7 +461,8 @@ const franjaLeche = computed(() => {
           id="medida-pc"
           v-model.number="nuevaMedida.perimetroCm"
           type="number"
-          min="1"
+          :min="LIMITES_ENTRADA.perimetroCm.min"
+          :max="LIMITES_ENTRADA.perimetroCm.max"
           step="0.1"
         />
       </div>
@@ -552,7 +596,14 @@ const franjaLeche = computed(() => {
       <form v-if="edicionMedida" @submit.prevent="guardarEdicionMedida">
         <div class="campo">
           <label for="ed-medida-fecha">Fecha</label>
-          <input id="ed-medida-fecha" v-model="edicionMedida.fecha" type="date" required />
+          <input
+            id="ed-medida-fecha"
+            v-model="edicionMedida.fecha"
+            type="date"
+            :min="bebeStore.bebe?.fecha_nacimiento"
+            :max="hoyLocal()"
+            required
+          />
         </div>
         <div class="campo">
           <label for="ed-medida-peso">Peso (gramos)</label>
@@ -560,7 +611,8 @@ const franjaLeche = computed(() => {
             id="ed-medida-peso"
             v-model.number="edicionMedida.pesoGramos"
             type="number"
-            min="1"
+            :min="LIMITES_ENTRADA.pesoGramos.min"
+            :max="LIMITES_ENTRADA.pesoGramos.max"
           />
         </div>
         <div class="campo">
@@ -569,7 +621,8 @@ const franjaLeche = computed(() => {
             id="ed-medida-altura"
             v-model.number="edicionMedida.alturaCm"
             type="number"
-            min="1"
+            :min="LIMITES_ENTRADA.alturaCm.min"
+            :max="LIMITES_ENTRADA.alturaCm.max"
             step="0.1"
           />
         </div>
@@ -579,7 +632,8 @@ const franjaLeche = computed(() => {
             id="ed-medida-pc"
             v-model.number="edicionMedida.perimetroCm"
             type="number"
-            min="1"
+            :min="LIMITES_ENTRADA.perimetroCm.min"
+            :max="LIMITES_ENTRADA.perimetroCm.max"
             step="0.1"
           />
         </div>

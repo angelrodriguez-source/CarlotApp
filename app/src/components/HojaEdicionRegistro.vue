@@ -7,8 +7,16 @@
  */
 import { computed, ref, watch } from 'vue'
 import * as servicio from '../services/carlotaService'
+import { useBebeStore } from '../stores/bebeStore'
 import HojaInferior from './HojaInferior.vue'
 import { aInputLocal, duracionMinutos, mensajeError, numeroONull } from '../models/CarlotaModel'
+import {
+  LIMITES_ENTRADA,
+  primerError,
+  validarFechaRegistro,
+  validarRango,
+  validarTramoSueno,
+} from '../models/validacion'
 import { ICONOS_REGISTRO } from '../assets/branding'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
@@ -25,6 +33,8 @@ import type { RegistroEditable } from './registroEditable'
 const props = defineProps<{ registro: RegistroEditable | null }>()
 
 const emit = defineEmits<{ cerrar: []; guardado: [] }>()
+
+const bebeStore = useBebeStore()
 
 interface Edicion {
   kind: RegistroEditable['kind']
@@ -127,6 +137,14 @@ async function ejecutar(accion: () => Promise<unknown>) {
 function guardar() {
   const e = edicion.value
   if (!e) return
+  // Rangos aceptables (models/validacion.ts): fecha dentro de la vida de
+  // la bebé y sin futuro — la edición valida lo mismo que el alta
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento ?? ''
+  const problemaFecha = nacimiento ? validarFechaRegistro(new Date(e.inicio), nacimiento) : null
+  if (problemaFecha) {
+    error.value = problemaFecha
+    return
+  }
   const inicioIso = new Date(e.inicio).toISOString()
   if (e.kind === 'toma') {
     const esBiberonToma = e.tipoToma.startsWith('biberon')
@@ -139,6 +157,14 @@ function guardar() {
     if (esBiberonToma && cantidadMl === null && duracionMin === null) {
       // Sin ml ni duración quedaría como "toma en curso" fantasma
       error.value = 'Indica la cantidad del biberón'
+      return
+    }
+    const problema = primerError(
+      validarRango(cantidadMl, LIMITES_ENTRADA.tomaMl),
+      validarRango(duracionMin, LIMITES_ENTRADA.tomaPechoMin),
+    )
+    if (problema) {
+      error.value = problema
       return
     }
     // duracionMin viene precargada del registro original, así que editar un
@@ -158,8 +184,9 @@ function guardar() {
       }),
     )
   } else if (e.kind === 'sueno') {
-    if (e.fin && new Date(e.fin) <= new Date(e.inicio)) {
-      error.value = 'El fin del sueño debe ser posterior al inicio (revisa la fecha)'
+    const problema = e.fin ? validarTramoSueno(new Date(e.inicio), new Date(e.fin)) : null
+    if (problema) {
+      error.value = problema
       return
     }
     ejecutar(() =>
@@ -230,11 +257,25 @@ function borrar() {
         </div>
         <div v-if="esBiberon" class="campo">
           <label for="ed-ml">Cantidad (ml)</label>
-          <input id="ed-ml" v-model.number="edicion.cantidadMl" type="number" min="1" required />
+          <input
+            id="ed-ml"
+            v-model.number="edicion.cantidadMl"
+            type="number"
+            :min="LIMITES_ENTRADA.tomaMl.min"
+            :max="LIMITES_ENTRADA.tomaMl.max"
+            required
+          />
         </div>
         <div v-else class="campo">
           <label for="ed-min">Duración (min)</label>
-          <input id="ed-min" v-model.number="edicion.duracionMin" type="number" min="1" required />
+          <input
+            id="ed-min"
+            v-model.number="edicion.duracionMin"
+            type="number"
+            :min="LIMITES_ENTRADA.tomaPechoMin.min"
+            :max="LIMITES_ENTRADA.tomaPechoMin.max"
+            required
+          />
         </div>
         <div class="campo">
           <label for="ed-notas">Notas</label>
