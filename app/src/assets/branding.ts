@@ -17,3 +17,6 @@ export const fotoBebeUrl = import.meta.env.BASE_URL + 'carlota.jpg'
 
 /** Icono de la card "Cómo va el día" (calendario con check) */
 export const iconoDiaUrl = import.meta.env.BASE_URL + 'icono-dia.png'
+
+/** Icono de Inicio en la navegación inferior (portapapeles con mano) */
+export const iconoInicioUrl = import.meta.env.BASE_URL + 'icono-inicio.png'

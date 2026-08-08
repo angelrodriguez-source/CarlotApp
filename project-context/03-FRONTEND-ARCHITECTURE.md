@@ -116,7 +116,7 @@ prefers-reduced-motion). Paleta verde aguamarina con roles: `--color-accion`
 (#17685e, botones primarios — texto blanco cumple AA), `--color-primario`
 (graficas/barras), `--color-primario-suave` (tintes). Jerarquia de
 tarjetas: `.tarjeta` (accionable, con sombra), `.tarjeta-hero` (tinte, sin
-borde), `.tarjeta-plana` (sin sombra). Navegacion inferior fija (App.vue)
+borde), `.tarjeta-plana` (sin sombra). Navegacion inferior fija (App.vue; la pestana Inicio usa icono propio public/icono-inicio.png)
 con FAB central "+" (abre el registro desde cualquier pantalla) y
 safe-area para iPhone.
 

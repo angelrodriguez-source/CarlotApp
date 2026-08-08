@@ -8,7 +8,7 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
-import { logoUrl } from './assets/branding'
+import { iconoInicioUrl, logoUrl } from './assets/branding'
 
 const userStore = useUserStore()
 const bebeStore = useBebeStore()
@@ -122,7 +122,10 @@ function abrirRegistro() {
   <RouterView />
 
   <nav v-if="userStore.isLoggedIn" class="nav-inferior">
-    <RouterLink :to="{ name: 'hoy' }">🍼<span>Hoy</span></RouterLink>
+    <RouterLink :to="{ name: 'hoy' }">
+      <img :src="iconoInicioUrl" alt="" class="icono-nav" />
+      <span>Inicio</span>
+    </RouterLink>
     <RouterLink :to="{ name: 'historial' }">📖<span>Historial</span></RouterLink>
     <button class="fab" aria-label="Registrar" @click="abrirRegistro">＋</button>
     <RouterLink :to="{ name: 'evolucion' }">📈<span>Evolución</span></RouterLink>
@@ -256,6 +259,17 @@ function abrirRegistro() {
   text-decoration: none;
   color: var(--color-texto-suave);
   font-size: 1.2rem;
+}
+
+.nav-inferior .icono-nav {
+  width: 21px;
+  height: 21px;
+}
+
+/* Fuera de Inicio el icono se apaga, como el resto de pestañas inactivas */
+.nav-inferior a:not(.router-link-active) .icono-nav {
+  opacity: 0.55;
+  filter: grayscale(35%);
 }
 
 .nav-inferior a span {
