@@ -77,7 +77,8 @@ Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
 - `objetivoSuenoMinutos`, `objetivoLecheMl` — objetivos diarios orientativos
   por edad (sueno: rangos NSF/AASM; leche: regla ml/kg sobre el peso)
 
-Ademas, el **Mime Predictor** (algoritmo listo, UI pendiente):
+Ademas, el **Mime Predictor** (con su UI: el bocadillo de Ñeñeñi, ver
+Componentes):
 
 - `models/prediccionBase.ts` — linea base poblacional precargada por edad
   (ventanas de vigilia, intervalos de toma dia/noche, panales/dia; fuentes:
@@ -93,6 +94,9 @@ Ademas, el **Mime Predictor** (algoritmo listo, UI pendiente):
   <25 min y siestas <22 min en bebe regular; un brote de crecimiento
   (hoy toma cada 130 vs historico 195) pasa de MAE ~33 a <25 gracias a
   la capa actual; frio, cambiante e irregular acotados
+- `pronosticoNoche()` — en franja nocturna (21-07h), tomas que quedan
+  hasta las 07:00 proyectando la cadencia nocturna (misma mezcla de 3
+  capas); `esHoraNocturna()` para que la UI sepa cuando mostrarlo
 - Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
   (upsert de una fila viva por bebe en `predicciones`) +
   `aFilaPrediccion()` para serializar
@@ -125,6 +129,14 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   objetivo + barra con marca en el minimo; relleno verde al entrar en rango).
 - **HojaInferior.vue**: bottom sheet (Teleport a body) para formularios,
   con transicion "hoja" y cierre por fondo o ✕.
+- **NeneniPanel.vue**: el bocadillo de Ñeñeñi (public/nenei.png, mascota
+  Mime experta en bebes) — la UI del Mime Predictor. Se abre desde su
+  icono de la cabecera (App.vue), carga los ultimos 8 dias via servicio,
+  ejecuta `predecir()` y lo cuenta en primera persona (proxima toma con
+  franja, proxima siesta, pronostico de la noche si es de noche), con
+  nota de cuanto pesa ya el patron personal. Boton "¿Por que llora?" con
+  barras Sueno/Hambre/Incomodidad + explicaciones. Persiste el calculo
+  en `predicciones` en segundo plano (si falla, el bocadillo funciona).
 - **HojaEdicionRegistro.vue**: hoja de edicion/borrado de cualquier
   registro (toma, sueno, panal, evento). Prop `registro:
   RegistroEditable | null` (union discriminada de
@@ -145,7 +157,8 @@ con FAB central "+" (abre el registro desde cualquier pantalla) y
 safe-area para iPhone.
 
 **Cabecera (App.vue)**: logo + "CarlotApp" (enlaza a Hoy desde cualquier
-pantalla) y la bolita de usuario (inicial de la cuenta) con el menu:
+pantalla), el icono de Ñeñeñi (abre su bocadillo de predicciones,
+NeneniPanel) y la bolita de usuario (inicial de la cuenta) con el menu:
 nombre/email, ⚙ Configuracion (→ hoja de Hoy via ?config), tema
 (auto → oscuro → claro, localStorage `carlotapp-tema`) y salir.
 

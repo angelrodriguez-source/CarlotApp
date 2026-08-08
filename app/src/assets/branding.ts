@@ -30,6 +30,12 @@ export const iconoEvolucionUrl = import.meta.env.BASE_URL + 'icono-evolucion.png
 /** Icono de Historial en la navegación inferior (libro con pluma) */
 export const iconoHistorialUrl = import.meta.env.BASE_URL + 'icono-historial.png'
 
+/**
+ * Ñeñeñi, el Mime experto en cuidado de bebés (public/nenei.png): la cara
+ * del Mime Predictor. Vive en la cabecera y habla en su bocadillo.
+ */
+export const neneniUrl = import.meta.env.BASE_URL + 'nenei.png'
+
 /** URL de un estático de public/ respetando la base (/CarlotApp/ en Pages) */
 export function urlPublica(archivo: string): string {
   return import.meta.env.BASE_URL + archivo

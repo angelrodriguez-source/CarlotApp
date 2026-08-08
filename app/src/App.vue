@@ -9,12 +9,14 @@ import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
 import HojaInferior from './components/HojaInferior.vue'
+import NeneniPanel from './components/NeneniPanel.vue'
 import {
   iconoCitasUrl,
   iconoEvolucionUrl,
   iconoHistorialUrl,
   iconoInicioUrl,
   logoUrl,
+  neneniUrl,
 } from './assets/branding'
 
 const userStore = useUserStore()
@@ -38,6 +40,9 @@ function irConfiguracion() {
   menuAbierto.value = false
   router.push({ name: 'hoy', query: { config: String(Date.now()) } })
 }
+
+// ---- Ñeñeñi (el bocadillo del Mime Predictor) ----
+const neneniAbierto = ref(false)
 
 // ---- Acerca de ----
 const mostrarAcercaDe = ref(false)
@@ -110,14 +115,24 @@ function abrirRegistro() {
         <img :src="logoUrl" alt="" class="logo-cabecera" />
         <strong>CarlotApp</strong>
       </RouterLink>
-      <button
-        class="bolita"
-        aria-label="Menú de usuario"
-        :aria-expanded="menuAbierto"
-        @click="menuAbierto = !menuAbierto"
-      >
-        {{ inicialUsuario }}
-      </button>
+      <div class="cabecera-acciones">
+        <button
+          class="boton-nenei"
+          aria-label="Preguntar a Ñeñeñi"
+          :aria-expanded="neneniAbierto"
+          @click="neneniAbierto = !neneniAbierto"
+        >
+          <img :src="neneniUrl" alt="" />
+        </button>
+        <button
+          class="bolita"
+          aria-label="Menú de usuario"
+          :aria-expanded="menuAbierto"
+          @click="menuAbierto = !menuAbierto"
+        >
+          {{ inicialUsuario }}
+        </button>
+      </div>
     </div>
   </header>
 
@@ -134,6 +149,13 @@ function abrirRegistro() {
       <button role="menuitem" class="salir" @click="cerrarSesion">🚪 Salir</button>
     </div>
   </div>
+
+  <!-- Ñeñeñi: predicciones y ¿por qué llora? -->
+  <NeneniPanel
+    v-if="userStore.isLoggedIn"
+    :abierta="neneniAbierto"
+    @cerrar="neneniAbierto = false"
+  />
 
   <RouterView />
 
@@ -214,6 +236,36 @@ function abrirRegistro() {
   width: 28px;
   height: 28px;
   border-radius: 8px;
+}
+
+.cabecera-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* Ñeñeñi pequeñito en la cabecera, entre la marca y el usuario */
+.boton-nenei {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-primario-suave);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: filter 0.15s;
+}
+
+.boton-nenei img {
+  width: 100%;
+  height: 100%;
+}
+
+.boton-nenei:hover {
+  filter: brightness(1.08);
 }
 
 /* Bolita del menú de usuario */

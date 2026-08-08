@@ -3,6 +3,7 @@ import {
   intervalosToma,
   porQueLlora,
   predecir,
+  pronosticoNoche,
   ventanasVigilia,
   type DatosPredictor,
 } from '../MimePredictor'
@@ -385,6 +386,51 @@ describe('MimePredictor — patrones aprendidos', () => {
     const patron = ventanasVigilia(bebe.suenos, ahora).historico
     expect(patron.n).toBeGreaterThan(5)
     expect(Math.abs(patron.medianaMin! - 95)).toBeLessThan(15)
+  })
+})
+
+describe('Pronóstico de la noche', () => {
+  const bebe = generarBebe({
+    dias: 10,
+    tomaDiaMu: 180,
+    tomaDiaSd: 12,
+    vigiliaMu: 80,
+    vigiliaSd: 10,
+    siestaMu: 50,
+    siestaSd: 10,
+    semilla: 33,
+  })
+
+  it('de noche: proyecta las tomas que quedan hasta las 07:00', () => {
+    const ahora = new Date(2026, 7, 7, 22, 0)
+    const datos: DatosPredictor = {
+      tomas: hasta(bebe.tomas as never, 'inicio', ahora),
+      suenos: [],
+      panales: [],
+    }
+    const pronostico = pronosticoNoche(datos, 63, ahora)
+    expect(pronostico).not.toBeNull()
+    // Cadencia nocturna plausible: entre la base (240-360) y el patrón
+    // simulado (última toma de la tarde → nocturna de las ~3:30)
+    expect(pronostico!.intervaloMin).toBeGreaterThan(200)
+    expect(pronostico!.intervaloMin).toBeLessThan(500)
+    expect(pronostico!.tomas.length).toBeGreaterThanOrEqual(1)
+    const finNoche = new Date(2026, 7, 8, 7, 0).getTime()
+    for (const t of pronostico!.tomas) {
+      expect(new Date(t).getTime()).toBeGreaterThan(ahora.getTime())
+      expect(new Date(t).getTime()).toBeLessThan(finNoche)
+    }
+  })
+
+  it('de día devuelve null; sin tomas también', () => {
+    const mediodia = new Date(2026, 7, 7, 12, 0)
+    const datos: DatosPredictor = {
+      tomas: hasta(bebe.tomas as never, 'inicio', mediodia),
+      suenos: [],
+      panales: [],
+    }
+    expect(pronosticoNoche(datos, 63, mediodia)).toBeNull()
+    expect(pronosticoNoche({ tomas: [], suenos: [], panales: [] }, 63, new Date(2026, 7, 7, 23, 0))).toBeNull()
   })
 })
 
