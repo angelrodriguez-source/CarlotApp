@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
  * GraficaCrecimiento.vue — Gráfica de crecimiento con las curvas estándar
- * OMS de fondo (percentiles P10-P90, de 10 en 10) y la serie medida encima.
+ * OMS de fondo (percentiles P0-P100, de 10 en 10) y la serie medida encima.
  * El eje X es la edad en días (ventana que decide el padre), así las curvas
- * y las medidas quedan alineadas en el tiempo real.
+ * y las medidas quedan alineadas en el tiempo real. Una marca vertical
+ * señala "hoy": lo que queda a su derecha es la progresión esperada.
  */
 import { computed } from 'vue'
 
@@ -23,6 +24,8 @@ const props = defineProps<{
   unidad: string
   puntos: PuntoCrecimiento[]
   curvas: CurvaPercentil[]
+  /** Edad de hoy en días: marca "hoy" con una línea vertical (lo de la derecha es proyección) */
+  diaHoy?: number
 }>()
 
 const ANCHO = 320
@@ -87,6 +90,14 @@ const coordsMedidos = computed(() =>
   props.puntos.map((p) => ({ x: aX(p.dia), y: aY(p.valor), punto: p })),
 )
 
+/** X de la marca de "hoy", o null si cae fuera de la ventana */
+const xHoy = computed(() => {
+  if (props.diaHoy === undefined) return null
+  const { min, max } = rangoDias.value
+  if (props.diaHoy < min || props.diaHoy > max) return null
+  return aX(props.diaHoy)
+})
+
 const lineaMedida = computed(() => coordsMedidos.value.map((c) => `${c.x},${c.y}`).join(' '))
 
 function fechaCorta(iso: string): string {
@@ -142,6 +153,18 @@ const etiquetasX = computed(() => {
         </text>
       </g>
 
+      <!-- Marca de "hoy": a su derecha las curvas son proyección -->
+      <template v-if="xHoy !== null">
+        <line
+          :x1="xHoy"
+          :y1="MARGEN.arriba"
+          :x2="xHoy"
+          :y2="ALTO - MARGEN.abajo"
+          class="linea-hoy"
+        />
+        <text :x="xHoy" :y="MARGEN.arriba - 3" text-anchor="middle" class="etiqueta-hoy">hoy</text>
+      </template>
+
       <!-- Serie medida encima -->
       <polyline v-if="puntos.length > 1" :points="lineaMedida" class="linea-serie" />
       <g v-for="c in coordsMedidos" :key="c.punto.etiqueta">
@@ -172,7 +195,9 @@ const etiquetasX = computed(() => {
         puntos[puntos.length - 1]!.etiqueta
       }})
     </p>
-    <p class="suave leyenda-banda">Fondo: percentiles OMS niñas P10–P90 (de 10 en 10)</p>
+    <p class="suave leyenda-banda">
+      Fondo: percentiles OMS niñas P0–P100 · a la derecha de «hoy», lo esperado
+    </p>
   </div>
 </template>
 
@@ -208,6 +233,18 @@ const etiquetasX = computed(() => {
   font-size: 7px;
   fill: var(--color-texto-suave);
   opacity: 0.8;
+}
+
+.linea-hoy {
+  stroke: var(--color-aviso);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+.etiqueta-hoy {
+  font-size: 7px;
+  fill: var(--color-aviso);
 }
 
 .linea-serie {

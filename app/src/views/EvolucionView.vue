@@ -212,15 +212,22 @@ const bandaPerimetro = computed(() => bandaDe('pc', seriePerimetro.value))
 
 // ---- Peso y altura con las curvas estándar de fondo (P10-P90) ----
 
-const DECILES = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+const DECILES = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 const VENTANA_DIAS = 60
+// Hoy cae en el día 45 de la ventana: quedan 15 días de curvas por
+// delante para ver cómo debería progresar
+const DIAS_FUTURO = 15
 
-/** Ventana de edad: los últimos 60 días (o desde el nacimiento) */
-const ventana = computed(() => {
+const edadHoy = computed(() => {
   const nacimiento = bebeStore.bebe?.fecha_nacimiento
-  if (!nacimiento) return null
-  const hasta = Math.max(edadDias(nacimiento, hoyLocal()), 7)
-  return { desde: Math.max(0, hasta - VENTANA_DIAS), hasta }
+  return nacimiento ? edadDias(nacimiento, hoyLocal()) : null
+})
+
+/** Ventana de edad de 60 días con el día actual en el 45 */
+const ventana = computed(() => {
+  if (edadHoy.value === null) return null
+  const desde = Math.max(0, edadHoy.value - (VENTANA_DIAS - DIAS_FUTURO))
+  return { desde, hasta: desde + VENTANA_DIAS }
 })
 
 function curvasDe(tipo: MedidaOMS): CurvaPercentil[] {
@@ -443,12 +450,19 @@ const franjaLeche = computed(() => {
     </div>
 
     <template v-if="modo === 'valor'">
-      <GraficaCrecimiento titulo="⚖️ Peso" unidad="g" :puntos="medidosPeso" :curvas="curvasPeso" />
+      <GraficaCrecimiento
+        titulo="⚖️ Peso"
+        unidad="g"
+        :puntos="medidosPeso"
+        :curvas="curvasPeso"
+        :dia-hoy="edadHoy ?? undefined"
+      />
       <GraficaCrecimiento
         titulo="📏 Altura"
         unidad="cm"
         :puntos="medidosAltura"
         :curvas="curvasAltura"
+        :dia-hoy="edadHoy ?? undefined"
       />
       <GraficaLinea
         titulo="👶 Perímetro craneal"

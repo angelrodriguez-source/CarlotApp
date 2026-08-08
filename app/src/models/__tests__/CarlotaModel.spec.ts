@@ -353,6 +353,9 @@ describe('edadDias / percentilOMS', () => {
       anterior = valor
     }
     expect(anterior).toBeLessThan(banda.p97)
+    // Los extremos P0/P100 (±3 desviaciones) quedan fuera de la banda P3-P97
+    expect(valorPercentilOMS('peso', 0, 56)!).toBeLessThan(banda.p3)
+    expect(valorPercentilOMS('peso', 100, 56)!).toBeGreaterThan(banda.p97)
     // El valor del decil devuelve su percentil al pasar por percentilOMS
     expect(percentilOMS('peso', valorPercentilOMS('peso', 30, 56)!, 56)!).toBeCloseTo(30, 0)
     // Percentil no decilar o edad fuera de rango → null
