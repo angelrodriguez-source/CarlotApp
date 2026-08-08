@@ -248,7 +248,7 @@ function abrirRegistro() {
 .boton-nenei {
   width: 34px;
   height: 34px;
-  padding: 2px;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: var(--color-primario-suave);
