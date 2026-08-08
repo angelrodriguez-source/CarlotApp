@@ -33,8 +33,11 @@ export const iconoHistorialUrl = import.meta.env.BASE_URL + 'icono-historial.png
 /**
  * Ñeñeñi, el Mime experto en cuidado de bebés (public/nenei.png): la cara
  * del Mime Predictor. Vive en la cabecera y habla en su bocadillo.
+ * La query ?v= cambia cuando cambia el dibujo: revienta la cache HTTP
+ * del navegador y la CDN de Pages (si no, el PNG viejo puede servirse
+ * hasta 10 min y colarse incluso en el precache del SW).
  */
-export const neneniUrl = import.meta.env.BASE_URL + 'nenei.png'
+export const neneniUrl = import.meta.env.BASE_URL + 'nenei.png?v=2'
 
 /** URL de un estático de public/ respetando la base (/CarlotApp/ en Pages) */
 export function urlPublica(archivo: string): string {
