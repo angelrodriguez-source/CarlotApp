@@ -930,6 +930,23 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </div>
 
         <div class="seccion-hoy">
+          <button
+            class="cabecera-toggle"
+            :aria-expanded="hitosExpandidos"
+            @click="hitosExpandidos = !hitosExpandidos"
+          >
+            <span class="etiqueta-seccion">Últimos hitos</span>
+            <span class="suave">{{ hitosExpandidos ? '▲' : '▼' }}</span>
+          </button>
+          <div class="ahora">
+            <div v-for="fila in filasHitosVisibles" :key="fila.id" class="fila-ahora">
+              <span class="que">{{ fila.etiqueta }}</span>
+              <strong class="cuanto" :class="{ vivo: fila.vivo }">{{ fila.valor }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion-hoy">
           <span class="etiqueta-seccion">Objetivos del día</span>
           <BarraObjetivo
             :valor-texto="valorSuenoTexto"
@@ -956,23 +973,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <RouterLink :to="{ name: 'historial' }" class="ver-patron suave">
             ver el patrón de 24 h →
           </RouterLink>
-        </div>
-
-        <div class="seccion-hoy">
-          <button
-            class="cabecera-toggle"
-            :aria-expanded="hitosExpandidos"
-            @click="hitosExpandidos = !hitosExpandidos"
-          >
-            <span class="etiqueta-seccion">Últimos hitos</span>
-            <span class="suave">{{ hitosExpandidos ? '▲' : '▼' }}</span>
-          </button>
-          <div class="ahora">
-            <div v-for="fila in filasHitosVisibles" :key="fila.id" class="fila-ahora">
-              <span class="que">{{ fila.etiqueta }}</span>
-              <strong class="cuanto" :class="{ vivo: fila.vivo }">{{ fila.valor }}</strong>
-            </div>
-          </div>
         </div>
 
         <div class="seccion-hoy">
