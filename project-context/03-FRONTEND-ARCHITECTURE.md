@@ -117,6 +117,18 @@ Componentes):
   en un mismo bloque antes de aprender ventanas de vigilia (despertarse
   10-20 min y volver a dormir no es una ventana y contaminaria la
   mediana); backtest con 50% de siestas fragmentadas mantiene el MAE
+- SIESTA CORTA: la duracion de la ultima siesta frente a su tipica
+  (mediana de bloques diurnos) modula la ventana siguiente — factor
+  1 + 0.4·(dur/tipica − 1) acotado [0.55, 1.25], sens calibrada por
+  barrido (acople fuerte: MAE 23→17.5; la literatura recorta ~45 min la
+  ventana tras siesta de <45 min ≈ un ciclo). `factorSiesta` expuesto
+- SUEÑO NOCTURNO: si la proyeccion (o la hora actual) cae a <60 min de
+  su hora de acostarse — mediana personal de inicios nocturnos con
+  shrinkage k=3 hacia la base por edad (horaAcostar en
+  prediccionBase.ts, fuentes BabySleepSite/Sleep Foundation) — lo
+  previsto ya no es una siesta sino el sueño largo (`esSuenoNocturno`);
+  margen 60 calibrado por barrido {30..90} sobre inicios vespertinos
+  (optimo ~12 min de MAE; con ≥75 las siestas tardias se marcan mal)
 - `models/frasesNeneni.ts` — las frases del bocadillo y la nota de
   aprendizaje como funciones puras (frasesNeneni, notaAprendizaje),
   testeadas en frasesNeneni.spec.ts

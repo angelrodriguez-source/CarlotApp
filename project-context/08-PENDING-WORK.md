@@ -161,6 +161,17 @@ de HojaEdicionRegistro.
 
 ### Mime Predictor (la super idea ⭐)
 
+- [x] FASE 1e — Siestas cortas y ancla del sueño NOCTURNO (2026-08-08,
+      idea de Angel): (1) una siesta mas corta que su tipica acorta la
+      ventana siguiente (factor 1+0.4·(dur/tipica−1), calibrado por
+      barrido: acople fuerte MAE 23→17.5; las guias recortan ~45 min tras
+      siesta de <45 min ≈ un ciclo); (2) al caer la tarde lo previsto ya
+      no es una siesta: hora de acostarse PERSONAL (mediana de inicios
+      nocturnos, k=3 hacia la base por edad — nueva columna horaAcostar
+      en prediccionBase con fuentes) con margen de 60 min calibrado por
+      barrido {30..90} (optimo ~12 min MAE; la ultima ventana del dia es
+      la mas larga y el modelo lo respeta). Ñeñeñi anuncia el sueño de la
+      noche y las siestas acortadas. +5 tests (86 en total).
 - [x] FASE 1d — REMATES y racion prevista (2026-08-08, idea de Angel):
       tomas separadas por <45 min se consolidan en COMIDAS; si la ultima
       comida quedo corta (<65% de la racion tipica) y la bebe HA

@@ -51,17 +51,26 @@ export function frasesNeneni(
     lista.push('Todavía no tengo tomas registradas para predecir la siguiente.')
   }
 
-  // Sueño
+  // Sueño: siesta, sueño nocturno (ancla circadiana) o durmiendo
   if (p.durmiendo) {
     lista.push(`Ahora mismo ${nombre} está durmiendo… ¡a aprovechar!`)
   } else if (p.proximaSiesta) {
     const s = p.proximaSiesta
-    if (s.minutosRestantes <= 0) {
+    if (s.esSuenoNocturno) {
+      lista.push(
+        s.minutosRestantes <= 0
+          ? `Lo siguiente ya es el sueño de la noche, y va con retraso: la esperaba acostada hacia las ${horaCorta(s.prevista)}.`
+          : `Y lo siguiente ya no es una siesta: hacia las ${horaCorta(s.prevista)} le tocará el sueño de la noche.`,
+      )
+    } else if (s.minutosRestantes <= 0) {
       lista.push('Ya le va tocando dormir: lleva despierta más de lo habitual en ella.')
     } else {
       lista.push(
         `Y en unos ${formatoDuracion(s.minutosRestantes)} le tocará dormir, hacia las ${horaCorta(s.prevista)}.`,
       )
+      if (s.factorSiesta !== undefined && s.factorSiesta <= 0.9) {
+        lista.push('La última siesta se ha quedado corta, así que le tocará antes de lo normal.')
+      }
     }
   }
 

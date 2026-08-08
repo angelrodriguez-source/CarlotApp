@@ -13,6 +13,11 @@
  *   (huckleberrycare.com/blog/baby-feeding-and-nap-schedule).
  * - Cambios de pañal al día: ~8-10 recién nacida bajando a ~5-6 desde el
  *   tercer mes (pampers.com, healthline.com/health/parenting).
+ * - Hora de acostarse (inicio del sueño NOCTURNO): tardía de recién
+ *   nacida (20-23 h, sin ritmo circadiano aún) y adelantándose según
+ *   madura el ritmo (3-4 meses) hacia las 18-20 h desde el medio año:
+ *   BabySleepSite (baby-toddler-bedtime-chart), Nested Bean y
+ *   Sleep Foundation (newborn-sleep-schedule).
  *
  * Igual que referenciaOMS y semanasDesarrollo, esta capa vive PRECARGADA
  * en el código (versionada y testeable, sin red en runtime); la BBDD solo
@@ -35,6 +40,8 @@ export interface EtapaPrediccion {
   intervaloTomaNoche: RangoMin
   /** Cambios de pañal típicos por día (para la señal de incomodidad) */
   panalesDia: number
+  /** Hora de acostarse típica (minutos desde medianoche) */
+  horaAcostar: RangoMin
 }
 
 export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
@@ -44,6 +51,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 120, max: 180 },
     intervaloTomaNoche: { min: 150, max: 240 },
     panalesDia: 8,
+    horaAcostar: { min: 1200, max: 1380 },
   },
   {
     semanaDesde: 4,
@@ -51,6 +59,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 150, max: 210 },
     intervaloTomaNoche: { min: 180, max: 300 },
     panalesDia: 7,
+    horaAcostar: { min: 1200, max: 1350 },
   },
   {
     semanaDesde: 8,
@@ -58,6 +67,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 150, max: 240 },
     intervaloTomaNoche: { min: 240, max: 360 },
     panalesDia: 6,
+    horaAcostar: { min: 1170, max: 1320 },
   },
   {
     semanaDesde: 13,
@@ -65,6 +75,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 180, max: 240 },
     intervaloTomaNoche: { min: 300, max: 480 },
     panalesDia: 6,
+    horaAcostar: { min: 1140, max: 1260 },
   },
   {
     semanaDesde: 17,
@@ -72,6 +83,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 180, max: 240 },
     intervaloTomaNoche: { min: 360, max: 600 },
     panalesDia: 6,
+    horaAcostar: { min: 1110, max: 1230 },
   },
   {
     semanaDesde: 22,
@@ -79,6 +91,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 210, max: 270 },
     intervaloTomaNoche: { min: 480, max: 700 },
     panalesDia: 5,
+    horaAcostar: { min: 1080, max: 1200 },
   },
   {
     semanaDesde: 26,
@@ -86,6 +99,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 210, max: 300 },
     intervaloTomaNoche: { min: 540, max: 720 },
     panalesDia: 5,
+    horaAcostar: { min: 1080, max: 1200 },
   },
   {
     semanaDesde: 30,
@@ -93,6 +107,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 240, max: 300 },
     intervaloTomaNoche: { min: 600, max: 720 },
     panalesDia: 5,
+    horaAcostar: { min: 1080, max: 1200 },
   },
   {
     semanaDesde: 39,
@@ -100,6 +115,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 240, max: 330 },
     intervaloTomaNoche: { min: 600, max: 720 },
     panalesDia: 5,
+    horaAcostar: { min: 1080, max: 1230 },
   },
   {
     semanaDesde: 48,
@@ -107,6 +123,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 270, max: 360 },
     intervaloTomaNoche: { min: 600, max: 720 },
     panalesDia: 4,
+    horaAcostar: { min: 1080, max: 1230 },
   },
   {
     semanaDesde: 61,
@@ -114,6 +131,7 @@ export const ETAPAS_PREDICCION: readonly EtapaPrediccion[] = [
     intervaloToma: { min: 270, max: 390 },
     intervaloTomaNoche: { min: 600, max: 720 },
     panalesDia: 4,
+    horaAcostar: { min: 1080, max: 1230 },
   },
 ] as const
 

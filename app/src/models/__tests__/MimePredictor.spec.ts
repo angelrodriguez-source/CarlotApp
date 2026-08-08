@@ -61,6 +61,12 @@ interface ConfigBebe {
   /** Probabilidad de que una siesta se parta en dos con un mini-despertar */
   fragmentarSiestas?: number
   /**
+   * Acoplar la ventana REAL a la duración de la siesta previa:
+   * vigilia = normal(mu,sd)·(duración/siestaMu)^beta (siesta corta →
+   * se duerme antes; la primera ventana del día no se acopla)
+   */
+  acoplarSiesta?: { beta: number }
+  /**
    * Probabilidad de que una comida se PARTA: toma corta (35-60% de la
    * ración) + remate 25-45 min después con el resto; la cadencia normal
    * se retoma desde el remate
@@ -141,8 +147,13 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
     // Con fragmentarSiestas, algunas se parten en dos tramos con un
     // mini-despertar de 5-24 min entre medias (misma siesta real)
     let s = 7 * 60 + rng.normal(0, 15)
+    let duracionPrevia: number | null = null
     while (true) {
-      const vigilia = Math.max(20, rng.normal(config.vigiliaMu, config.vigiliaSd))
+      const acopleSiesta =
+        config.acoplarSiesta && duracionPrevia !== null
+          ? Math.pow(duracionPrevia / config.siestaMu, config.acoplarSiesta.beta)
+          : 1
+      const vigilia = Math.max(20, rng.normal(config.vigiliaMu, config.vigiliaSd) * acopleSiesta)
       const inicioSiesta = s + vigilia
       if (inicioSiesta > 19.5 * 60) break
       const duracion = Math.max(20, rng.normal(config.siestaMu, config.siestaSd))
@@ -170,6 +181,7 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
         })
         iniciosSiesta.push(inicio)
         s = inicioSiesta + duracion + hueco
+        duracionPrevia = duracion
       } else {
         suenos.push({
           id: nuevaId(),
@@ -180,6 +192,7 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
         })
         iniciosSiesta.push(inicio)
         s = inicioSiesta + duracion
+        duracionPrevia = duracion
       }
     }
     // Sueño nocturno 20:30 → 6:45 del día siguiente
@@ -524,6 +537,79 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
     expect(Math.abs(patron.medianaMin! - 80)).toBeLessThan(15)
     // Y el MAE de siestas queda dentro del contrato del bebé regular
     expect(maeSiestas(fragmentado, 63, 4)).toBeLessThan(24)
+  })
+
+  it('siesta corta → la siguiente ventana se acorta (factorSiesta < 1)', () => {
+    const ahora = new Date(2026, 7, 7, 12, 0)
+    const conSiesta = (duracionMin: number): DatosPredictor => ({
+      ...regular,
+      suenos: [
+        ...regular.suenos.filter(
+          (s) => new Date(s.inicio).getTime() < ahora.getTime() - 5 * 3600_000,
+        ),
+        {
+          id: 'ultima-siesta',
+          bebe_id: 'b',
+          inicio: new Date(2026, 7, 7, 10, 30).toISOString(),
+          fin: new Date(2026, 7, 7, 10, 30 + duracionMin).toISOString(),
+          notas: null,
+        },
+      ],
+    })
+    // Siesta de 20 min frente a sus ~50 típicos: le tocará antes
+    const corta = predecir(conSiesta(20), 63, ahora).proximaSiesta!
+    const normal = predecir(conSiesta(50), 63, ahora).proximaSiesta!
+    expect(corta.factorSiesta!).toBeLessThan(1)
+    expect(
+      new Date(normal.prevista).getTime() - new Date(corta.prevista).getTime(),
+    ).toBeGreaterThan(8 * 60_000)
+  })
+
+  it('bebé acoplado a la siesta: el MAE de siestas queda acotado', () => {
+    // La ventana real depende de la siesta previa (·(dur/50)^0.5)
+    const acoplado = generarBebe({
+      dias: 14,
+      tomaDiaMu: 180,
+      tomaDiaSd: 15,
+      vigiliaMu: 80,
+      vigiliaSd: 10,
+      siestaMu: 50,
+      siestaSd: 16,
+      semilla: 31,
+      acoplarSiesta: { beta: 0.5 },
+    })
+    expect(maeSiestas(acoplado, 63, 4)).toBeLessThan(22)
+  })
+
+  it('al caer la tarde, lo previsto es el SUEÑO NOCTURNO a su hora de acostarse', () => {
+    // Walk-forward (30 min de antelación, como la calibración del margen)
+    // sobre TODOS los inicios de sueño vespertinos (17-23h) de los
+    // últimos 6 días: siestas tardías y noches. El error combinado queda
+    // acotado y el ancla nocturna se activa de verdad
+    const limite = new Date(2026, 7, 2)
+    const objetivos = regular.suenos
+      .map((s) => new Date(s.inicio))
+      .filter((f) => f >= limite && f.getHours() >= 17 && f.getHours() < 23)
+    const errores: number[] = []
+    let nochesMarcadas = 0
+    for (const objetivo of objetivos) {
+      const ahora = new Date(objetivo.getTime() - 30 * 60_000)
+      const datos: DatosPredictor = {
+        tomas: hasta(regular.tomas as never, 'inicio', ahora),
+        suenos: hasta(regular.suenos as never, 'inicio', ahora),
+        panales: [],
+      }
+      const p = predecir(datos, 63, ahora)
+      if (p.durmiendo || !p.proximaSiesta) continue
+      if (p.proximaSiesta.esSuenoNocturno) nochesMarcadas++
+      errores.push(
+        Math.abs(new Date(p.proximaSiesta.prevista).getTime() - objetivo.getTime()) / 60_000,
+      )
+    }
+    expect(errores.length).toBeGreaterThan(5)
+    expect(nochesMarcadas).toBeGreaterThan(2)
+    const mae = errores.reduce((a, b) => a + b, 0) / errores.length
+    expect(mae).toBeLessThan(20)
   })
 
   it('una toma con hora futura no ancla la predicción', () => {

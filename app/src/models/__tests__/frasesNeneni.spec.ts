@@ -103,6 +103,43 @@ describe('frasesNeneni', () => {
     expect(frases[1]).toContain('Ya le va tocando dormir')
   })
 
+  it('sueño nocturno: anuncia el sueño de la noche, no una siesta', () => {
+    const noche = frasesNeneni(
+      predicciones({
+        proximaSiesta: prediccion({ esSuenoNocturno: true, minutosRestantes: 50 }),
+      }),
+      null,
+      'Carlota',
+    )
+    expect(noche[1]).toContain('ya no es una siesta')
+    expect(noche[1]).toContain('el sueño de la noche')
+    const retrasada = frasesNeneni(
+      predicciones({
+        proximaSiesta: prediccion({ esSuenoNocturno: true, minutosRestantes: -10 }),
+      }),
+      null,
+      'Carlota',
+    )
+    expect(retrasada[1]).toContain('va con retraso')
+  })
+
+  it('siesta corta previa: avisa de que le tocará antes', () => {
+    const trasCorta = frasesNeneni(
+      predicciones({
+        proximaSiesta: prediccion({ factorSiesta: 0.85, minutosRestantes: 40 }),
+      }),
+      null,
+      'Carlota',
+    )
+    expect(trasCorta.join(' ')).toContain('La última siesta se ha quedado corta')
+    const normal = frasesNeneni(
+      predicciones({ proximaSiesta: prediccion({ factorSiesta: 1, minutosRestantes: 40 }) }),
+      null,
+      'Carlota',
+    )
+    expect(normal.join(' ')).not.toContain('se ha quedado corta')
+  })
+
   it('durmiendo: no anuncia siesta, dice que está durmiendo', () => {
     const frases = frasesNeneni(
       predicciones({ durmiendo: true, proximaSiesta: null }),
