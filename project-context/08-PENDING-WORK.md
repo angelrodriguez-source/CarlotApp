@@ -20,6 +20,16 @@
 
 ### Mime Predictor (la super idea ⭐)
 
+- [x] FASE 1b — Capa de comportamiento ACTUAL (2026-08-08): tercera capa
+      en la mezcla — los ultimos intervalos de HOY (mediana de hasta 5,
+      misma franja horaria, sin los que cruzan el amanecer) corrigen al
+      historico con su propio shrinkage (kReciente=1). Backtest con 5
+      escenarios (estable, brote, siestas cortas, dia alargado, ruidoso):
+      con la capa apagada un brote da MAE 66 (toma+siesta) y con ella 27;
+      el estable solo paga ~5. El filtro del amanecer salio del propio
+      backtest (el hueco toma nocturna→primera de la manana contaminaba
+      la capa). pesoReciente registrado en `parametros` para diagnostico
+
 - [x] FASE 1 — Algoritmo + datos + BBDD (2026-08-08): linea base
       poblacional precargada (prediccionBase.ts, fuentes publicas),
       algoritmo puro en MimePredictor.ts (shrinkage base↔personal con

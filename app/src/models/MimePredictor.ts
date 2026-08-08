@@ -62,6 +62,19 @@ export const AJUSTES = {
   maxIntervaloPanalMin: 8 * 60,
   /** Temperatura del softmax de "¿por qué llora?" (menor = más tajante) */
   temperaturaLlanto: 0.6,
+  /**
+   * Capa "actual": los últimos intervalos de HOY (mismo tramo horario)
+   * corrigen al histórico — un brote de crecimiento o un día de siestas
+   * cortas se nota en la predicción sin esperar a que mueva la mediana
+   * de 7 días. Su peso también es shrinkage: wR = nR/(nR+kReciente).
+   * Calibrado por backtest (barrido kR×maxR sobre 5 escenarios): con la
+   * capa apagada, un brote de crecimiento da MAE ~33 min y con ella ~13;
+   * el bebé estable solo paga ~2-3 min. maxR=5 (mediana robusta del día)
+   * y kR=1 (una sola muestra nunca pesa más del 50%).
+   */
+  maxRecientes: 5,
+  kReciente: 1,
+  ventanaRecienteHoras: 10,
 } as const
 
 export interface Prediccion {
@@ -73,7 +86,9 @@ export interface Prediccion {
   minutosRestantes: number
   /** Cuánto pesó el patrón observado frente a la línea base (0-1) */
   pesoPersonal: number
-  /** Nº de intervalos personales usados */
+  /** Cuánto pesó el comportamiento de HOY frente al histórico (0-1) */
+  pesoReciente: number
+  /** Nº de intervalos personales usados (histórico) */
   muestras: number
 }
 
@@ -152,48 +167,87 @@ function patronDe(intervalos: number[]): PatronIntervalo {
   return { medianaMin: mediana(intervalos), iqrMin: iqr(intervalos), n: intervalos.length }
 }
 
-/** Intervalos entre inicios de toma consecutivos, separados en día/noche */
+/**
+ * Mediana de los últimos `maxRecientes` intervalos dentro de la ventana
+ * actual. Los intervalos que ARRANCAN en la otra franja (p. ej. el hueco
+ * del amanecer entre la toma nocturna y la primera de la mañana) se
+ * excluyen: no representan la cadencia del día y con pocas muestras
+ * sesgarían la capa (lo detectó el backtest del brote de crecimiento).
+ */
+function patronReciente(
+  conFin: { finMs: number; intervalo: number; cruzaFranja: boolean }[],
+  ahora: Date,
+): PatronIntervalo {
+  const desde = ahora.getTime() - AJUSTES.ventanaRecienteHoras * 3600_000
+  const recientes = conFin
+    .filter((x) => x.finMs >= desde && !x.cruzaFranja)
+    .slice(-AJUSTES.maxRecientes)
+    .map((x) => x.intervalo)
+  return patronDe(recientes)
+}
+
+/**
+ * Intervalos entre inicios de toma consecutivos, separados en día/noche,
+ * con la sub-capa "reciente" (los últimos de hoy) por franja.
+ */
 export function intervalosToma(
   tomas: Toma[],
   ahora: Date,
-): { dia: PatronIntervalo; noche: PatronIntervalo } {
+): {
+  dia: PatronIntervalo
+  noche: PatronIntervalo
+  recienteDia: PatronIntervalo
+  recienteNoche: PatronIntervalo
+} {
   const desde = ahora.getTime() - AJUSTES.historicoDias * 86_400_000
   const inicios = tomas
     .map((t) => new Date(t.inicio).getTime())
     .filter((t) => t >= desde && t <= ahora.getTime())
     .sort((a, b) => a - b)
-  const dia: number[] = []
-  const noche: number[] = []
+  const dia: { finMs: number; intervalo: number; cruzaFranja: boolean }[] = []
+  const noche: { finMs: number; intervalo: number; cruzaFranja: boolean }[] = []
   for (let i = 1; i < inicios.length; i++) {
     const intervalo = (inicios[i]! - inicios[i - 1]!) / 60_000
     // El intervalo se clasifica por la franja en la que TERMINA (la toma
     // que estamos "prediciendo" en ese punto del pasado)
     const enNoche = esDeNoche(new Date(inicios[i]!))
+    const cruzaFranja = esDeNoche(new Date(inicios[i - 1]!)) !== enNoche
     const tope = enNoche ? AJUSTES.maxIntervaloTomaNocheMin : AJUSTES.maxIntervaloTomaDiaMin
     if (intervalo < AJUSTES.minIntervaloTomaMin || intervalo > tope) continue
-    ;(enNoche ? noche : dia).push(intervalo)
+    ;(enNoche ? noche : dia).push({ finMs: inicios[i]!, intervalo, cruzaFranja })
   }
-  return { dia: patronDe(dia), noche: patronDe(noche) }
+  return {
+    dia: patronDe(dia.map((x) => x.intervalo)),
+    noche: patronDe(noche.map((x) => x.intervalo)),
+    recienteDia: patronReciente(dia, ahora),
+    recienteNoche: patronReciente(noche, ahora),
+  }
 }
 
-/** Ventanas de vigilia reales: fin de un sueño → inicio del siguiente */
-export function ventanasVigilia(suenos: Sueno[], ahora: Date): PatronIntervalo {
+/** Ventanas de vigilia reales (fin de un sueño → inicio del siguiente) + las de hoy */
+export function ventanasVigilia(
+  suenos: Sueno[],
+  ahora: Date,
+): { historico: PatronIntervalo; reciente: PatronIntervalo } {
   const desde = ahora.getTime() - AJUSTES.historicoDias * 86_400_000
   const tramos = suenos
     .filter((s) => s.fin !== null)
     .map((s) => ({ inicio: new Date(s.inicio).getTime(), fin: new Date(s.fin!).getTime() }))
     .filter((s) => s.fin >= desde && s.fin <= ahora.getTime())
     .sort((a, b) => a.inicio - b.inicio)
-  const ventanas: number[] = []
+  const ventanas: { finMs: number; intervalo: number; cruzaFranja: boolean }[] = []
   for (let i = 1; i < tramos.length; i++) {
     const ventana = (tramos[i]!.inicio - tramos[i - 1]!.fin) / 60_000
     // Solo ventanas diurnas: un despertar nocturno con vuelta a dormir
     // no es una "ventana de vigilia" comparable
     if (esDeNoche(new Date(tramos[i - 1]!.fin))) continue
     if (ventana < AJUSTES.minVentanaVigiliaMin || ventana > AJUSTES.maxVentanaVigiliaMin) continue
-    ventanas.push(ventana)
+    ventanas.push({ finMs: tramos[i]!.inicio, intervalo: ventana, cruzaFranja: false })
   }
-  return patronDe(ventanas)
+  return {
+    historico: patronDe(ventanas.map((x) => x.intervalo)),
+    reciente: patronReciente(ventanas, ahora),
+  }
 }
 
 /** Intervalos entre cambios de pañal (solo día, el ritmo nocturno es otro) */
@@ -221,6 +275,7 @@ function construirPrediccion(
   esperadoMin: number,
   bandaMin: number,
   peso: number,
+  pesoReciente: number,
   muestras: number,
   ahora: Date,
 ): Prediccion {
@@ -232,7 +287,31 @@ function construirPrediccion(
     franja: { desde: new Date(desdeMs).toISOString(), hasta: new Date(hastaMs).toISOString() },
     minutosRestantes: Math.round((previstaMs - ahora.getTime()) / 60_000),
     pesoPersonal: Math.round(peso * 100) / 100,
+    pesoReciente: Math.round(pesoReciente * 100) / 100,
     muestras,
+  }
+}
+
+/**
+ * Mezcla en tres capas: histórico↔base con shrinkage (como siempre) y,
+ * encima, el comportamiento RECIENTE (los últimos intervalos de hoy)
+ * con su propio shrinkage wR = nR/(nR+kReciente).
+ */
+function mezclarTresCapas(
+  reciente: PatronIntervalo,
+  historico: PatronIntervalo,
+  baseCentro: number,
+  k: number,
+): { valor: number; pesoPersonal: number; pesoReciente: number } {
+  const historicoBase = mezclar(historico.medianaMin, baseCentro, historico.n, k)
+  if (reciente.medianaMin === null || reciente.n === 0) {
+    return { valor: historicoBase.valor, pesoPersonal: historicoBase.peso, pesoReciente: 0 }
+  }
+  const wR = reciente.n / (reciente.n + AJUSTES.kReciente)
+  return {
+    valor: wR * reciente.medianaMin + (1 - wR) * historicoBase.valor,
+    pesoPersonal: historicoBase.peso,
+    pesoReciente: wR,
   }
 }
 
@@ -273,8 +352,14 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
   if (ultimaToma) {
     const patrones = intervalosToma(datos.tomas, ahora)
     const patron = nocheAhora ? patrones.noche : patrones.dia
+    const reciente = nocheAhora ? patrones.recienteNoche : patrones.recienteDia
     const baseRango = nocheAhora ? etapa.intervaloTomaNoche : etapa.intervaloToma
-    const { valor, peso } = mezclar(patron.medianaMin, centro(baseRango), patron.n, AJUSTES.kToma)
+    const { valor, pesoPersonal, pesoReciente } = mezclarTresCapas(
+      reciente,
+      patron,
+      centro(baseRango),
+      AJUSTES.kToma,
+    )
     // Semiancho personal = 0.75·IQR ≈ ±1σ en una normal (cobertura ~70%);
     // IQR/2 solo cubriría el 50% por definición (lo detectó el backtest)
     const banda = mezclar(
@@ -287,7 +372,8 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
       new Date(ultimaToma.inicio).getTime(),
       valor,
       banda,
-      peso,
+      pesoPersonal,
+      pesoReciente,
       patron.n,
       ahora,
     )
@@ -302,20 +388,28 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
     .filter((f) => f <= ahora.getTime())
     .sort((a, b) => b - a)[0]
   if (!durmiendo && ultimoFin !== undefined) {
-    const patron = ventanasVigilia(datos.suenos, ahora)
-    const { valor, peso } = mezclar(
-      patron.medianaMin,
+    const patrones = ventanasVigilia(datos.suenos, ahora)
+    const { valor, pesoPersonal, pesoReciente } = mezclarTresCapas(
+      patrones.reciente,
+      patrones.historico,
       centro(etapa.ventanaVigilia),
-      patron.n,
       AJUSTES.kSueno,
     )
     const banda = mezclar(
-      patron.iqrMin === null ? null : patron.iqrMin * 0.75,
+      patrones.historico.iqrMin === null ? null : patrones.historico.iqrMin * 0.75,
       semiancho(etapa.ventanaVigilia),
-      patron.n,
+      patrones.historico.n,
       AJUSTES.kSueno,
     ).valor
-    proximaSiesta = construirPrediccion(ultimoFin, valor, banda, peso, patron.n, ahora)
+    proximaSiesta = construirPrediccion(
+      ultimoFin,
+      valor,
+      banda,
+      pesoPersonal,
+      pesoReciente,
+      patrones.historico.n,
+      ahora,
+    )
   }
 
   // --- Incomodidad (presión de pañal/molestia) ---
@@ -365,7 +459,7 @@ export function porQueLlora(datos: DatosPredictor, edadDias: number, ahora: Date
   }
 
   let presionSueno = presionDe(prediccion.proximaSiesta, centro(etapa.ventanaVigilia))
-  if (prediccion.durmiendo) presionSueno = 0.15 // durmiendo: el sueño no es la causa
+  if (prediccion.durmiendo) presionSueno = 0 // durmiendo: el sueño no es la causa
   const presionHambre = presionDe(prediccion.proximaToma, centro(etapa.intervaloToma))
   // La incomodidad ya es una probabilidad 0-1: se escala a presión comparable
   const presionIncomodidad = 0.35 + prediccion.incomodidad.probabilidad * 0.9
@@ -450,8 +544,10 @@ export function aFilaPrediccion(p: Predicciones): {
     parametros: {
       ajustes: AJUSTES,
       pesoPersonalToma: p.proximaToma?.pesoPersonal ?? null,
+      pesoRecienteToma: p.proximaToma?.pesoReciente ?? null,
       muestrasToma: p.proximaToma?.muestras ?? null,
       pesoPersonalSiesta: p.proximaSiesta?.pesoPersonal ?? null,
+      pesoRecienteSiesta: p.proximaSiesta?.pesoReciente ?? null,
       muestrasSiesta: p.proximaSiesta?.muestras ?? null,
     },
   }

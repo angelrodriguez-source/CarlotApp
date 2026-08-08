@@ -49,6 +49,8 @@ interface ConfigBebe {
   siestaMu: number
   siestaSd: number
   semilla: number
+  /** Override del intervalo de toma SOLO para el último día (brote...) */
+  hoyTomaMu?: number
 }
 
 interface BebeSimulado extends DatosPredictor {
@@ -69,6 +71,9 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
 
   for (let d = 0; d < config.dias; d++) {
     const base = new Date(2026, 7, 7 - config.dias + 1 + d) // medianoche local
+    const esUltimoDia = d === config.dias - 1
+    const tomaMu =
+      esUltimoDia && config.hoyTomaMu !== undefined ? config.hoyTomaMu : config.tomaDiaMu
 
     // Tomas de día: desde ~7:30 cada tomaDiaMu±sd hasta las 21:00
     let t = 7.5 * 60 + rng.normal(0, 20)
@@ -84,7 +89,7 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
         notas: null,
       })
       iniciosTomaDia.push(inicio)
-      t += Math.max(60, rng.normal(config.tomaDiaMu, config.tomaDiaSd))
+      t += Math.max(60, rng.normal(tomaMu, config.tomaDiaSd))
     }
     // Toma nocturna (~3:30±40)
     const nocturna = new Date(base.getTime() + (3.5 * 60 + rng.normal(0, 40)) * 60_000)
@@ -234,6 +239,41 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
     expect(prediccion.proximaToma!.pesoPersonal).toBeGreaterThan(0.6)
   })
 
+  it('brote de crecimiento: la capa de HOY corrige al histórico', () => {
+    // Histórico de 195 min; hoy pide cada 130 (cluster feeding)
+    const brote = generarBebe({
+      dias: 10,
+      tomaDiaMu: 195,
+      tomaDiaSd: 15,
+      vigiliaMu: 85,
+      vigiliaSd: 12,
+      siestaMu: 50,
+      siestaSd: 12,
+      semilla: 7,
+      hoyTomaMu: 130,
+    })
+    // Evaluando solo las tomas de hoy desde media mañana: sin capa
+    // reciente el MAE sería ~33 min (sesgo del histórico); con ella < 25
+    const objetivos = brote.iniciosTomaDia.filter((f) => f.getDate() === 7 && f.getHours() >= 11)
+    const errores: number[] = []
+    let pesoRecienteVisto = 0
+    for (const objetivo of objetivos) {
+      const ahora = new Date(objetivo.getTime() - 25 * 60_000)
+      const datos: DatosPredictor = {
+        tomas: hasta(brote.tomas as never, 'inicio', ahora),
+        suenos: hasta(brote.suenos as never, 'inicio', ahora),
+        panales: [],
+      }
+      const p = predecir(datos, 63, ahora).proximaToma
+      if (!p) continue
+      errores.push(Math.abs(new Date(p.prevista).getTime() - objetivo.getTime()) / 60_000)
+      pesoRecienteVisto = Math.max(pesoRecienteVisto, p.pesoReciente)
+    }
+    const mae = errores.reduce((a, b) => a + b, 0) / errores.length
+    expect(mae).toBeLessThan(25)
+    expect(pesoRecienteVisto).toBeGreaterThan(0.6)
+  })
+
   it('bebé irregular: el error crece pero queda acotado', () => {
     const irregular = generarBebe({
       dias: 14,
@@ -342,7 +382,7 @@ describe('MimePredictor — patrones aprendidos', () => {
   })
 
   it('recupera la ventana de vigilia real (±15 min)', () => {
-    const patron = ventanasVigilia(bebe.suenos, ahora)
+    const patron = ventanasVigilia(bebe.suenos, ahora).historico
     expect(patron.n).toBeGreaterThan(5)
     expect(Math.abs(patron.medianaMin! - 95)).toBeLessThan(15)
   })
