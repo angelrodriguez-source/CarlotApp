@@ -8,8 +8,10 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  valorTexto: string // "😴 6 h 20 min"
+  valorTexto: string // "6 h 20 min"
   objetivoTexto: string // "objetivo 14-17 h"
+  /** Icono propio delante del valor (si no, el valorTexto puede llevar emoji) */
+  icono?: string
   valor: number
   min: number
   max: number
@@ -24,7 +26,10 @@ const excedido = computed(() => props.valor > props.max)
 <template>
   <div class="objetivo">
     <div class="fila-objetivo">
-      <strong class="valor-dia">{{ valorTexto }}</strong>
+      <strong class="valor-dia">
+        <img v-if="icono" :src="icono" alt="" class="icono-linea" />
+        {{ valorTexto }}
+      </strong>
       <span class="suave">
         {{ objetivoTexto }}{{ excedido ? ' · por encima' : cumplido ? ' ✓' : '' }}
       </span>

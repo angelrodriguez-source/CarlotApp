@@ -323,7 +323,7 @@ const objetivoLeche = computed(() =>
   objetivoLecheMl(edadDiasHoy.value, ultimoPeso.value?.valor ?? null),
 )
 
-const valorSuenoTexto = computed(() => `😴 ${formatoDuracion(minutosSuenoHoy.value)}`)
+const valorSuenoTexto = computed(() => formatoDuracion(minutosSuenoHoy.value))
 
 const objetivoSuenoTexto = computed(
   () => `objetivo ${objetivoSueno.value.min / 60}-${objetivoSueno.value.max / 60} h`,
@@ -331,7 +331,7 @@ const objetivoSuenoTexto = computed(
 
 const valorLecheTexto = computed(
   () =>
-    `🍼 ${resumen.value.mlBiberon} ml · ${resumen.value.numTomas} ${
+    `${resumen.value.mlBiberon} ml · ${resumen.value.numTomas} ${
       resumen.value.numTomas === 1 ? 'toma' : 'tomas'
     }`,
 )
@@ -1143,6 +1143,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <BarraObjetivo
               :valor-texto="valorSuenoTexto"
               :objetivo-texto="objetivoSuenoTexto"
+              :icono="ICONOS_REGISTRO.sueno_post"
               :valor="minutosSuenoHoy"
               :min="objetivoSueno.min"
               :max="objetivoSueno.max"
@@ -1157,6 +1158,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <BarraObjetivo
               :valor-texto="valorLecheTexto"
               :objetivo-texto="objetivoLecheTexto"
+              :icono="ICONOS_REGISTRO.toma"
               :valor="resumen.mlBiberon"
               :min="objetivoLeche.min"
               :max="objetivoLeche.max"
