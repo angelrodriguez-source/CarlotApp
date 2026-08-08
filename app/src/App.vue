@@ -8,6 +8,7 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
+import HojaInferior from './components/HojaInferior.vue'
 import {
   iconoCitasUrl,
   iconoEvolucionUrl,
@@ -36,6 +37,14 @@ const inicialUsuario = computed(() => userStore.nombre.trim().charAt(0).toUpperC
 function irConfiguracion() {
   menuAbierto.value = false
   router.push({ name: 'hoy', query: { config: String(Date.now()) } })
+}
+
+// ---- Acerca de ----
+const mostrarAcercaDe = ref(false)
+
+function abrirAcercaDe() {
+  menuAbierto.value = false
+  mostrarAcercaDe.value = true
 }
 
 // ---- Modo noche ----
@@ -121,6 +130,7 @@ function abrirRegistro() {
       </p>
       <button role="menuitem" @click="irConfiguracion">⚙ Configuración</button>
       <button role="menuitem" @click="alternarTema">{{ iconoTema }} Tema: {{ modoTema }}</button>
+      <button role="menuitem" @click="abrirAcercaDe">💚 Acerca de</button>
       <button role="menuitem" class="salir" @click="cerrarSesion">🚪 Salir</button>
     </div>
   </div>
@@ -146,6 +156,23 @@ function abrirRegistro() {
       <span>Citas</span>
     </RouterLink>
   </nav>
+
+  <!-- Acerca de -->
+  <HojaInferior :abierta="mostrarAcercaDe" titulo="" @cerrar="mostrarAcercaDe = false">
+    <div class="acerca-de">
+      <img :src="logoUrl" alt="" class="acerca-logo" />
+      <p class="acerca-marca">CarlotApp<sup>®</sup></p>
+      <p class="acerca-lema">Tomas, sueño, medidas y momentos de Carlota</p>
+      <div class="acerca-sello">
+        <span class="acerca-r">®</span>
+        <p>
+          <strong>CarlotApp</strong> es una marca registrada perteneciente a
+          <strong>Mimes Care Corporation</strong>
+        </p>
+      </div>
+      <p class="acerca-nota suave">Hecha con 💚 para Carlota Rodríguez Villarino</p>
+    </div>
+  </HojaInferior>
 
   <div v-if="swEsperando" class="toast-sw" role="status">
     Hay una versión nueva.
@@ -313,6 +340,75 @@ function abrirRegistro() {
 
 .fab:hover {
   filter: brightness(1.15);
+}
+
+/* ---- Acerca de ---- */
+.acerca-de {
+  text-align: center;
+  padding: 0.5rem 0.5rem 1rem;
+}
+
+.acerca-logo {
+  width: 84px;
+  height: 84px;
+  border-radius: 22%;
+  box-shadow: var(--sombra);
+}
+
+.acerca-marca {
+  margin: 0.75rem 0 0.15rem;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-primario-oscuro);
+}
+
+.acerca-marca sup {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.acerca-lema {
+  margin: 0 0 1.1rem;
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.acerca-sello {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: left;
+  background: var(--color-primario-suave);
+  border-radius: var(--radio-s);
+  padding: 0.75rem 0.9rem;
+  margin: 0 auto;
+  max-width: 340px;
+}
+
+.acerca-sello .acerca-r {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-primario);
+  border-radius: 50%;
+  color: var(--color-primario-oscuro);
+  font-weight: 700;
+}
+
+.acerca-sello p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.acerca-nota {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
 }
 
 .toast-sw {
