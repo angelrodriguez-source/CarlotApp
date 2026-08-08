@@ -42,9 +42,14 @@ export function urlPublica(archivo: string): string {
  */
 export const ICONOS_REGISTRO: Partial<Record<string, string>> = {
   toma: urlPublica('icono-toma.png'),
+  pis: urlPublica('icono-pis.png'),
+  caca: urlPublica('icono-caca.png'),
+  panal: urlPublica('icono-panal.png'),
   sueno: urlPublica('icono-sueno.png'),
   sueno_post: urlPublica('icono-sueno-post.png'),
   objetivo_sueno: urlPublica('icono-objetivo-sueno.png'),
+  momento: urlPublica('icono-momento.png'),
+  hito: urlPublica('icono-momento.png'),
   bano: urlPublica('icono-bano.png'),
   vitamina_d: urlPublica('icono-vitamina.png'),
   medicacion: urlPublica('icono-medicacion.png'),

@@ -140,7 +140,8 @@ const historial = computed<DiaHistorial[]>(() => {
         kind: 'panal',
         id: p.id,
         hora: p.fecha,
-        texto: textoPanal(p),
+        texto: textoConIcono(textoPanal(p), ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca']),
+        img: ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca'],
         panal: p,
       })),
       ...eventosDia.map((e): RegistroDia => ({
@@ -240,7 +241,9 @@ async function borrarMomento(momento: Evento) {
 
     <!-- Momentos: los hitos de todos los tiempos, siempre visibles -->
     <div v-if="!cargando" class="tarjeta">
-      <h3>✨ Momentos</h3>
+      <h3 class="titulo-momentos">
+        <img :src="ICONOS_REGISTRO.momento" alt="" class="icono-linea" /> Momentos
+      </h3>
       <p v-if="momentos.length === 0" class="suave">
         Todavía no hay momentos.
         <RouterLink :to="{ name: 'hoy', query: { registrar: '1' } }">
