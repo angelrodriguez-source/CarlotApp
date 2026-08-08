@@ -34,3 +34,17 @@ export const iconoHistorialUrl = import.meta.env.BASE_URL + 'icono-historial.png
 export function urlPublica(archivo: string): string {
   return import.meta.env.BASE_URL + archivo
 }
+
+/**
+ * Iconos propios de los conceptos de registro (los que ya tienen imagen;
+ * el resto sigue con su emoji hasta que llegue el icono). Los usan los
+ * accesos, los hitos, las líneas de tiempo y los títulos de hoja.
+ */
+export const ICONOS_REGISTRO: Partial<Record<string, string>> = {
+  toma: urlPublica('icono-toma.png'),
+  sueno: urlPublica('icono-sueno.png'),
+  sueno_post: urlPublica('icono-sueno-post.png'),
+  bano: urlPublica('icono-bano.png'),
+  vitamina_d: urlPublica('icono-vitamina.png'),
+  medicacion: urlPublica('icono-medicacion.png'),
+}

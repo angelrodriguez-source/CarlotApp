@@ -27,6 +27,7 @@ import {
   numeroONull,
   rangoDesde,
   recortarVaciosIniciales,
+  sinEmojiInicial,
   ultimosDias,
   ultimoValor,
   valorPercentilOMS,
@@ -405,6 +406,12 @@ describe('helpers compartidos', () => {
     expect(numeroONull(null)).toBeNull()
     expect(numeroONull('' as unknown as number)).toBeNull()
     expect(numeroONull(NaN)).toBeNull()
+  })
+
+  it('sinEmojiInicial quita solo el primer token (el emoji)', () => {
+    expect(sinEmojiInicial('🍼 Biberón (fórmula) — 120 ml')).toBe('Biberón (fórmula) — 120 ml')
+    expect(sinEmojiInicial('⭐ Baño')).toBe('Baño')
+    expect(sinEmojiInicial('😴 Sueño — 2 h 15 min')).toBe('Sueño — 2 h 15 min')
   })
 
   it('mensajeError extrae el mensaje de cualquier cosa lanzada', () => {
