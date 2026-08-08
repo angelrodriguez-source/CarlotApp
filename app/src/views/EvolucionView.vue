@@ -19,6 +19,7 @@ import {
 } from '../models/CarlotaModel'
 import { ETIQUETAS_ORIGEN_MEDIDA, type Medida, type OrigenMedida } from '../types'
 import GraficaLinea from '../components/GraficaLinea.vue'
+import HojaInferior from '../components/HojaInferior.vue'
 
 const bebeStore = useBebeStore()
 const route = useRoute()
@@ -91,14 +92,64 @@ async function guardarMedida() {
   }
 }
 
-async function borrarMedida(id: string) {
-  error.value = ''
+// ---- Edición de una medición existente (hoja inferior) ----
+
+interface EdicionMedida {
+  id: string
+  fecha: string
+  pesoGramos: number | null
+  alturaCm: number | null
+  perimetroCm: number | null
+  origen: OrigenMedida
+  notas: string
+}
+
+const edicionMedida = ref<EdicionMedida | null>(null)
+const errorEdicion = ref('')
+
+function abrirEdicionMedida(medida: Medida) {
+  errorEdicion.value = ''
+  edicionMedida.value = {
+    id: medida.id,
+    fecha: medida.fecha,
+    pesoGramos: medida.peso_gramos,
+    alturaCm: medida.altura_cm,
+    perimetroCm: medida.perimetro_craneal_cm,
+    origen: medida.origen,
+    notas: medida.notas ?? '',
+  }
+}
+
+async function ejecutarEdicion(accion: () => Promise<unknown>) {
+  errorEdicion.value = ''
   try {
-    await servicio.eliminarMedida(id)
+    await accion()
+    edicionMedida.value = null
     await cargar()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    errorEdicion.value = e instanceof Error ? e.message : String(e)
   }
+}
+
+function guardarEdicionMedida() {
+  const e = edicionMedida.value
+  if (!e) return
+  ejecutarEdicion(() =>
+    servicio.actualizarMedida(e.id, {
+      fecha: e.fecha,
+      peso_gramos: e.pesoGramos,
+      altura_cm: e.alturaCm,
+      perimetro_craneal_cm: e.perimetroCm,
+      origen: e.origen,
+      notas: e.notas || null,
+    }),
+  )
+}
+
+function borrarMedidaEnEdicion() {
+  const e = edicionMedida.value
+  if (!e) return
+  ejecutarEdicion(() => servicio.eliminarMedida(e.id))
 }
 
 const seriePeso = computed(() =>
@@ -291,9 +342,79 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
             {{ medida.origen === 'oficial' ? '✅' : '🏠' }}
           </span>
         </span>
-        <button class="boton peligro" @click="borrarMedida(medida.id)">✕</button>
+        <button
+          class="boton peligro editar"
+          aria-label="Editar medición"
+          @click="abrirEdicionMedida(medida)"
+        >
+          ✎
+        </button>
       </div>
     </div>
+
+    <!-- Edición de una medición en hoja inferior -->
+    <HojaInferior
+      :abierta="edicionMedida !== null"
+      titulo="📏 Editar medida"
+      @cerrar="edicionMedida = null"
+    >
+      <form v-if="edicionMedida" @submit.prevent="guardarEdicionMedida">
+        <div class="campo">
+          <label for="ed-medida-fecha">Fecha</label>
+          <input id="ed-medida-fecha" v-model="edicionMedida.fecha" type="date" required />
+        </div>
+        <div class="campo">
+          <label for="ed-medida-peso">Peso (gramos)</label>
+          <input
+            id="ed-medida-peso"
+            v-model.number="edicionMedida.pesoGramos"
+            type="number"
+            min="1"
+          />
+        </div>
+        <div class="campo">
+          <label for="ed-medida-altura">Altura (cm)</label>
+          <input
+            id="ed-medida-altura"
+            v-model.number="edicionMedida.alturaCm"
+            type="number"
+            min="1"
+            step="0.1"
+          />
+        </div>
+        <div class="campo">
+          <label for="ed-medida-pc">Perímetro craneal (cm)</label>
+          <input
+            id="ed-medida-pc"
+            v-model.number="edicionMedida.perimetroCm"
+            type="number"
+            min="1"
+            step="0.1"
+          />
+        </div>
+        <div class="campo">
+          <label for="ed-medida-origen">Tipo de medición</label>
+          <select id="ed-medida-origen" v-model="edicionMedida.origen">
+            <option
+              v-for="(etiqueta, valor) in ETIQUETAS_ORIGEN_MEDIDA"
+              :key="valor"
+              :value="valor"
+            >
+              {{ etiqueta }}
+            </option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="ed-medida-notas">Notas</label>
+          <input id="ed-medida-notas" v-model="edicionMedida.notas" type="text" />
+        </div>
+        <p v-if="errorEdicion" class="error">{{ errorEdicion }}</p>
+        <div class="botones-edicion">
+          <button class="boton" type="submit">Guardar</button>
+          <button class="boton peligro" type="button" @click="borrarMedidaEnEdicion">Borrar</button>
+        </div>
+      </form>
+    </HojaInferior>
   </main>
 </template>
 
@@ -330,5 +451,15 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
   background: var(--color-tarjeta);
   color: var(--color-primario-oscuro);
   box-shadow: var(--sombra);
+}
+
+.fila-registro .editar {
+  color: var(--color-texto-suave);
+}
+
+.botones-edicion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>
