@@ -4,6 +4,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
+import { iconoCitasUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import { aInputLocal, mensajeError } from '../models/CarlotaModel'
 import { ETIQUETAS_CITA, type Cita, type TipoCita } from '../types'
@@ -121,7 +122,7 @@ function icono(tipo: TipoCita): string {
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-citas">
-      <h2>🗓️ Citas y trámites</h2>
+      <h2 class="titulo-vista"><img :src="iconoCitasUrl" alt="" /> Citas y trámites</h2>
       <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Cita</button>
     </div>
 

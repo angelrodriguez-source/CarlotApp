@@ -36,6 +36,7 @@ import {
   type Sueno,
   type Toma,
 } from '../types'
+import { iconoEvolucionUrl } from '../assets/branding'
 import GraficaLinea from '../components/GraficaLinea.vue'
 import GraficaCrecimiento, {
   type CurvaPercentil,
@@ -381,7 +382,7 @@ const franjaLeche = computed(() => {
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-evolucion">
-      <h2>📈 Evolución</h2>
+      <h2 class="titulo-vista"><img :src="iconoEvolucionUrl" alt="" /> Evolución</h2>
       <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Medida</button>
     </div>
 

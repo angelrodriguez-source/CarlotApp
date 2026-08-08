@@ -23,7 +23,7 @@ import {
   textoToma,
   ultimosDias,
 } from '../models/CarlotaModel'
-import { ICONOS_REGISTRO } from '../assets/branding'
+import { ICONOS_REGISTRO, iconoHistorialUrl } from '../assets/branding'
 import GraficaRitmo from '../components/GraficaRitmo.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import type { RegistroEditable } from '../components/registroEditable'
@@ -215,7 +215,7 @@ async function borrarMomento(momento: Evento) {
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-historial">
-      <h2>📖 Historial</h2>
+      <h2 class="titulo-vista"><img :src="iconoHistorialUrl" alt="" /> Historial</h2>
       <select v-model.number="dias" aria-label="Días a mostrar">
         <option :value="7">Últimos 7 días</option>
         <option :value="14">Últimos 14 días</option>
