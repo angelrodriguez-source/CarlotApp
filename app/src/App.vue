@@ -115,24 +115,22 @@ function abrirRegistro() {
         <img :src="logoUrl" alt="" class="logo-cabecera" />
         <strong>CarlotApp</strong>
       </RouterLink>
-      <div class="cabecera-acciones">
-        <button
-          class="boton-nenei"
-          aria-label="Preguntar a Ñeñeñi"
-          :aria-expanded="neneniAbierto"
-          @click="neneniAbierto = !neneniAbierto"
-        >
-          <img :src="neneniUrl" alt="" />
-        </button>
-        <button
-          class="bolita"
-          aria-label="Menú de usuario"
-          :aria-expanded="menuAbierto"
-          @click="menuAbierto = !menuAbierto"
-        >
-          {{ inicialUsuario }}
-        </button>
-      </div>
+      <button
+        class="boton-nenei"
+        aria-label="Preguntar a Ñeñeñi"
+        :aria-expanded="neneniAbierto"
+        @click="neneniAbierto = !neneniAbierto"
+      >
+        <img :src="neneniUrl" alt="" />
+      </button>
+      <button
+        class="bolita"
+        aria-label="Menú de usuario"
+        :aria-expanded="menuAbierto"
+        @click="menuAbierto = !menuAbierto"
+      >
+        {{ inicialUsuario }}
+      </button>
     </div>
   </header>
 
@@ -214,9 +212,10 @@ function abrirRegistro() {
   padding-top: env(safe-area-inset-top);
 }
 
+/* Tres columnas: marca | Ñeñeñi centrado | usuario */
 .cabecera-interior {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   max-width: 540px;
   margin: 0 auto;
@@ -226,6 +225,7 @@ function abrirRegistro() {
 .marca {
   display: flex;
   align-items: center;
+  justify-self: start;
   gap: 0.5rem;
   text-decoration: none;
   color: inherit;
@@ -238,16 +238,10 @@ function abrirRegistro() {
   border-radius: 8px;
 }
 
-.cabecera-acciones {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-/* Ñeñeñi pequeñito en la cabecera, entre la marca y el usuario */
+/* Ñeñeñi centrado en la barra, entre la marca y el usuario */
 .boton-nenei {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -255,6 +249,7 @@ function abrirRegistro() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  justify-self: center;
   flex-shrink: 0;
   transition: filter 0.15s;
 }
@@ -279,6 +274,7 @@ function abrirRegistro() {
   font-size: 0.95rem;
   font-weight: 700;
   flex-shrink: 0;
+  justify-self: end;
 }
 
 .menu-fondo {
