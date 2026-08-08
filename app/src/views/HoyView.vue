@@ -249,20 +249,23 @@ async function registrarYOfrecer<T>(
   registrando.value = true
   error.value = ''
   try {
-    const resultado = await accion()
+    let resultado: T
+    try {
+      resultado = await accion()
+    } catch (e) {
+      error.value = mensajeError(e)
+      return false
+    }
     ofrecerDeshacer(texto, deshacerDe(resultado))
-  } catch (e) {
-    error.value = mensajeError(e)
-    return false
+    try {
+      await cargarDia()
+    } catch (e) {
+      error.value = mensajeError(e)
+    }
+    return true
   } finally {
     registrando.value = false
   }
-  try {
-    await cargarDia()
-  } catch (e) {
-    error.value = mensajeError(e)
-  }
-  return true
 }
 
 // ---- Resumen (mitad superior) ----
@@ -560,11 +563,11 @@ async function guardarToma() {
 const tomaAbiertaEsBiberon = computed(() => tomaAbierta.value?.tipo.startsWith('biberon') ?? false)
 const mlFinToma = ref<number | null>(null)
 
-function empezarCronometroToma() {
+async function empezarCronometroToma() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   const tipo = nuevaToma.value.tipo
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     'Cronómetro de toma iniciado',
     () =>
       servicio.registrarToma({
@@ -577,7 +580,7 @@ function empezarCronometroToma() {
       }),
     (toma) => () => servicio.eliminarToma(toma.id),
   )
-  formulario.value = null
+  if (guardado) formulario.value = null
 }
 
 /** El acceso 🍼: abre el formulario, o termina la toma en curso si la hay */
@@ -595,15 +598,15 @@ function pulsarAccesoToma() {
   }
 }
 
-function terminarToma(ml: number | null) {
+async function terminarToma(ml: number | null) {
   const toma = tomaAbierta.value
   if (!toma) return
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     'Toma terminada',
     () => servicio.actualizarToma(toma.id, { fin: new Date().toISOString(), cantidad_ml: ml }),
     () => () => servicio.actualizarToma(toma.id, { fin: null, cantidad_ml: null }),
   )
-  formulario.value = null
+  if (guardado) formulario.value = null
 }
 
 // ---- Sueño ----
@@ -631,10 +634,10 @@ function alternarSueno() {
 // Pis se registra al toque; caca y mixto piden antes la cantidad (poco/medio/mucho)
 const panalPendiente = ref<TipoPanal | null>(null)
 
-function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) {
+async function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     'Pañal registrado',
     () =>
       servicio.registrarPanal({
@@ -646,7 +649,7 @@ function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) 
       }),
     (panal) => () => servicio.eliminarPanal(panal.id),
   )
-  panalPendiente.value = null
+  if (guardado) panalPendiente.value = null
 }
 
 // ---- Sueño a posteriori ----
@@ -725,10 +728,10 @@ const TEXTOS_EVENTO_RAPIDO: Partial<Record<TipoEvento, string>> = {
   unas: 'Uñas cortadas ✂️',
 }
 
-function registrarEventoRapido(tipo: TipoEvento) {
+async function registrarEventoRapido(tipo: TipoEvento) {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  registrarYOfrecer(
+  const guardado = await registrarYOfrecer(
     TEXTOS_EVENTO_RAPIDO[tipo] ?? 'Evento registrado',
     () =>
       servicio.registrarEvento({
@@ -739,7 +742,7 @@ function registrarEventoRapido(tipo: TipoEvento) {
       }),
     (evento) => () => servicio.eliminarEvento(evento.id),
   )
-  formulario.value = null
+  if (guardado) formulario.value = null
 }
 
 // ---- Catálogo de acciones de registro ----
@@ -1195,6 +1198,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             :key="accion.id"
             class="acceso"
             :class="{ activo: accion.vivo, pulso: accion.vivo }"
+            :disabled="registrando"
             @click="ejecutarAccion(accion.id)"
           >
             <span class="icono">{{ accion.icono }}</span>
@@ -1214,6 +1218,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
             :key="valor"
             class="acceso"
+            :disabled="registrando"
             @click="registrarPanal(panalPendiente!, valor)"
           >
             {{ etiqueta }}
@@ -1266,7 +1271,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <input id="toma-notas" v-model="nuevaToma.notas" type="text" />
           </div>
           <div class="botones-toma">
-            <button class="boton" type="submit">Guardar</button>
+            <button class="boton" type="submit" :disabled="registrando">Guardar</button>
             <button class="boton secundario" type="button" @click="empezarCronometroToma">
               ▶ Cronómetro
             </button>
@@ -1284,7 +1289,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <label for="fin-toma-ml">Cantidad (ml)</label>
             <input id="fin-toma-ml" v-model.number="mlFinToma" type="number" min="1" />
           </div>
-          <button class="boton" type="submit">Guardar</button>
+          <button class="boton" type="submit" :disabled="registrando">Guardar</button>
         </form>
       </HojaInferior>
 
@@ -1300,6 +1305,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             :key="accion.id"
             class="acceso"
             :class="{ activo: accion.vivo, pulso: accion.vivo }"
+            :disabled="registrando"
             @click="ejecutarAccion(accion.id)"
           >
             <span class="icono">{{ accion.icono }}</span>
@@ -1325,7 +1331,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               required
             />
           </div>
-          <button class="boton" type="submit">Guardar momento</button>
+          <button class="boton" type="submit" :disabled="registrando">Guardar momento</button>
         </form>
       </HojaInferior>
 
@@ -1344,7 +1350,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <label for="sueno-fin">Terminó</label>
             <input id="sueno-fin" v-model="nuevoSueno.fin" type="datetime-local" required />
           </div>
-          <button class="boton" type="submit">Guardar sueño</button>
+          <button class="boton" type="submit" :disabled="registrando">Guardar sueño</button>
         </form>
       </HojaInferior>
 
@@ -1367,7 +1373,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <label for="evento-desc">Descripción</label>
             <input id="evento-desc" v-model="nuevoEvento.descripcion" type="text" />
           </div>
-          <button class="boton" type="submit">Guardar</button>
+          <button class="boton" type="submit" :disabled="registrando">Guardar</button>
         </form>
       </HojaInferior>
 
