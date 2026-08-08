@@ -43,7 +43,14 @@ interface EdadDesglosada {
 
 function desglosarEdad(fechaNacimiento: string, hoy: Date): EdadDesglosada {
   const nacimiento = new Date(fechaNacimiento + 'T00:00:00')
-  const dias = Math.max(0, Math.floor((hoy.getTime() - nacimiento.getTime()) / 86_400_000))
+  // Se comparan medianoches (no el instante actual): la edad civil cambia a
+  // las 00:00, y el round absorbe el desfase de ±1 h del cambio de horario
+  const medianocheHoy = new Date(hoy)
+  medianocheHoy.setHours(0, 0, 0, 0)
+  const dias = Math.max(
+    0,
+    Math.round((medianocheHoy.getTime() - nacimiento.getTime()) / 86_400_000),
+  )
 
   if (dias < 7) return { unidad: 'dias', mayor: 0, dias }
   if (dias < 70) return { unidad: 'semanas', mayor: Math.floor(dias / 7), dias: dias % 7 }
@@ -54,7 +61,7 @@ function desglosarEdad(fechaNacimiento: string, hoy: Date): EdadDesglosada {
   if (hoy.getDate() < nacimiento.getDate()) meses--
   const ancla = new Date(nacimiento)
   ancla.setMonth(ancla.getMonth() + meses)
-  const diasSueltos = Math.floor((hoy.getTime() - ancla.getTime()) / 86_400_000)
+  const diasSueltos = Math.round((medianocheHoy.getTime() - ancla.getTime()) / 86_400_000)
   return { unidad: 'meses', mayor: meses, dias: Math.max(0, diasSueltos) }
 }
 
@@ -116,6 +123,39 @@ export function agruparPorDia<T>(items: T[], fechaDe: (item: T) => string): Map<
     grupos.set(dia, lista)
   }
   return new Map([...grupos.entries()].sort((a, b) => b[0].localeCompare(a[0])))
+}
+
+/** Mensaje legible de cualquier error capturado (patron comun de las vistas) */
+export function mensajeError(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
+
+/** Hora corta local "HH:MM" de un instante ISO */
+export function horaCorta(iso: string): string {
+  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+}
+
+/** 'YYYY-MM-DD' → 'DD/MM' (ejes de las graficas) */
+export function fechaCortaDia(dia: string): string {
+  const [, mes, d] = dia.split('-')
+  return `${d}/${mes}`
+}
+
+/**
+ * Rango "ultimos N dias": ISO del inicio del rango (hoy incluido) y, para
+ * sueños, un dia antes — el nocturno que empezo la vispera aporta sus horas
+ * de madrugada al primer dia visible.
+ */
+export function rangoDesde(
+  dias: number,
+  ahora: Date = new Date(),
+): { desdeIso: string; desdeSuenosIso: string } {
+  const desde = new Date(ahora)
+  desde.setDate(desde.getDate() - (dias - 1))
+  desde.setHours(0, 0, 0, 0)
+  const desdeSuenos = new Date(desde)
+  desdeSuenos.setDate(desdeSuenos.getDate() - 1)
+  return { desdeIso: desde.toISOString(), desdeSuenosIso: desdeSuenos.toISOString() }
 }
 
 export interface ResumenDia {
@@ -260,7 +300,11 @@ export function tramoEnDia(
   siguiente.setDate(siguiente.getDate() + 1)
   const finDia = siguiente.getTime()
   const desde = Math.max(new Date(inicioIso).getTime(), inicioDia)
-  const hasta = Math.min(finIso ? new Date(finIso).getTime() : ahora.getTime(), finDia)
+  // Un intervalo abierto (fin null) se recorta en `ahora`, con tope de 24 h
+  // desde su inicio: un sueño olvidado sin terminar no debe pintar de sueño
+  // todos los dias posteriores
+  const topeAbierto = Math.min(ahora.getTime(), new Date(inicioIso).getTime() + 24 * 3600_000)
+  const hasta = Math.min(finIso ? new Date(finIso).getTime() : topeAbierto, finDia)
   if (hasta <= desde) return null
   return {
     desdeMin: Math.round((desde - inicioDia) / 60_000),
@@ -357,6 +401,18 @@ export function percentilOMS(tipo: MedidaOMS, valor: number, dias: number): numb
   return Math.min(99.9, Math.max(0.1, cdfNormal(z) * 100))
 }
 
+/** Percentil OMS redondeado de una medida en cierta fecha, o null */
+export function percentilRedondeado(
+  tipo: MedidaOMS,
+  valor: number | null,
+  fechaNacimiento: string | null | undefined,
+  fecha: string,
+): number | null {
+  if (!valor || !fechaNacimiento) return null
+  const p = percentilOMS(tipo, valor, edadDias(fechaNacimiento, fecha))
+  return p === null ? null : Math.round(p)
+}
+
 export interface BandaOMS {
   p3: number
   p50: number
@@ -410,9 +466,32 @@ export function valorPercentilOMS(tipo: MedidaOMS, percentil: number, dias: numb
   return l === 0 ? m * Math.exp(s * z) : m * Math.pow(1 + l * s * z, 1 / l)
 }
 
+/** Duración real de un día local en minutos (1380/1440/1500 según DST) */
+export function minutosEnDia(dia: string): number {
+  const inicio = new Date(dia + 'T00:00:00')
+  const fin = new Date(dia + 'T00:00:00')
+  fin.setDate(fin.getDate() + 1)
+  return Math.round((fin.getTime() - inicio.getTime()) / 60_000)
+}
+
+/** ml de biberon tomados en un dia local (hermana de minutosSuenoEnDia) */
+export function mlEnDia(tomas: Toma[], dia: string): number {
+  let total = 0
+  for (const toma of tomas) {
+    if (toma.cantidad_ml && claveDia(toma.inicio) === dia) total += toma.cantidad_ml
+  }
+  return total
+}
+
 export interface PuntoGrafica {
   etiqueta: string // fecha 'YYYY-MM-DD'
   valor: number
+}
+
+/** Quita los puntos iniciales sin valor (antes del primer registro real) */
+export function recortarVaciosIniciales(puntos: PuntoGrafica[]): PuntoGrafica[] {
+  const primero = puntos.findIndex((p) => p.valor > 0)
+  return primero === -1 ? [] : puntos.slice(primero)
 }
 
 /** Extrae los puntos (fecha, valor) no nulos de una serie, orden cronológico */

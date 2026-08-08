@@ -8,7 +8,7 @@
 import { computed, ref, watch } from 'vue'
 import * as servicio from '../services/carlotaService'
 import HojaInferior from './HojaInferior.vue'
-import { aInputLocal, duracionMinutos } from '../models/CarlotaModel'
+import { aInputLocal, duracionMinutos, mensajeError } from '../models/CarlotaModel'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
@@ -108,7 +108,7 @@ async function ejecutar(accion: () => Promise<unknown>) {
     await accion()
     emit('guardado')
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
 }
 
@@ -117,23 +117,32 @@ function guardar() {
   if (!e) return
   const inicioIso = new Date(e.inicio).toISOString()
   if (e.kind === 'toma') {
+    const esBiberonToma = e.tipoToma.startsWith('biberon')
     // duracionMin viene precargada del registro original, así que editar un
     // biberón con fin (cronómetro) conserva su duración; != null para no
-    // convertir una toma de 0 min en "en curso"
+    // convertir una toma de 0 min en "en curso". Una toma de pecho sin
+    // duración se cierra con fin = inicio: nunca debe quedar "en curso"
+    // (dispararía el cronómetro fantasma de Hoy).
     const fin =
       e.duracionMin != null
         ? new Date(new Date(e.inicio).getTime() + e.duracionMin * 60_000).toISOString()
-        : null
+        : esBiberonToma
+          ? null
+          : inicioIso
     ejecutar(() =>
       servicio.actualizarToma(e.id, {
         inicio: inicioIso,
         fin,
         tipo: e.tipoToma,
-        cantidad_ml: e.tipoToma.startsWith('biberon') ? e.cantidadMl : null,
+        cantidad_ml: esBiberonToma ? e.cantidadMl : null,
         notas: e.notas || null,
       }),
     )
   } else if (e.kind === 'sueno') {
+    if (e.fin && new Date(e.fin) <= new Date(e.inicio)) {
+      error.value = 'El fin del sueño debe ser posterior al inicio (revisa la fecha)'
+      return
+    }
     ejecutar(() =>
       servicio.actualizarSueno(e.id, {
         inicio: inicioIso,
@@ -269,11 +278,3 @@ function borrar() {
     </form>
   </HojaInferior>
 </template>
-
-<style scoped>
-.botones-edicion {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-</style>

@@ -23,7 +23,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | Tabla | Campos clave | Notas |
 |-------|-------------|-------|
 | `bebes` | nombre, fecha_nacimiento | Seed: Carlota. Soporta hermanos futuros |
-| `medidas` | fecha (date), peso_gramos, altura_cm, perimetro_craneal_cm, notas | Todos los valores opcionales (se anota lo que se tenga) |
+| `medidas` | fecha (date), peso_gramos, altura_cm, perimetro_craneal_cm, origen, notas | Valores opcionales. origen: casa (defecto) / oficial (pediatra o farmacia) |
 | `tomas` | inicio, fin, tipo, cantidad_ml, notas | tipo: pecho_izq/pecho_der/biberon_formula/biberon_materna. Pecho→duracion, biberon→ml |
 | `suenos` | inicio, fin, notas | `fin NULL` = sueno en curso |
 | `panales` | fecha, tipo, cantidad | tipo: pis/caca/mixto. cantidad (poco/medio/mucho, opcional) para caca/mixto |
@@ -49,14 +49,13 @@ Indices `(bebe_id, fecha|inicio)` en todas las tablas de registros.
 Migraciones existentes:
 
 1. `202608061800_esquema_inicial.sql` — todo el esquema + RLS + seeds
-   (emails autorizados y bebe Carlota). ⚠️ Contiene los TODO(config) de
-   email de la madre y fecha de nacimiento: si ya se aplico con
-   placeholders, corregir con una migracion nueva.
+   (emails autorizados y bebe Carlota).
 2. `202608071430_panales_cantidad.sql` — columna `cantidad` en `panales`
    (poco/medio/mucho, opcional).
 3. `202608072100_eventos_unas.sql` — tipo de evento 'unas' (corte de unas):
    recrea el CHECK de `eventos` con el valor nuevo.
-4. `202608072230_nombre_completo.sql` — nombre completo del bebe.
+4. `202608072230_nombre_completo.sql` — cambia el valor de `bebes.nombre`
+   al nombre completo (no anade columna).
 5. `202608080030_medidas_origen.sql` — columna `origen` en `medidas`
    ('casa' por defecto / 'oficial' — pediatra o farmacia).
 

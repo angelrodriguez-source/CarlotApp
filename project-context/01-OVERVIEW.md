@@ -11,7 +11,7 @@ Que registra:
 - **Tomas**: pecho (izq/der, duracion) y biberon (formula/materna, ml)
 - **Sueno**: inicio/fin (boton "empieza/termina"), siestas y noche
 - **Panales**: pis / caca / mixto, con un toque
-- **Eventos**: bano, vitamina D, medicacion, hitos, otros
+- **Eventos**: bano, vitamina D, medicacion, corte de unas, momentos (hitos), otros
 - **Medidas**: peso (g), altura (cm), perimetro craneal (cm) → graficas de evolucion
 - **Citas y tramites**: proximas citas medicas, registro civil, etc., con check de hecho
 
@@ -41,10 +41,12 @@ sin registro publico, sin RPCs de economia, sin realtime.
 
 ```
 app/                       # Proyecto Vue (npm install / dev / build aqui)
-  public/                  # icon.svg, manifest.webmanifest, sw.js (PWA)
+  public/                  # icon.svg + PNGs del manifest, iconos de la nav
+                           # (icono-*.png), carlota.jpg, manifest, sw.js (PWA)
   src/
     assets/main.css        # Variables CSS + utilidades compartidas
-    components/            # GraficaLinea.vue (SVG puro)
+    components/            # Graficas SVG (Linea/Crecimiento/Ritmo), BarraObjetivo,
+                           # HojaInferior, HojaEdicionRegistro (+ registroEditable.ts)
     models/CarlotaModel.ts # Logica pura (edad, duraciones, resumenes) + tests
     router/index.ts        # Hash router + guard de sesion
     services/
@@ -57,8 +59,8 @@ app/                       # Proyecto Vue (npm install / dev / build aqui)
     views/                 # Login, Hoy, Historial, Evolucion, Citas
 project-context/           # Esta documentacion
 supabase/migrations/       # Migraciones SQL (auto-aplicadas al push)
-scripts/apply-migrations.sh
-.github/workflows/         # deploy.yml, migrate.yml, keepalive.yml
+scripts/                   # apply-migrations.sh, generar-referencia-oms.py
+.github/workflows/         # deploy.yml, migrate.yml, keepalive.yml, recordatorio.yml
 ```
 
 ## Decisiones de diseno

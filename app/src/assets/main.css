@@ -7,6 +7,7 @@
  * - --color-primario-suave: tinte de agrupación (hero, tiles)
  */
 :root {
+  color-scheme: light;
   --color-primario: #2aa595;
   --color-primario-oscuro: #1d8175;
   --color-primario-suave: #dff3ee;
@@ -19,6 +20,8 @@
   --color-ok: #4caf7d;
   --color-aviso: #e5a173;
   --color-peligro: #d95d5d;
+  --color-toast-fondo: #2c423e;
+  --color-toast-texto: #ffffff;
   --radio: 18px;
   --radio-s: 12px;
   --sombra:
@@ -28,7 +31,10 @@
 
 /* Modo noche (clase en <html>, la gestiona App.vue por horario o a mano) */
 .noche {
+  color-scheme: dark;
   --color-primario: #2aa595;
+  --color-toast-fondo: #35504b;
+  --color-toast-texto: #e3f1ee;
   --color-primario-oscuro: #7cd6c8;
   --color-primario-suave: #1d3a34;
   --color-accion: #1d8175;
@@ -37,6 +43,9 @@
   --color-texto: #e3f1ee;
   --color-texto-suave: #8fb3ab;
   --color-borde: #35504b;
+  --color-ok: #6fd39c;
+  --color-aviso: #f0b98a;
+  --color-peligro: #ff8b8b;
   --sombra:
     0 1px 2px rgb(0 0 0 / 0.3),
     0 6px 18px rgb(0 0 0 / 0.35);
@@ -76,7 +85,7 @@ button {
   cursor: pointer;
 }
 
-input,
+input:not([type='checkbox']):not([type='radio']),
 select,
 textarea {
   font-family: inherit;
@@ -98,10 +107,9 @@ textarea {
 }
 
 /*
- * Jerarquía de tarjetas (3 niveles):
+ * Jerarquía de tarjetas:
  * - .tarjeta: accionable — blanca, con sombra
  * - .tarjeta-hero: estado — tinte aguamarina, sin borde ni sombra
- * - .tarjeta-plana: secundario — sin sombra
  */
 .tarjeta {
   background: var(--color-tarjeta);
@@ -115,10 +123,6 @@ textarea {
 .tarjeta-hero {
   background: var(--color-primario-suave);
   border: none;
-  box-shadow: none;
-}
-
-.tarjeta-plana {
   box-shadow: none;
 }
 
@@ -161,6 +165,9 @@ textarea {
   border: none;
   padding: 0.35rem 0.6rem;
   font-size: 0.9rem;
+  /* Zona de toque suficiente para dedos (los ✎/✕ de las filas) */
+  min-width: 40px;
+  min-height: 40px;
 }
 
 .campo {
@@ -182,17 +189,6 @@ textarea {
 .suave {
   color: var(--color-texto-suave);
   font-size: 0.9rem;
-}
-
-.chip {
-  display: inline-block;
-  background: var(--color-fondo);
-  border: 1px solid var(--color-borde);
-  border-radius: 999px;
-  padding: 0.15rem 0.6rem;
-  font-size: 0.8rem;
-  margin-right: 0.3rem;
-  margin-bottom: 0.3rem;
 }
 
 .fila-registro {
@@ -218,6 +214,13 @@ textarea {
   flex: 1;
 }
 
+/* Guardar a la izquierda, Borrar a la derecha (hojas de edición) */
+.botones-edicion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 /* Pista de "hay más": puntos suspensivos tocables al pie de lo plegado */
 .ver-mas {
   display: block;
@@ -229,7 +232,7 @@ textarea {
   font-size: 1.3rem;
   line-height: 1;
   letter-spacing: 0.15em;
-  padding: 0.2rem 0 0;
+  padding: 0.5rem 0 0.3rem;
 }
 
 /* ---- Skeletons de carga (siluetas de tarjeta con brillo) ---- */
@@ -272,7 +275,7 @@ textarea {
   animation: pulso-suave 2.2s ease-out infinite;
 }
 
-/* ---- Transiciones (Vue <Transition name="hoja"> y "aparecer") ---- */
+/* ---- Transiciones (Vue <Transition name="hoja">) ---- */
 
 .hoja-enter-active,
 .hoja-leave-active {
@@ -294,17 +297,6 @@ textarea {
   transform: translateY(100%);
 }
 
-.aparecer-enter-active {
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
-}
-
-.aparecer-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .esqueleto,
   .pulso {
@@ -314,8 +306,7 @@ textarea {
   .hoja-enter-active,
   .hoja-leave-active,
   .hoja-enter-active .hoja-panel,
-  .hoja-leave-active .hoja-panel,
-  .aparecer-enter-active {
+  .hoja-leave-active .hoja-panel {
     transition: none;
   }
 }

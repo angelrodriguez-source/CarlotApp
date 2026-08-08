@@ -11,13 +11,16 @@ import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import {
   bandaOMS,
-  claveDia,
   edadDias,
   hoyLocal,
+  mensajeError,
   minutosSuenoEnDia,
+  mlEnDia,
   objetivoLecheMl,
   objetivoSuenoMinutos,
-  percentilOMS,
+  percentilRedondeado,
+  rangoDesde,
+  recortarVaciosIniciales,
   serieGrafica,
   ultimosDias,
   valorPercentilOMS,
@@ -77,7 +80,7 @@ onMounted(async () => {
   try {
     await cargar()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   } finally {
     cargando.value = false
   }
@@ -113,7 +116,7 @@ async function guardarMedida() {
     }
     await cargar()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
 }
 
@@ -152,7 +155,7 @@ async function ejecutarEdicion(accion: () => Promise<unknown>) {
     edicionMedida.value = null
     await cargar()
   } catch (e) {
-    errorEdicion.value = e instanceof Error ? e.message : String(e)
+    errorEdicion.value = mensajeError(e)
   }
 }
 
@@ -189,10 +192,7 @@ const seriePerimetro = computed(() =>
 
 /** Percentil OMS redondeado de un valor medido en cierta fecha, o null */
 function percentilDe(tipo: MedidaOMS, valor: number | null, fecha: string): number | null {
-  const nacimiento = bebeStore.bebe?.fecha_nacimiento
-  if (!valor || !nacimiento) return null
-  const p = percentilOMS(tipo, valor, edadDias(nacimiento, fecha))
-  return p === null ? null : Math.round(p)
+  return percentilRedondeado(tipo, valor, bebeStore.bebe?.fecha_nacimiento, fecha)
 }
 
 /** " (P52)" para mostrar junto al valor, o cadena vacía */
@@ -289,20 +289,21 @@ const diasDiarios = ref(14)
 const tomas = ref<Toma[]>([])
 const suenos = ref<Sueno[]>([])
 
+// Token de carga: dos cambios rápidos del selector no deben dejar
+// la respuesta vieja pisando a la nueva
+let versionDiarios = 0
+
 async function cargarDiarios() {
   const bebe = bebeStore.bebe
   if (!bebe) return
-  const desde = new Date()
-  desde.setDate(desde.getDate() - (diasDiarios.value - 1))
-  desde.setHours(0, 0, 0, 0)
-  // Sueños desde un día antes: el nocturno que empezó la víspera
-  // aporta sus horas de madrugada al primer día visible
-  const desdeSuenos = new Date(desde)
-  desdeSuenos.setDate(desdeSuenos.getDate() - 1)
-  ;[tomas.value, suenos.value] = await Promise.all([
-    servicio.listarTomas(bebe.id, desde.toISOString()),
-    servicio.listarSuenos(bebe.id, desdeSuenos.toISOString()),
+  const version = ++versionDiarios
+  const { desdeIso, desdeSuenosIso } = rangoDesde(diasDiarios.value)
+  const datos = await Promise.all([
+    servicio.listarTomas(bebe.id, desdeIso),
+    servicio.listarSuenos(bebe.id, desdeSuenosIso),
   ])
+  if (version !== versionDiarios) return
+  ;[tomas.value, suenos.value] = datos
 }
 
 watch(diasDiarios, async () => {
@@ -310,31 +311,21 @@ watch(diasDiarios, async () => {
   try {
     await cargarDiarios()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
 })
 
 /** Días del rango en orden cronológico (ultimosDias los da recientes primero) */
 const diasSerie = computed(() => [...ultimosDias(diasDiarios.value)].reverse())
 
-/** Quita los días iniciales sin datos (antes del primer registro) */
-function recortarVacios(puntos: PuntoGrafica[]): PuntoGrafica[] {
-  const primero = puntos.findIndex((p) => p.valor > 0)
-  return primero === -1 ? [] : puntos.slice(primero)
-}
-
-const serieLeche = computed<PuntoGrafica[]>(() => {
-  const porDia = new Map<string, number>()
-  for (const t of tomas.value) {
-    if (!t.cantidad_ml) continue
-    const dia = claveDia(t.inicio)
-    porDia.set(dia, (porDia.get(dia) ?? 0) + t.cantidad_ml)
-  }
-  return recortarVacios(diasSerie.value.map((d) => ({ etiqueta: d, valor: porDia.get(d) ?? 0 })))
-})
+const serieLeche = computed<PuntoGrafica[]>(() =>
+  recortarVaciosIniciales(
+    diasSerie.value.map((d) => ({ etiqueta: d, valor: mlEnDia(tomas.value, d) })),
+  ),
+)
 
 const serieSueno = computed<PuntoGrafica[]>(() =>
-  recortarVacios(
+  recortarVaciosIniciales(
     diasSerie.value.map((d) => ({
       etiqueta: d,
       valor: Math.round((minutosSuenoEnDia(suenos.value, d) / 60) * 10) / 10,
@@ -626,7 +617,7 @@ const franjaLeche = computed(() => {
   font-size: 0.9rem;
   font-weight: 600;
   background: transparent;
-  color: var(--color-texto-suave);
+  color: var(--color-texto);
   transition: background 0.15s;
 }
 
@@ -654,11 +645,5 @@ const franjaLeche = computed(() => {
 
 .cabecera-diarios select {
   width: auto;
-}
-
-.botones-edicion {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 </style>

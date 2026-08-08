@@ -50,6 +50,23 @@
 
 ### Hechas
 
+- [x] Ultra-revision multiagente (2026-08-08): 4 revisores (correccion,
+      UX/accesibilidad, calidad, docs/config) → ~40 arreglos aplicados.
+      Destacados: recarga al cruzar la medianoche o volver del segundo
+      plano; tokens anti-carrera en todas las cargas; sueño abierto con
+      tope de 24 h (modelo + servicio); las tomas de pecho nunca quedan
+      "en curso" fantasma; validacion fin>inicio en sueños; borrar del
+      dia con deshacer (recrea el registro) y confirmacion en momentos;
+      bebeStore relanza errores (antes pantalla en blanco); edad civil
+      correcta con DST; dias a cero visibles en Historial; ritmo 24h
+      escalado al dia real (23/25 h) y accesible por teclado; toasts y
+      estados legibles en modo noche (+color-scheme); checkboxes sin
+      width global; zonas de toque ≥40px; aria-labels en citas; PWA:
+      precache de estaticos, iconos PNG any+maskable en el manifest,
+      theme-color oscuro; recordatorio.yml robusto sin secret; helpers
+      puros extraidos al modelo con tests (34); CSS muerto fuera; docs
+      de project-context realineadas con el codigo
+
 - [x] Curvas estandar OMS de fondo en peso y altura (2026-08-08): las
       graficas de Valor pintan de fondo los deciles P0-P100 (de 10 en 10;
       P0/P100 son los extremos de la cartilla, ±3 desviaciones; P50
@@ -99,7 +116,7 @@
       y tramoEnDia usa la medianoche real del dia siguiente (correcto en
       los cambios de hora)
 - [x] Corte de unas (2026-08-07): nuevo tipo de evento 'unas' (migracion
-      del CHECK), boton rapido "✂️ Uñas cortadas" en la hoja Mas con
+      del CHECK), boton rapido "✂️ Uñas cortadas" en la hoja del ＋ con
       "ultima vez hace N dias" (getUltimoEventoDeTipo)
 - [x] Restyling completo tras auditoria UX (2026-08-07), fases F1-F4:
       contraste AA en botones (--color-accion), bloque "Ahora" arriba con
@@ -112,7 +129,7 @@
       tiempo, pulso en cronometros, segmento Valor|Percentil en Evolucion
       y bandas P3-P97 OMS con mediana punteada (bandaOMS con test)
 
-- [x] Momentos (2026-08-07): alta dedicada en Hoy → Mas → "✨ Momento"
+- [x] Momentos (2026-08-07): alta dedicada en Hoy → ＋ → "✨ Momento"
       (reutiliza eventos tipo hito, sin migracion; etiqueta renombrada a
       "Momento") y seccion propia en Historial con todos los momentos de
       siempre (listarMomentos), con borrado

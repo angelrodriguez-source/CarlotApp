@@ -5,7 +5,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
-import { aInputLocal } from '../models/CarlotaModel'
+import { aInputLocal, mensajeError } from '../models/CarlotaModel'
 import { ETIQUETAS_CITA, type Cita, type TipoCita } from '../types'
 
 const bebeStore = useBebeStore()
@@ -34,27 +34,34 @@ onMounted(async () => {
   try {
     await cargar()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   } finally {
     cargando.value = false
   }
 })
 
-async function ejecutar(accion: () => Promise<unknown>) {
+/** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
+async function ejecutar(accion: () => Promise<unknown>): Promise<boolean> {
   error.value = ''
   try {
     await accion()
+  } catch (e) {
+    error.value = mensajeError(e)
+    return false
+  }
+  try {
     await cargar()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
+  return true
 }
 
 async function guardarCita() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   const datos = nuevaCita.value
-  await ejecutar(() =>
+  const guardada = await ejecutar(() =>
     servicio.crearCita({
       bebe_id: bebe.id,
       fecha: new Date(datos.fecha).toISOString(),
@@ -65,7 +72,7 @@ async function guardarCita() {
     }),
   )
   // Solo limpiar y cerrar si se guardó: si falló, conservar lo escrito
-  if (error.value) return
+  if (!guardada) return
   mostrarFormulario.value = false
   nuevaCita.value = {
     titulo: '',
@@ -165,7 +172,11 @@ function icono(tipo: TipoCita): string {
             <template v-if="cita.notas"> · {{ cita.notas }}</template>
           </span>
         </span>
-        <button class="boton peligro" @click="ejecutar(() => servicio.eliminarCita(cita.id))">
+        <button
+          class="boton peligro"
+          :aria-label="`Borrar cita: ${cita.titulo}`"
+          @click="ejecutar(() => servicio.eliminarCita(cita.id))"
+        >
           ✕
         </button>
       </div>
@@ -187,7 +198,11 @@ function icono(tipo: TipoCita): string {
             {{ icono(cita.tipo) }} {{ cita.titulo }}
             <span class="suave"> · {{ fechaLegible(cita.fecha) }}</span>
           </span>
-          <button class="boton peligro" @click="ejecutar(() => servicio.eliminarCita(cita.id))">
+          <button
+            class="boton peligro"
+            :aria-label="`Borrar cita: ${cita.titulo}`"
+            @click="ejecutar(() => servicio.eliminarCita(cita.id))"
+          >
             ✕
           </button>
         </div>

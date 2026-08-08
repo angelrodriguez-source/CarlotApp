@@ -6,14 +6,24 @@
  *  - Assets con hash de Vite (/assets/): cache primero (son inmutables)
  *  - Resto: red con fallback a cache
  */
-const CACHE = 'carlotapp-v1'
+const CACHE = 'carlotapp-v2'
+
+// Estaticos de public/ (sin hash): precacheados para que el avatar y los
+// iconos de la navegacion funcionen offline desde el primer arranque
+const PRECACHE = [
+  './',
+  './manifest.webmanifest',
+  './icon.svg',
+  './carlota.jpg',
+  './icono-inicio.png',
+  './icono-historial.png',
+  './icono-evolucion.png',
+  './icono-citas.png',
+  './icono-dia.png',
+]
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(['./', './manifest.webmanifest', './icon.svg'])),
-  )
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)))
 })
 
 // La app envia SKIP_WAITING cuando el usuario acepta actualizar

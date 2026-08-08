@@ -7,6 +7,7 @@
  * señala "hoy": lo que queda a su derecha es la progresión esperada.
  */
 import { computed } from 'vue'
+import { fechaCortaDia } from '../models/CarlotaModel'
 
 export interface PuntoCrecimiento {
   dia: number // edad en días
@@ -100,17 +101,13 @@ const xHoy = computed(() => {
 
 const lineaMedida = computed(() => coordsMedidos.value.map((c) => `${c.x},${c.y}`).join(' '))
 
-function fechaCorta(iso: string): string {
-  const [, mes, dia] = iso.split('-')
-  return `${dia}/${mes}`
-}
-
 /** Etiquetas del eje X: primera y última medida (si las hay) */
 const etiquetasX = computed(() => {
   if (props.puntos.length === 0) return null
   return {
-    inicio: fechaCorta(props.puntos[0]!.etiqueta),
-    fin: props.puntos.length > 1 ? fechaCorta(props.puntos[props.puntos.length - 1]!.etiqueta) : '',
+    inicio: fechaCortaDia(props.puntos[0]!.etiqueta),
+    fin:
+      props.puntos.length > 1 ? fechaCortaDia(props.puntos[props.puntos.length - 1]!.etiqueta) : '',
   }
 })
 </script>
@@ -167,7 +164,7 @@ const etiquetasX = computed(() => {
 
       <!-- Serie medida encima -->
       <polyline v-if="puntos.length > 1" :points="lineaMedida" class="linea-serie" />
-      <g v-for="c in coordsMedidos" :key="c.punto.etiqueta">
+      <g v-for="(c, i) in coordsMedidos" :key="`${c.punto.etiqueta}-${i}`">
         <circle :cx="c.x" :cy="c.y" r="3.5" class="punto">
           <title>{{ c.punto.etiqueta }}: {{ c.punto.valor }} {{ unidad }}</title>
         </circle>

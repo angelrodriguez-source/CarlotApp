@@ -76,5 +76,5 @@ export const useUserStore = defineStore('user', () => {
     user.value = null
   }
 
-  return { user, loading, isLoggedIn, nombre, waitUntilReady, init, loginConGoogle, logout }
+  return { user, isLoggedIn, nombre, waitUntilReady, init, loginConGoogle, logout }
 })
