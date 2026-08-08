@@ -631,25 +631,37 @@ function alternarSueno() {
 }
 
 // ---- Pañal ----
-// Pis se registra al toque; caca y mixto piden antes la cantidad (poco/medio/mucho)
-const panalPendiente = ref<TipoPanal | null>(null)
+// Hoja única para pis/caca/mixto: hora editable (precargada con "ahora")
+// y, en caca/mixto, la cantidad como botones que guardan directamente
+const nuevoPanal = ref<{ tipo: TipoPanal; hora: string } | null>(null)
 
-async function registrarPanal(tipo: TipoPanal, cantidad: CantidadPanal | null = null) {
+const TITULOS_PANAL: Record<TipoPanal, string> = {
+  pis: '🧷 Pis',
+  caca: '💩 Caca',
+  mixto: '💩 Pis + caca',
+}
+
+function abrirPanal(tipo: TipoPanal) {
+  nuevoPanal.value = { tipo, hora: aInputLocal(new Date()) }
+}
+
+async function registrarPanal(cantidad: CantidadPanal | null = null) {
   const bebe = bebeStore.bebe
-  if (!bebe) return
+  const panal = nuevoPanal.value
+  if (!bebe || !panal) return
   const guardado = await registrarYOfrecer(
     'Pañal registrado',
     () =>
       servicio.registrarPanal({
         bebe_id: bebe.id,
-        fecha: new Date().toISOString(),
-        tipo,
+        fecha: new Date(panal.hora).toISOString(),
+        tipo: panal.tipo,
         cantidad,
         notas: null,
       }),
-    (panal) => () => servicio.eliminarPanal(panal.id),
+    (registro) => () => servicio.eliminarPanal(registro.id),
   )
-  if (guardado) panalPendiente.value = null
+  if (guardado) nuevoPanal.value = null
 }
 
 // ---- Sueño a posteriori ----
@@ -684,10 +696,16 @@ function prepararSuenoPosteriori() {
 }
 
 // ---- Evento ----
-const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '' })
+const nuevoEvento = ref({ tipo: 'bano' as TipoEvento, descripcion: '', hora: '' })
 
 // ---- Momento (evento tipo hito con nombre propio) ----
 const nuevoMomento = ref('')
+const horaMomento = ref('')
+
+function abrirMomento() {
+  horaMomento.value = aInputLocal(new Date())
+  formulario.value = 'momento'
+}
 
 async function guardarMomento() {
   const bebe = bebeStore.bebe
@@ -697,7 +715,7 @@ async function guardarMomento() {
     () =>
       servicio.registrarEvento({
         bebe_id: bebe.id,
-        fecha: new Date().toISOString(),
+        fecha: new Date(horaMomento.value).toISOString(),
         tipo: 'hito',
         descripcion: nuevoMomento.value.trim(),
       }),
@@ -728,21 +746,10 @@ const TEXTOS_EVENTO_RAPIDO: Partial<Record<TipoEvento, string>> = {
   unas: 'Uñas cortadas ✂️',
 }
 
-async function registrarEventoRapido(tipo: TipoEvento) {
-  const bebe = bebeStore.bebe
-  if (!bebe) return
-  const guardado = await registrarYOfrecer(
-    TEXTOS_EVENTO_RAPIDO[tipo] ?? 'Evento registrado',
-    () =>
-      servicio.registrarEvento({
-        bebe_id: bebe.id,
-        fecha: new Date().toISOString(),
-        tipo,
-        descripcion: null,
-      }),
-    (evento) => () => servicio.eliminarEvento(evento.id),
-  )
-  if (guardado) formulario.value = null
+/** Abre la hoja de evento con el tipo ya elegido y la hora en "ahora" */
+function abrirEvento(tipo: TipoEvento) {
+  nuevoEvento.value = { tipo, descripcion: '', hora: aInputLocal(new Date()) }
+  formulario.value = 'evento'
 }
 
 // ---- Catálogo de acciones de registro ----
@@ -791,27 +798,22 @@ function ejecutarAccion(id: string) {
       pulsarAccesoToma()
       break
     case 'pis':
-      registrarPanal('pis')
-      break
     case 'caca':
     case 'mixto':
-      panalPendiente.value = id
+      abrirPanal(id)
       break
     case 'sueno_post':
       prepararSuenoPosteriori()
       break
     case 'momento':
-      formulario.value = 'momento'
+      abrirMomento()
       break
     case 'bano':
     case 'vitamina_d':
     case 'medicacion':
     case 'unas':
-      registrarEventoRapido(id)
-      break
     case 'otro':
-      nuevoEvento.value.tipo = 'otro'
-      formulario.value = 'evento'
+      abrirEvento(id)
       break
   }
 }
@@ -832,11 +834,11 @@ async function guardarEvento() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   const guardado = await registrarYOfrecer(
-    'Evento registrado',
+    TEXTOS_EVENTO_RAPIDO[nuevoEvento.value.tipo] ?? 'Evento registrado',
     () =>
       servicio.registrarEvento({
         bebe_id: bebe.id,
-        fecha: new Date().toISOString(),
+        fecha: new Date(nuevoEvento.value.hora).toISOString(),
         tipo: nuevoEvento.value.tipo,
         descripcion: nuevoEvento.value.descripcion || null,
       }),
@@ -1053,9 +1055,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             </ul>
             <p class="ajuste">😴 {{ etapaSemana.sueno }}</p>
             <p class="ajuste">🍼 {{ etapaSemana.tomas }}</p>
-            <button class="boton secundario" @click="formulario = 'momento'">
-              ✨ Guardar un momento
-            </button>
+            <button class="boton secundario" @click="abrirMomento()">✨ Guardar un momento</button>
             <p class="suave nota-semana">
               Orientativo (hitos CDC/AAP/NHS): cada bebé va a su ritmo. Las dudas, al pediatra.
             </p>
@@ -1209,21 +1209,33 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <!-- Hojas inferiores (formularios) -->
       <HojaInferior
-        :abierta="panalPendiente !== null"
-        :titulo="`💩 ${panalPendiente === 'mixto' ? 'Pis + caca' : 'Caca'} — ¿cuánta?`"
-        @cerrar="panalPendiente = null"
+        :abierta="nuevoPanal !== null"
+        :titulo="nuevoPanal ? TITULOS_PANAL[nuevoPanal.tipo] : ''"
+        @cerrar="nuevoPanal = null"
       >
-        <div class="cantidades">
-          <button
-            v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
-            :key="valor"
-            class="acceso"
-            :disabled="registrando"
-            @click="registrarPanal(panalPendiente!, valor)"
-          >
-            {{ etiqueta }}
+        <template v-if="nuevoPanal">
+          <div class="campo">
+            <label for="panal-hora">Hora (por si no es ahora mismo)</label>
+            <input id="panal-hora" v-model="nuevoPanal.hora" type="datetime-local" required />
+          </div>
+          <template v-if="nuevoPanal.tipo !== 'pis'">
+            <span class="etiqueta-seccion">¿Cuánta?</span>
+            <div class="cantidades">
+              <button
+                v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
+                :key="valor"
+                class="acceso"
+                :disabled="registrando"
+                @click="registrarPanal(valor)"
+              >
+                {{ etiqueta }}
+              </button>
+            </div>
+          </template>
+          <button v-else class="boton" :disabled="registrando" @click="registrarPanal()">
+            Guardar
           </button>
-        </div>
+        </template>
       </HojaInferior>
 
       <HojaInferior
@@ -1331,6 +1343,10 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               required
             />
           </div>
+          <div class="campo">
+            <label for="momento-hora">Hora (por si no es ahora mismo)</label>
+            <input id="momento-hora" v-model="horaMomento" type="datetime-local" required />
+          </div>
           <button class="boton" type="submit" :disabled="registrando">Guardar momento</button>
         </form>
       </HojaInferior>
@@ -1357,7 +1373,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Otro evento -->
       <HojaInferior
         :abierta="formulario === 'evento'"
-        titulo="⭐ Nuevo evento"
+        :titulo="`⭐ ${ETIQUETAS_EVENTO[nuevoEvento.tipo]}`"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarEvento">
@@ -1372,6 +1388,10 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <div class="campo">
             <label for="evento-desc">Descripción</label>
             <input id="evento-desc" v-model="nuevoEvento.descripcion" type="text" />
+          </div>
+          <div class="campo">
+            <label for="evento-hora">Hora (por si no es ahora mismo)</label>
+            <input id="evento-hora" v-model="nuevoEvento.hora" type="datetime-local" required />
           </div>
           <button class="boton" type="submit" :disabled="registrando">Guardar</button>
         </form>
