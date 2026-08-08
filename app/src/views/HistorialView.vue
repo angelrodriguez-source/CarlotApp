@@ -399,6 +399,14 @@ function borrarRegistro() {
         <span class="suave">{{ diaAbierto === diaHistorial.dia ? '▲' : '▼' }}</span>
       </button>
       <p class="resumen-linea suave">{{ resumenLinea(diaHistorial.resumen) }}</p>
+      <button
+        v-if="diaAbierto !== diaHistorial.dia && diaHistorial.registros.length > 0"
+        class="ver-mas"
+        aria-label="Abrir el día"
+        @click="diaAbierto = diaHistorial.dia"
+      >
+        ⋯
+      </button>
       <div v-if="diaAbierto === diaHistorial.dia">
         <template v-for="registro in diaHistorial.registros" :key="registro.id">
           <div class="fila-registro">
