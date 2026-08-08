@@ -26,3 +26,6 @@ export const iconoCitasUrl = import.meta.env.BASE_URL + 'icono-citas.png'
 
 /** Icono de Evolución en la navegación inferior (gráfica de barras) */
 export const iconoEvolucionUrl = import.meta.env.BASE_URL + 'icono-evolucion.png'
+
+/** Icono de Historial en la navegación inferior (libro con pluma) */
+export const iconoHistorialUrl = import.meta.env.BASE_URL + 'icono-historial.png'

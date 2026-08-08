@@ -8,7 +8,13 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
-import { iconoCitasUrl, iconoEvolucionUrl, iconoInicioUrl, logoUrl } from './assets/branding'
+import {
+  iconoCitasUrl,
+  iconoEvolucionUrl,
+  iconoHistorialUrl,
+  iconoInicioUrl,
+  logoUrl,
+} from './assets/branding'
 
 const userStore = useUserStore()
 const bebeStore = useBebeStore()
@@ -126,7 +132,10 @@ function abrirRegistro() {
       <img :src="iconoInicioUrl" alt="" class="icono-nav" />
       <span>Inicio</span>
     </RouterLink>
-    <RouterLink :to="{ name: 'historial' }">📖<span>Historial</span></RouterLink>
+    <RouterLink :to="{ name: 'historial' }">
+      <img :src="iconoHistorialUrl" alt="" class="icono-nav" />
+      <span>Historial</span>
+    </RouterLink>
     <button class="fab" aria-label="Registrar" @click="abrirRegistro">＋</button>
     <RouterLink :to="{ name: 'evolucion' }">
       <img :src="iconoEvolucionUrl" alt="" class="icono-nav" />
