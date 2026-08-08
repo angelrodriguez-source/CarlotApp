@@ -231,6 +231,14 @@ const etapaSemana = computed(() =>
                 </span>
                 <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
               </button>
+              <button
+                v-if="!mostrarSemana"
+                class="ver-mas"
+                aria-label="Ver qué esperar esta semana"
+                @click="mostrarSemana = true"
+              >
+                ⋯
+              </button>
               <template v-if="mostrarSemana">
                 <p class="nenei-bocadillo">
                   Esta semana {{ nombreBebe }} anda con esto entre manos:
@@ -414,9 +422,9 @@ const etapaSemana = computed(() =>
 
 /* Qué esperar esta semana (plegable, tras ¿Por qué llora?) */
 .nenei-semana {
-  margin-top: 0.85rem;
+  margin-top: 1.35rem;
   border-top: 1px solid var(--color-borde);
-  padding-top: 0.6rem;
+  padding-top: 0.85rem;
 }
 
 .nenei-semana-cabecera {
@@ -428,7 +436,7 @@ const etapaSemana = computed(() =>
   background: none;
   border: none;
   padding: 0.35rem 0;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: var(--color-texto);
   text-align: left;
 }
