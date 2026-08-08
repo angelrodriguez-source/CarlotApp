@@ -161,6 +161,18 @@ de HojaEdicionRegistro.
 
 ### Mime Predictor (la super idea ⭐)
 
+- [x] FASE 1d — REMATES y racion prevista (2026-08-08, idea de Angel):
+      tomas separadas por <45 min se consolidan en COMIDAS; si la ultima
+      comida quedo corta (<65% de la racion tipica) y la bebe HA
+      DEMOSTRADO que remata (≥2 remates observados — sin evidencia no se
+      asume, lo exigio el backtest), se predice un remate cercano
+      (mediana de sus huecos intra-comida, prior 40 min avalado por
+      fuentes: completar la toma en ~45 min, reofrecer biberon en 1-2 h)
+      con los ml que faltan para la racion. Ademas `mlPrevisto` estima
+      como sera la siguiente toma (remate o racion tipica) y Ñeñeñi lo
+      anuncia. Backtest con 35% de comidas partidas: remates predichos
+      con error 0-9 min, MAE global <25 con antelacion de 15 min.
+      +3 tests (81 en total).
 - [x] FASE 1c — Cantidad y mini-despertares (2026-08-08, idea de Angel):
       (1) los ml de la ultima toma frente a su mediana personal modulan
       la proxima prevista (toma corta → pedira antes), sensibilidad 0.35

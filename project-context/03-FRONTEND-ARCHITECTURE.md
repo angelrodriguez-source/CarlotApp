@@ -102,12 +102,17 @@ Componentes):
   futura; los intervalos que cruzan franja (amanecer, tarde→noche) se
   excluyen tambien del historico; banda de confianza = 1.0·IQR
   (recalibrada por backtest tras esa exclusion, cobertura ~70-88%)
-- Capa de CANTIDAD: los ml de la ultima toma frente a su mediana
-  personal modulan el intervalo proyectado (toma corta → la siguiente se
-  adelanta), factor 1 + 0.35·(ml/tipico − 1) acotado [0.5, 1.4];
-  sensibilidad calibrada por barrido con bebes acoplados (α fuerte:
-  MAE 32→23; sin acople solo paga +1.4 min). Expuesto como
-  `factorCantidad` en la prediccion (Ñeñeñi lo comenta en su bocadillo)
+- Capa de CANTIDAD con dos modos: (1) tomas separadas por <45 min se
+  consolidan en COMIDAS; si la ultima comida quedo por debajo del 65% de
+  la racion tipica (mediana por comida) Y la bebe ha demostrado que
+  remata (≥2 remates observados), se predice un REMATE cercano — mediana
+  de sus huecos intra-comida con prior de 40 min — con los ml que faltan
+  (`esRemate`, `mlPrevisto`); (2) si no, cadencia normal modulada por el
+  factor 1 + 0.35·(mlComida/tipico − 1) acotado [0.5, 1.4], calibrado
+  por barrido con bebes acoplados (α fuerte: MAE 32→23; sin acople solo
+  paga +1.4 min). Backtest de comidas partidas (35%): remates predichos
+  con error de 0-9 min. Ñeñeñi lo cuenta ("pedira un remate de unos
+  60 ml para completarla" / "la proxima toma, de unos 120 ml, ...")
 - MINI-DESPERTARES: tramos de sueño separados por <25 min se consolidan
   en un mismo bloque antes de aprender ventanas de vigilia (despertarse
   10-20 min y volver a dormir no es una ventana y contaminaria la

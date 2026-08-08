@@ -93,6 +93,29 @@ export const AJUSTES = {
   /** Mínimo de tomas con ml en el histórico para fiarse de la mediana */
   minTomasConMl: 3,
   /**
+   * REMATE: tomas separadas por menos de minIntervaloTomaMin se
+   * consolidan en una misma COMIDA. Si la última comida quedó por debajo
+   * de umbralTomaCorta·mlTipico, lo esperable no es la cadencia normal
+   * adelantada sino un REMATE cercano para completarla: mediana de los
+   * huecos intra-comida propios (shrinkage kRemate) con prior de 40 min
+   * — las guías sitúan el "completar la toma" dentro de ~45 min y el
+   * reofrecer un biberón sin terminar dentro de 1-2 h (Baby Care Advice,
+   * CDC). El tamaño previsto del remate es lo que faltó para su ración.
+   */
+  umbralTomaCorta: 0.65,
+  kRemate: 2,
+  gapRematePriorMin: 40,
+  bandaRematePriorMin: 20,
+  mlMinimoRemate: 30,
+  /**
+   * El modo remate SOLO se activa si la bebé lo ha demostrado: al menos
+   * estos remates observados en el histórico. Un bebé que tras una toma
+   * corta simplemente adelanta su cadencia (sin rematar) no debe recibir
+   * una predicción de remate a los 40 min (lo detectó el backtest: al
+   * bebé proporcional sin remates le costaba +12 min de MAE).
+   */
+  minRematesObservados: 2,
+  /**
    * Un despertar de menos de estos minutos entre dos tramos de sueño es
    * un MINI-DESPERTAR: ambos tramos se consolidan en un mismo bloque y el
    * hueco no cuenta como ventana de vigilia (contaminaría la mediana).
@@ -114,10 +137,17 @@ export interface Prediccion {
   /** Nº de intervalos personales usados (histórico) */
   muestras: number
   /**
-   * Solo en próxima toma: cuánto moduló la CANTIDAD de la última toma al
-   * intervalo (1 = neutra; <1 = toma corta, la siguiente se adelanta)
+   * Solo en próxima toma: cuánto moduló la CANTIDAD de la última comida
+   * al intervalo (1 = neutra; <1 = comió poco, la siguiente se adelanta)
    */
   factorCantidad?: number
+  /**
+   * Solo en próxima toma: true si lo esperado es un REMATE — la última
+   * comida quedó corta y vendrá otra toma cercana para completarla
+   */
+  esRemate?: boolean
+  /** Solo en próxima toma: ml estimados de la siguiente (remate o ración típica) */
+  mlPrevisto?: number
 }
 
 export interface Incomodidad {
@@ -372,31 +402,74 @@ function ultimaTomaAntesDe(tomas: Toma[], ahora: Date): Toma | undefined {
     .sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime())[0]
 }
 
-/** Mediana de ml de las tomas con cantidad del histórico, o null con pocas */
-function mlTipico(tomas: Toma[], ahora: Date): number | null {
+/**
+ * COMIDAS consolidadas: tomas separadas por menos de minIntervaloTomaMin
+ * forman una misma comida (toma corta + su remate = una ración). mlTotal
+ * suma los ml conocidos (null si ninguna toma de la comida los tiene).
+ */
+interface Comida {
+  /** Inicio de la última toma de la comida (ancla de proyección) */
+  inicioUltimaMs: number
+  mlTotal: number | null
+  tomas: number
+}
+
+function comidasDe(tomas: Toma[], ahora: Date): Comida[] {
   const desde = ahora.getTime() - AJUSTES.historicoDias * 86_400_000
-  const mls = tomas
-    .filter((t) => {
-      const inicio = new Date(t.inicio).getTime()
-      return t.cantidad_ml !== null && inicio >= desde && inicio <= ahora.getTime()
-    })
-    .map((t) => t.cantidad_ml!)
+  const orden = tomas
+    .map((t) => ({ inicioMs: new Date(t.inicio).getTime(), ml: t.cantidad_ml }))
+    .filter((t) => t.inicioMs >= desde && t.inicioMs <= ahora.getTime())
+    .sort((a, b) => a.inicioMs - b.inicioMs)
+  const comidas: Comida[] = []
+  for (const toma of orden) {
+    const ultima = comidas[comidas.length - 1]
+    if (ultima && (toma.inicioMs - ultima.inicioUltimaMs) / 60_000 < AJUSTES.minIntervaloTomaMin) {
+      ultima.inicioUltimaMs = toma.inicioMs
+      ultima.tomas += 1
+      if (toma.ml !== null) ultima.mlTotal = (ultima.mlTotal ?? 0) + toma.ml
+    } else {
+      comidas.push({ inicioUltimaMs: toma.inicioMs, mlTotal: toma.ml, tomas: 1 })
+    }
+  }
+  return comidas
+}
+
+/** Ración típica: mediana de ml por COMIDA completa, o null con pocas */
+function mlTipicoComidas(comidas: Comida[]): number | null {
+  const mls = comidas.filter((c) => c.mlTotal !== null).map((c) => c.mlTotal!)
   if (mls.length < AJUSTES.minTomasConMl) return null
   return mediana(mls)
 }
 
 /**
- * Factor de cantidad de la última toma: <1 si comió menos de lo habitual
- * (la siguiente se adelanta), >1 si comió de más. 1 si no hay ml (pecho,
- * cronómetro abierto) o aún no hay mediana fiable.
+ * Patrón de REMATE observado: huecos entre tomas consecutivas de una
+ * misma comida (10 min a minIntervaloTomaMin). Con historial propio, el
+ * remate se predice con SU cadencia; sin él, con el prior de AJUSTES.
  */
-function factorCantidadDe(ultimaToma: Toma, tomas: Toma[], ahora: Date): number {
-  if (ultimaToma.cantidad_ml === null) return 1
-  const tipico = mlTipico(tomas, ahora)
-  if (tipico === null || tipico <= 0) return 1
+function patronRemate(tomas: Toma[], ahora: Date): PatronIntervalo {
+  const desde = ahora.getTime() - AJUSTES.historicoDias * 86_400_000
+  const inicios = tomas
+    .map((t) => new Date(t.inicio).getTime())
+    .filter((t) => t >= desde && t <= ahora.getTime())
+    .sort((a, b) => a - b)
+  const gaps: number[] = []
+  for (let i = 1; i < inicios.length; i++) {
+    const gap = (inicios[i]! - inicios[i - 1]!) / 60_000
+    if (gap >= 10 && gap < AJUSTES.minIntervaloTomaMin) gaps.push(gap)
+  }
+  return patronDe(gaps)
+}
+
+/**
+ * Factor de cantidad de la última COMIDA: <1 si comió menos de lo
+ * habitual (la siguiente se adelanta), >1 si comió de más. 1 sin ml o
+ * sin mediana fiable.
+ */
+function factorCantidadDe(mlComida: number | null, tipico: number | null): number {
+  if (mlComida === null || tipico === null || tipico <= 0) return 1
   const cociente = Math.min(
     AJUSTES.maxFactorCantidad,
-    Math.max(AJUSTES.minFactorCantidad, ultimaToma.cantidad_ml / tipico),
+    Math.max(AJUSTES.minFactorCantidad, mlComida / tipico),
   )
   return 1 + AJUSTES.sensibilidadCantidad * (cociente - 1)
 }
@@ -434,40 +507,81 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
   let proximaToma: Prediccion | null = null
   const ultimaToma = ultimaTomaAntesDe(datos.tomas, ahora)
   if (ultimaToma) {
-    const patrones = intervalosToma(datos.tomas, ahora)
-    const patron = nocheAhora ? patrones.noche : patrones.dia
-    const reciente = nocheAhora ? patrones.recienteNoche : patrones.recienteDia
-    const baseRango = nocheAhora ? etapa.intervaloTomaNoche : etapa.intervaloToma
-    const { valor, pesoPersonal, pesoReciente } = mezclarTresCapas(
-      reciente,
-      patron,
-      centro(baseRango),
-      AJUSTES.kToma,
-    )
-    // Semiancho personal = 1.0·IQR ≈ ±1.35σ en una normal (cobertura ~80%
-    // teórica). Recalibrado por backtest al excluir cruzaFranja del
-    // histórico: el IQR dejó de estar inflado por los huecos del amanecer
-    // y con 0.75 la cobertura real caía al ~50%
-    const banda = mezclar(
-      patron.iqrMin === null ? null : patron.iqrMin,
-      semiancho(baseRango),
-      patron.n,
-      AJUSTES.kToma,
-    ).valor
-    // La cantidad de la última toma modula el intervalo: comió poco →
-    // pedirá antes; comió de más → aguantará algo más
-    const factorCantidad = factorCantidadDe(ultimaToma, datos.tomas, ahora)
-    proximaToma = {
-      ...construirPrediccion(
-        new Date(ultimaToma.inicio).getTime(),
-        valor * factorCantidad,
-        banda,
-        pesoPersonal,
-        pesoReciente,
+    const comidas = comidasDe(datos.tomas, ahora)
+    const ultimaComida = comidas[comidas.length - 1]
+    const tipico = mlTipicoComidas(comidas)
+    const remate = patronRemate(datos.tomas, ahora)
+
+    if (
+      ultimaComida !== undefined &&
+      ultimaComida.mlTotal !== null &&
+      tipico !== null &&
+      ultimaComida.mlTotal < AJUSTES.umbralTomaCorta * tipico &&
+      // Según COMPORTAMIENTO: solo si la bebé ha demostrado que remata
+      remate.n >= AJUSTES.minRematesObservados
+    ) {
+      // Modo REMATE: la comida quedó corta → lo esperable no es la
+      // cadencia normal adelantada, sino otra toma CERCANA que la
+      // complete; después la cadencia se retoma desde el remate
+      const gap = mezclar(remate.medianaMin, AJUSTES.gapRematePriorMin, remate.n, AJUSTES.kRemate)
+      const banda = mezclar(
+        remate.iqrMin,
+        AJUSTES.bandaRematePriorMin,
+        remate.n,
+        AJUSTES.kRemate,
+      ).valor
+      const resto = tipico - ultimaComida.mlTotal
+      proximaToma = {
+        ...construirPrediccion(
+          new Date(ultimaToma.inicio).getTime(),
+          gap.valor,
+          banda,
+          gap.peso,
+          0,
+          remate.n,
+          ahora,
+        ),
+        esRemate: true,
+        mlPrevisto: Math.round(Math.max(AJUSTES.mlMinimoRemate, Math.min(tipico, resto)) / 5) * 5,
+      }
+    } else {
+      const patrones = intervalosToma(datos.tomas, ahora)
+      const patron = nocheAhora ? patrones.noche : patrones.dia
+      const reciente = nocheAhora ? patrones.recienteNoche : patrones.recienteDia
+      const baseRango = nocheAhora ? etapa.intervaloTomaNoche : etapa.intervaloToma
+      const { valor, pesoPersonal, pesoReciente } = mezclarTresCapas(
+        reciente,
+        patron,
+        centro(baseRango),
+        AJUSTES.kToma,
+      )
+      // Semiancho personal = 1.0·IQR ≈ ±1.35σ en una normal (cobertura
+      // ~80% teórica). Recalibrado por backtest al excluir cruzaFranja
+      // del histórico: el IQR dejó de estar inflado por los huecos del
+      // amanecer y con 0.75 la cobertura real caía al ~50%
+      const banda = mezclar(
+        patron.iqrMin === null ? null : patron.iqrMin,
+        semiancho(baseRango),
         patron.n,
-        ahora,
-      ),
-      factorCantidad: Math.round(factorCantidad * 100) / 100,
+        AJUSTES.kToma,
+      ).valor
+      // La cantidad de la última COMIDA modula el intervalo: comió algo
+      // menos → pedirá antes; comió de más → aguantará algo más
+      const factorCantidad = factorCantidadDe(ultimaComida?.mlTotal ?? null, tipico)
+      proximaToma = {
+        ...construirPrediccion(
+          new Date(ultimaToma.inicio).getTime(),
+          valor * factorCantidad,
+          banda,
+          pesoPersonal,
+          pesoReciente,
+          patron.n,
+          ahora,
+        ),
+        factorCantidad: Math.round(factorCantidad * 100) / 100,
+        esRemate: false,
+        mlPrevisto: tipico === null ? undefined : Math.round(tipico / 5) * 5,
+      }
     }
   }
 
@@ -718,6 +832,8 @@ export function aFilaPrediccion(p: Predicciones): {
       pesoPersonalToma: p.proximaToma?.pesoPersonal ?? null,
       pesoRecienteToma: p.proximaToma?.pesoReciente ?? null,
       factorCantidadToma: p.proximaToma?.factorCantidad ?? null,
+      esRemateToma: p.proximaToma?.esRemate ?? null,
+      mlPrevistoToma: p.proximaToma?.mlPrevisto ?? null,
       muestrasToma: p.proximaToma?.muestras ?? null,
       pesoPersonalSiesta: p.proximaSiesta?.pesoPersonal ?? null,
       pesoRecienteSiesta: p.proximaSiesta?.pesoReciente ?? null,

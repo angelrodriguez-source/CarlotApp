@@ -40,6 +40,35 @@ describe('frasesNeneni', () => {
     expect(frases[1]).toContain('le tocará dormir')
   })
 
+  it('modo remate: anuncia la toma de completar con sus ml', () => {
+    const remate = frasesNeneni(
+      predicciones({
+        proximaToma: prediccion({ esRemate: true, mlPrevisto: 60, minutosRestantes: 25 }),
+      }),
+      null,
+      'Carlota',
+    )
+    expect(remate[0]).toContain('se quedó corta')
+    expect(remate[0]).toContain('remate de unos 60 ml')
+    const yaToca = frasesNeneni(
+      predicciones({
+        proximaToma: prediccion({ esRemate: true, mlPrevisto: 55, minutosRestantes: -5 }),
+      }),
+      null,
+      'Carlota',
+    )
+    expect(yaToca[0]).toContain('ya toca')
+  })
+
+  it('modo normal con ración típica: la menciona en la frase', () => {
+    const conRacion = frasesNeneni(
+      predicciones({ proximaToma: prediccion({ mlPrevisto: 120 }) }),
+      null,
+      'Carlota',
+    )
+    expect(conRacion[0]).toContain('de unos 120 ml')
+  })
+
   it('la cantidad de la última toma añade su matiz (corta/copiosa/neutra)', () => {
     const corta = frasesNeneni(
       predicciones({ proximaToma: prediccion({ factorCantidad: 0.82 }) }),
