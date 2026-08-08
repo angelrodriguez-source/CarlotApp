@@ -15,6 +15,8 @@ import {
   edadDias,
   hoyLocal,
   minutosSuenoEnDia,
+  objetivoLecheMl,
+  objetivoSuenoMinutos,
   percentilOMS,
   serieGrafica,
   ultimosDias,
@@ -301,6 +303,34 @@ const serieSueno = computed<PuntoGrafica[]>(() =>
     })),
   ),
 )
+
+// Franjas de rango recomendado por edad, paralelas a cada serie
+
+/** Último peso conocido en ese día (o el primero que haya, si aún no había medida) */
+function pesoEnDia(dia: string): number | null {
+  const conPeso = medidas.value.filter((m) => m.peso_gramos)
+  if (conPeso.length === 0) return null
+  const anteriores = conPeso.filter((m) => m.fecha <= dia)
+  const medida = anteriores.length > 0 ? anteriores[anteriores.length - 1]! : conPeso[0]!
+  return medida.peso_gramos
+}
+
+const franjaSueno = computed(() => {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  if (!nacimiento) return []
+  return serieSueno.value.map((p) => {
+    const objetivo = objetivoSuenoMinutos(edadDias(nacimiento, p.etiqueta))
+    return { min: objetivo.min / 60, max: objetivo.max / 60 }
+  })
+})
+
+const franjaLeche = computed(() => {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  if (!nacimiento) return []
+  return serieLeche.value.map((p) =>
+    objetivoLecheMl(edadDias(nacimiento, p.etiqueta), pesoEnDia(p.etiqueta)),
+  )
+})
 </script>
 
 <template>
@@ -397,23 +427,7 @@ const serieSueno = computed<PuntoGrafica[]>(() =>
       <GraficaLinea titulo="👶 Percentil de PC" :puntos="seriePercentilPerimetro" unidad="P" />
     </template>
 
-    <!-- Día a día: leche y sueño (los objetivos de Hoy enlazan aquí) -->
-    <div v-if="!cargando" class="cabecera-diarios">
-      <span class="etiqueta-seccion">Día a día</span>
-      <select v-model.number="diasDiarios" aria-label="Días de las gráficas diarias">
-        <option :value="7">Últimos 7 días</option>
-        <option :value="14">Últimos 14 días</option>
-        <option :value="30">Últimos 30 días</option>
-      </select>
-    </div>
-    <div v-if="!cargando" id="grafica-tomas">
-      <GraficaLinea titulo="🍼 Leche al día" :puntos="serieLeche" unidad="ml" />
-    </div>
-    <div v-if="!cargando" id="grafica-sueno">
-      <GraficaLinea titulo="😴 Sueño al día" :puntos="serieSueno" unidad="h" />
-    </div>
-
-    <div class="tarjeta">
+    <div v-if="!cargando" class="tarjeta">
       <h3>📋 Mediciones</h3>
       <p v-if="medidas.length === 0" class="suave">Todavía no hay mediciones.</p>
       <div v-for="medida in medidasRecientes" :key="medida.id" class="fila-registro">
@@ -443,6 +457,32 @@ const serieSueno = computed<PuntoGrafica[]>(() =>
           ✎
         </button>
       </div>
+    </div>
+
+    <!-- Día a día: leche y sueño (los objetivos de Hoy enlazan aquí) -->
+    <div v-if="!cargando" class="cabecera-diarios">
+      <span class="etiqueta-seccion">Día a día</span>
+      <select v-model.number="diasDiarios" aria-label="Días de las gráficas diarias">
+        <option :value="7">Últimos 7 días</option>
+        <option :value="14">Últimos 14 días</option>
+        <option :value="30">Últimos 30 días</option>
+      </select>
+    </div>
+    <div v-if="!cargando" id="grafica-tomas">
+      <GraficaLinea
+        titulo="🍼 Leche al día"
+        :puntos="serieLeche"
+        unidad="ml"
+        :recomendado="franjaLeche"
+      />
+    </div>
+    <div v-if="!cargando" id="grafica-sueno">
+      <GraficaLinea
+        titulo="😴 Sueño al día"
+        :puntos="serieSueno"
+        unidad="h"
+        :recomendado="franjaSueno"
+      />
     </div>
 
     <!-- Edición de una medición en hoja inferior -->

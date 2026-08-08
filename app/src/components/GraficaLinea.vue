@@ -18,6 +18,11 @@ const props = defineProps<{
    * la franja no se pinta.
    */
   banda?: (BandaOMS | null)[]
+  /**
+   * Franja de rango recomendado (min-max), paralela a `puntos`, en otro
+   * color para poder comparar. Mismas reglas que `banda`.
+   */
+  recomendado?: ({ min: number; max: number } | null)[]
 }>()
 
 const bandaValida = computed(() =>
@@ -29,15 +34,28 @@ const bandaValida = computed(() =>
     : null,
 )
 
+const recomendadoValido = computed(() =>
+  props.recomendado &&
+  props.recomendado.length === props.puntos.length &&
+  props.puntos.length > 1 &&
+  props.recomendado.every((r) => r !== null)
+    ? (props.recomendado as { min: number; max: number }[])
+    : null,
+)
+
 const ANCHO = 320
 const ALTO = 180
 const MARGEN = { arriba: 12, abajo: 24, izquierda: 44, derecha: 12 }
 
 const escala = computed(() => {
   const valores = props.puntos.map((p) => p.valor)
-  // La franja OMS también entra en la escala para que quepa entera
+  // Las franjas (OMS y recomendada) también entran en la escala para
+  // que quepan enteras
   for (const b of bandaValida.value ?? []) {
     valores.push(b.p3, b.p97)
+  }
+  for (const r of recomendadoValido.value ?? []) {
+    valores.push(r.min, r.max)
   }
   let min = Math.min(...valores)
   let max = Math.max(...valores)
@@ -89,6 +107,18 @@ const lineaMediana = computed(() => {
   return coords.value.map((c, i) => `${c.x},${aY(banda[i]!.p50)}`).join(' ')
 })
 
+/** Polígono de la franja recomendada: ida por arriba (max) y vuelta por abajo (min) */
+const poligonoRecomendado = computed(() => {
+  const franja = recomendadoValido.value
+  if (!franja) return ''
+  const ida = coords.value.map((c, i) => `${c.x},${aY(franja[i]!.max)}`)
+  const vuelta = [...coords.value].reverse().map((c, i) => {
+    const original = franja[coords.value.length - 1 - i]!
+    return `${c.x},${aY(original.min)}`
+  })
+  return [...ida, ...vuelta].join(' ')
+})
+
 function fechaCorta(iso: string): string {
   const [, mes, dia] = iso.split('-')
   return `${dia}/${mes}`
@@ -126,6 +156,9 @@ function fechaCorta(iso: string): string {
       <polygon v-if="poligonoBanda" :points="poligonoBanda" class="banda-oms" />
       <polyline v-if="lineaMediana" :points="lineaMediana" class="mediana-oms" />
 
+      <!-- Franja de rango recomendado (otro color, transparente) -->
+      <polygon v-if="poligonoRecomendado" :points="poligonoRecomendado" class="banda-recomendada" />
+
       <polyline :points="polilinea" class="linea-serie" />
 
       <g v-for="c in coords" :key="c.punto.etiqueta">
@@ -161,6 +194,9 @@ function fechaCorta(iso: string): string {
     </p>
     <p v-if="poligonoBanda" class="suave leyenda-banda">
       Franja: P3–P97 OMS niñas · punteada: mediana (P50)
+    </p>
+    <p v-if="poligonoRecomendado" class="suave leyenda-banda">
+      Franja naranja: rango recomendado para su edad
     </p>
   </div>
 </template>
@@ -200,6 +236,11 @@ function fechaCorta(iso: string): string {
   stroke-width: 1;
   stroke-dasharray: 4 4;
   opacity: 0.6;
+}
+
+.banda-recomendada {
+  fill: var(--color-aviso);
+  opacity: 0.2;
 }
 
 .leyenda-banda {
