@@ -1502,12 +1502,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 }
 
 .seccion-hoy {
-  margin-top: 0.75rem;
+  margin-top: 1.1rem;
 }
 
 .seccion-hoy + .seccion-hoy {
   border-top: 1px solid var(--color-borde);
-  padding-top: 0.75rem;
+  padding-top: 1.1rem;
 }
 
 /* Cabecera de sección desplegable: toda la fila es el botón */
@@ -1568,11 +1568,11 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 }
 
 .fila-ahora .que {
-  font-size: 0.92rem;
+  font-size: 0.85rem;
 }
 
 .fila-ahora .cuanto {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-primario-oscuro);
   text-align: right;
