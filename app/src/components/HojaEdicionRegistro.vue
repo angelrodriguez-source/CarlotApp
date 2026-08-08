@@ -184,6 +184,7 @@ function guardar() {
 function borrar() {
   const e = edicion.value
   if (!e) return
+  if (!window.confirm('¿Borrar este registro?')) return
   const borradores = {
     toma: servicio.eliminarToma,
     sueno: servicio.eliminarSueno,

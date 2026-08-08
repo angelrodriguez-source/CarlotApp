@@ -177,6 +177,7 @@ function guardarEdicionMedida() {
 function borrarMedidaEnEdicion() {
   const e = edicionMedida.value
   if (!e) return
+  if (!window.confirm('¿Borrar esta medición?')) return
   ejecutarEdicion(() => servicio.eliminarMedida(e.id))
 }
 

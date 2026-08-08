@@ -9,11 +9,18 @@ import { logoUrl } from '../assets/branding'
 
 const userStore = useUserStore()
 const error = ref('')
+// Evita doble pulsación mientras arranca la redirección OAuth
+const entrando = ref(false)
 
 async function entrar() {
+  if (entrando.value) return
   error.value = ''
+  entrando.value = true
   const fallo = await userStore.loginConGoogle()
-  if (fallo) error.value = fallo.message
+  if (fallo) {
+    error.value = fallo.message
+    entrando.value = false
+  }
 }
 </script>
 
@@ -23,8 +30,10 @@ async function entrar() {
     <h1>CarlotApp</h1>
     <p class="suave">Tomas, sueño, medidas y citas de Carlota</p>
 
-    <button class="boton google" @click="entrar">Entrar con Google</button>
-    <p v-if="error" class="error">{{ error }}</p>
+    <button class="boton google" :disabled="entrando" @click="entrar">
+      {{ entrando ? 'Entrando…' : 'Entrar con Google' }}
+    </button>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <p class="suave nota">App privada: solo los dos usuarios autorizados pueden ver los datos.</p>
   </main>

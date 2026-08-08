@@ -17,19 +17,27 @@ const panel = ref<HTMLElement | null>(null)
 
 const FOCUSABLES = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
+// Quien tenía el foco al abrirse: al cerrar se le devuelve (WCAG 2.4.3)
+let origenFoco: HTMLElement | null = null
+
 watch(
   () => props.abierta,
   async (abierta) => {
     document.body.style.overflow = abierta ? 'hidden' : ''
     if (abierta) {
+      origenFoco = document.activeElement instanceof HTMLElement ? document.activeElement : null
       await nextTick()
       panel.value?.focus()
+    } else {
+      origenFoco?.focus()
+      origenFoco = null
     }
   },
 )
 
 onUnmounted(() => {
   document.body.style.overflow = ''
+  origenFoco?.focus()
 })
 
 /** Trampa de foco: Tab desde el último enfocable vuelve al primero (y al revés) */
