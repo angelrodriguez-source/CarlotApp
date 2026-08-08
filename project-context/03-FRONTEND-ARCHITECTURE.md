@@ -84,12 +84,15 @@ Ademas, el **Mime Predictor** (algoritmo listo, UI pendiente):
   Taking Cara Babies, Huckleberry, Cleveland Clinic, AAP/Enfamil, Pampers)
 - `models/MimePredictor.ts` — `predecir()` (proxima toma, proxima siesta,
   incomodidad, con franja de confianza) y `porQueLlora()` (probabilidades
-  Sueno/Hambre/Incomodidad por softmax de presiones). Mezcla shrinkage
-  peso=n/(n+k) entre la base y el patron personal (medianas/IQR de los
-  ultimos 7 dias, separando dia/noche). Parametros k=3 e historico=7d
-  calibrados por backtesting (MimePredictor.spec.ts: bebes simulados con
-  RNG sembrado + walk-forward, MAE tomas <25 min y siestas <22 min en
-  bebe regular; casos frio, cambiante e irregular acotados)
+  Sueno/Hambre/Incomodidad por softmax de presiones). Mezcla en TRES
+  capas con shrinkage peso=n/(n+k): base poblacional ← patron historico
+  (medianas/IQR de 7 dias, dia/noche separados, k=3) ← comportamiento
+  ACTUAL (mediana de hasta 5 intervalos de hoy, kReciente=1, excluyendo
+  los que cruzan el amanecer). Calibrado por backtesting walk-forward
+  (MimePredictor.spec.ts, bebes simulados con RNG sembrado): MAE tomas
+  <25 min y siestas <22 min en bebe regular; un brote de crecimiento
+  (hoy toma cada 130 vs historico 195) pasa de MAE ~33 a <25 gracias a
+  la capa actual; frio, cambiante e irregular acotados
 - Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
   (upsert de una fila viva por bebe en `predicciones`) +
   `aFilaPrediccion()` para serializar
