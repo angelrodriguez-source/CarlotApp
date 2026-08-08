@@ -1283,8 +1283,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 }
 
 .icono-titulo {
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
 }
 
 .cabecera-datos-hoy .hora-actual {
