@@ -50,6 +50,11 @@
 
 ### Hechas
 
+- [x] Origen de las mediciones (2026-08-08): columna `origen` en medidas —
+      🏠 en casa (por defecto) o ✅ oficial (pediatra/farmacia) — con
+      selector en el alta de Evolucion e insignia en la lista. Preparado
+      para filtrar/distinguir en graficas mas adelante
+
 - [x] Ronda de retoques de UI dirigida (2026-08-07/08): cabecera con logo +
       "CarlotApp" enlazando a Hoy y bolita de menu de usuario (config, tema,
       salir); Hoy reorganizada en 3 cards — "La bebe" (carita + nombre
