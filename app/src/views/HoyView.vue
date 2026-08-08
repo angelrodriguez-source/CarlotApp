@@ -31,6 +31,7 @@ import {
   hoyLocal,
   mensajeError,
   minutosSuenoEnDia,
+  numeroONull,
   objetivoLecheMl,
   objetivoSuenoMinutos,
   percentilRedondeado,
@@ -1257,7 +1258,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         titulo="🍼 Toma terminada — ¿cuántos ml?"
         @cerrar="formulario = null"
       >
-        <form @submit.prevent="terminarToma(mlFinToma)">
+        <form @submit.prevent="terminarToma(numeroONull(mlFinToma))">
           <div class="campo">
             <label for="fin-toma-ml">Cantidad (ml)</label>
             <input id="fin-toma-ml" v-model.number="mlFinToma" type="number" min="1" />

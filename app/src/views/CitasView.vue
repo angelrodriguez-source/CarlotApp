@@ -41,6 +41,14 @@ onMounted(async () => {
 })
 
 /** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
+/** Marca/desmarca una cita; si la petición falla, repone el checkbox */
+async function alternarCita(evento: Event, cita: Cita, completada: boolean) {
+  const ok = await ejecutar(() => servicio.marcarCita(cita.id, completada))
+  if (!ok && evento.target instanceof HTMLInputElement) {
+    evento.target.checked = cita.completada
+  }
+}
+
 function borrarCita(cita: Cita) {
   if (!window.confirm(`¿Borrar la cita "${cita.titulo}"?`)) return
   ejecutar(() => servicio.eliminarCita(cita.id))
@@ -166,7 +174,7 @@ function icono(tipo: TipoCita): string {
           type="checkbox"
           :checked="cita.completada"
           :aria-label="`Marcar hecha: ${cita.titulo}`"
-          @change="ejecutar(() => servicio.marcarCita(cita.id, true))"
+          @change="alternarCita($event, cita, true)"
         />
         <span class="detalle">
           {{ icono(cita.tipo) }} <strong>{{ cita.titulo }}</strong>
@@ -197,7 +205,7 @@ function icono(tipo: TipoCita): string {
             type="checkbox"
             checked
             :aria-label="`Desmarcar: ${cita.titulo}`"
-            @change="ejecutar(() => servicio.marcarCita(cita.id, false))"
+            @change="alternarCita($event, cita, false)"
           />
           <span class="detalle">
             {{ icono(cita.tipo) }} {{ cita.titulo }}

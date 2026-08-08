@@ -8,7 +8,7 @@
 import { computed, ref, watch } from 'vue'
 import * as servicio from '../services/carlotaService'
 import HojaInferior from './HojaInferior.vue'
-import { aInputLocal, duracionMinutos, mensajeError } from '../models/CarlotaModel'
+import { aInputLocal, duracionMinutos, mensajeError, numeroONull } from '../models/CarlotaModel'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
@@ -110,12 +110,6 @@ async function ejecutar(accion: () => Promise<unknown>) {
   } catch (e) {
     error.value = mensajeError(e)
   }
-}
-
-/** Un input numérico vaciado llega como '' (no null): normaliza a número o null */
-function numeroONull(valor: number | null): number | null {
-  if (valor === null || (valor as unknown) === '') return null
-  return Number.isNaN(Number(valor)) ? null : Number(valor)
 }
 
 function guardar() {

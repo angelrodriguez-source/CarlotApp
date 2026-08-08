@@ -16,6 +16,7 @@ import {
   mensajeError,
   minutosSuenoEnDia,
   mlEnDia,
+  numeroONull,
   objetivoLecheMl,
   objetivoSuenoMinutos,
   percentilRedondeado,
@@ -94,14 +95,21 @@ onMounted(async () => {
 async function guardarMedida() {
   const bebe = bebeStore.bebe
   if (!bebe) return
+  const peso = numeroONull(nuevaMedida.value.pesoGramos)
+  const altura = numeroONull(nuevaMedida.value.alturaCm)
+  const perimetro = numeroONull(nuevaMedida.value.perimetroCm)
+  if (peso === null && altura === null && perimetro === null) {
+    error.value = 'Apunta al menos un valor (peso, altura o perímetro)'
+    return
+  }
   error.value = ''
   try {
     await servicio.registrarMedida({
       bebe_id: bebe.id,
       fecha: nuevaMedida.value.fecha,
-      peso_gramos: nuevaMedida.value.pesoGramos,
-      altura_cm: nuevaMedida.value.alturaCm,
-      perimetro_craneal_cm: nuevaMedida.value.perimetroCm,
+      peso_gramos: peso,
+      altura_cm: altura,
+      perimetro_craneal_cm: perimetro,
       origen: nuevaMedida.value.origen,
       notas: nuevaMedida.value.notas || null,
     })
@@ -162,12 +170,19 @@ async function ejecutarEdicion(accion: () => Promise<unknown>) {
 function guardarEdicionMedida() {
   const e = edicionMedida.value
   if (!e) return
+  const peso = numeroONull(e.pesoGramos)
+  const altura = numeroONull(e.alturaCm)
+  const perimetro = numeroONull(e.perimetroCm)
+  if (peso === null && altura === null && perimetro === null) {
+    errorEdicion.value = 'Apunta al menos un valor (peso, altura o perímetro)'
+    return
+  }
   ejecutarEdicion(() =>
     servicio.actualizarMedida(e.id, {
       fecha: e.fecha,
-      peso_gramos: e.pesoGramos,
-      altura_cm: e.alturaCm,
-      perimetro_craneal_cm: e.perimetroCm,
+      peso_gramos: peso,
+      altura_cm: altura,
+      perimetro_craneal_cm: perimetro,
       origen: e.origen,
       notas: e.notas || null,
     }),
