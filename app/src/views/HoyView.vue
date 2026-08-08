@@ -377,9 +377,9 @@ const CATALOGO_HITOS = [
   { id: 'bano', etiqueta: 'Último baño', img: ICONOS_REGISTRO.bano },
   { id: 'vitamina_d', etiqueta: 'Vitamina D', img: ICONOS_REGISTRO.vitamina_d },
   { id: 'medicacion', etiqueta: 'Medicación', img: ICONOS_REGISTRO.medicacion },
-  { id: 'unas', etiqueta: '✂️ Uñas cortadas', img: undefined },
+  { id: 'unas', etiqueta: 'Uñas cortadas', img: ICONOS_REGISTRO.unas },
   { id: 'hito', etiqueta: 'Último momento', img: ICONOS_REGISTRO.hito },
-  { id: 'otro', etiqueta: '⭐ Otro evento', img: undefined },
+  { id: 'otro', etiqueta: 'Otro', img: ICONOS_REGISTRO.otro },
 ] as const
 
 const HITOS_VISIBLES_POR_DEFECTO = ['toma', 'sueno', 'panal']
@@ -809,8 +809,8 @@ const accionesRegistro = computed<AccionRegistro[]>(() => [
     img: ICONOS_REGISTRO.medicacion,
     etiqueta: 'Medicación',
   },
-  { id: 'unas', icono: '✂️', etiqueta: 'Uñas' },
-  { id: 'otro', icono: '⭐', etiqueta: 'Otro evento' },
+  { id: 'unas', icono: '✂️', img: ICONOS_REGISTRO.unas, etiqueta: 'Uñas' },
+  { id: 'otro', icono: '⭐', img: ICONOS_REGISTRO.otro, etiqueta: 'Otro' },
 ])
 
 function ejecutarAccion(id: string) {
@@ -1431,14 +1431,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarEvento">
-          <div class="campo">
-            <label for="evento-tipo">Tipo</label>
-            <select id="evento-tipo" v-model="nuevoEvento.tipo">
-              <option v-for="(etiqueta, valor) in ETIQUETAS_EVENTO" :key="valor" :value="valor">
-                {{ etiqueta }}
-              </option>
-            </select>
-          </div>
           <div class="campo">
             <label for="evento-desc">Descripción</label>
             <input id="evento-desc" v-model="nuevoEvento.descripcion" type="text" />

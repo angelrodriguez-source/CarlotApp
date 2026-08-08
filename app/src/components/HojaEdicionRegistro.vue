@@ -97,7 +97,7 @@ const TITULOS: Record<RegistroEditable['kind'], { texto: string; icono?: string 
   toma: { texto: 'Editar toma', icono: ICONOS_REGISTRO.toma },
   sueno: { texto: 'Editar sueño', icono: ICONOS_REGISTRO.sueno },
   panal: { texto: 'Editar pañal', icono: ICONOS_REGISTRO.panal },
-  evento: { texto: '⭐ Editar evento' },
+  evento: { texto: 'Editar evento', icono: ICONOS_REGISTRO.otro },
 }
 
 const titulo = computed(() => (edicion.value ? TITULOS[edicion.value.kind].texto : ''))
