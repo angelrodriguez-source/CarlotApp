@@ -19,7 +19,7 @@ export function frasesNeneni(
 ): string[] {
   const lista: string[] = []
 
-  // Próxima toma
+  // Próxima toma (con el matiz de cantidad si la última fue corta/copiosa)
   if (p.proximaToma) {
     const t = p.proximaToma
     if (t.minutosRestantes <= 0) {
@@ -28,6 +28,11 @@ export function frasesNeneni(
       lista.push(
         `Yo creo que la próxima toma será a las ${horaCorta(t.prevista)} (entre las ${horaCorta(t.franja.desde)} y las ${horaCorta(t.franja.hasta)}).`,
       )
+    }
+    if (t.factorCantidad !== undefined && t.factorCantidad <= 0.9) {
+      lista.push('Como la última toma ha sido más corta de lo habitual, la he adelantado un poco.')
+    } else if (t.factorCantidad !== undefined && t.factorCantidad >= 1.1) {
+      lista.push('Con lo bien que ha comido, seguramente aguante un poco más de lo normal.')
     }
   } else {
     lista.push('Todavía no tengo tomas registradas para predecir la siguiente.')

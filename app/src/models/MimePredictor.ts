@@ -75,6 +75,29 @@ export const AJUSTES = {
   maxRecientes: 5,
   kReciente: 1,
   ventanaRecienteHoras: 10,
+  /**
+   * Capa de CANTIDAD: una toma más corta que su mediana personal adelanta
+   * la siguiente (y una copiosa la retrasa). El intervalo proyectado se
+   * multiplica por 1 + sensibilidad·(ml/mlTipico − 1), con el cociente
+   * acotado para que un dato raro no dispare la predicción. Solo aplica
+   * con ml conocidos (pecho o cronómetro abierto → factor 1).
+   * Calibrado por barrido sens∈{0..1} sobre 4 bebés simulados con acople
+   * real gap·(ml/120)^α: con 0.35, el acople fuerte (α=0.9) baja de MAE
+   * 32→23 y el medio (α=0.6) de 27→19, mientras un bebé SIN acople solo
+   * paga +1.4 min (el seguro barato); con sens≥0.5 el no-acoplado paga
+   * ya +3.6 y el débil empeora respecto a apagado.
+   */
+  sensibilidadCantidad: 0.35,
+  minFactorCantidad: 0.5,
+  maxFactorCantidad: 1.4,
+  /** Mínimo de tomas con ml en el histórico para fiarse de la mediana */
+  minTomasConMl: 3,
+  /**
+   * Un despertar de menos de estos minutos entre dos tramos de sueño es
+   * un MINI-DESPERTAR: ambos tramos se consolidan en un mismo bloque y el
+   * hueco no cuenta como ventana de vigilia (contaminaría la mediana).
+   */
+  miniDespertarMin: 25,
 } as const
 
 export interface Prediccion {
@@ -90,6 +113,11 @@ export interface Prediccion {
   pesoReciente: number
   /** Nº de intervalos personales usados (histórico) */
   muestras: number
+  /**
+   * Solo en próxima toma: cuánto moduló la CANTIDAD de la última toma al
+   * intervalo (1 = neutra; <1 = toma corta, la siguiente se adelanta)
+   */
+  factorCantidad?: number
 }
 
 export interface Incomodidad {
@@ -227,7 +255,12 @@ export function intervalosToma(
   }
 }
 
-/** Ventanas de vigilia reales (fin de un sueño → inicio del siguiente) + las de hoy */
+/**
+ * Ventanas de vigilia reales (fin de un sueño → inicio del siguiente).
+ * Los tramos separados por un MINI-DESPERTAR (< miniDespertarMin) se
+ * consolidan antes en un mismo bloque: despertarse 10-20 min y volver a
+ * dormirse no es una ventana de vigilia y rompería la mediana.
+ */
 export function ventanasVigilia(
   suenos: Sueno[],
   ahora: Date,
@@ -238,14 +271,24 @@ export function ventanasVigilia(
     .map((s) => ({ inicio: new Date(s.inicio).getTime(), fin: new Date(s.fin!).getTime() }))
     .filter((s) => s.fin >= desde && s.fin <= ahora.getTime())
     .sort((a, b) => a.inicio - b.inicio)
+  // Consolidar mini-despertares en bloques de sueño
+  const bloques: { inicio: number; fin: number }[] = []
+  for (const tramo of tramos) {
+    const ultimo = bloques[bloques.length - 1]
+    if (ultimo && (tramo.inicio - ultimo.fin) / 60_000 < AJUSTES.miniDespertarMin) {
+      ultimo.fin = Math.max(ultimo.fin, tramo.fin)
+    } else {
+      bloques.push({ ...tramo })
+    }
+  }
   const ventanas: { finMs: number; intervalo: number; cruzaFranja: boolean }[] = []
-  for (let i = 1; i < tramos.length; i++) {
-    const ventana = (tramos[i]!.inicio - tramos[i - 1]!.fin) / 60_000
+  for (let i = 1; i < bloques.length; i++) {
+    const ventana = (bloques[i]!.inicio - bloques[i - 1]!.fin) / 60_000
     // Solo ventanas diurnas: un despertar nocturno con vuelta a dormir
     // no es una "ventana de vigilia" comparable
-    if (esDeNoche(new Date(tramos[i - 1]!.fin))) continue
+    if (esDeNoche(new Date(bloques[i - 1]!.fin))) continue
     if (ventana < AJUSTES.minVentanaVigiliaMin || ventana > AJUSTES.maxVentanaVigiliaMin) continue
-    ventanas.push({ finMs: tramos[i]!.inicio, intervalo: ventana, cruzaFranja: false })
+    ventanas.push({ finMs: bloques[i]!.inicio, intervalo: ventana, cruzaFranja: false })
   }
   return {
     historico: patronDe(ventanas.map((x) => x.intervalo)),
@@ -329,6 +372,35 @@ function ultimaTomaAntesDe(tomas: Toma[], ahora: Date): Toma | undefined {
     .sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime())[0]
 }
 
+/** Mediana de ml de las tomas con cantidad del histórico, o null con pocas */
+function mlTipico(tomas: Toma[], ahora: Date): number | null {
+  const desde = ahora.getTime() - AJUSTES.historicoDias * 86_400_000
+  const mls = tomas
+    .filter((t) => {
+      const inicio = new Date(t.inicio).getTime()
+      return t.cantidad_ml !== null && inicio >= desde && inicio <= ahora.getTime()
+    })
+    .map((t) => t.cantidad_ml!)
+  if (mls.length < AJUSTES.minTomasConMl) return null
+  return mediana(mls)
+}
+
+/**
+ * Factor de cantidad de la última toma: <1 si comió menos de lo habitual
+ * (la siguiente se adelanta), >1 si comió de más. 1 si no hay ml (pecho,
+ * cronómetro abierto) o aún no hay mediana fiable.
+ */
+function factorCantidadDe(ultimaToma: Toma, tomas: Toma[], ahora: Date): number {
+  if (ultimaToma.cantidad_ml === null) return 1
+  const tipico = mlTipico(tomas, ahora)
+  if (tipico === null || tipico <= 0) return 1
+  const cociente = Math.min(
+    AJUSTES.maxFactorCantidad,
+    Math.max(AJUSTES.minFactorCantidad, ultimaToma.cantidad_ml / tipico),
+  )
+  return 1 + AJUSTES.sensibilidadCantidad * (cociente - 1)
+}
+
 /** ¿Hay un sueño en curso? (fin null, empezado en las últimas 24 h) */
 function suenoEnCurso(suenos: Sueno[], ahora: Date): Sueno | null {
   const hace24h = ahora.getTime() - 24 * 3600_000
@@ -382,15 +454,21 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
       patron.n,
       AJUSTES.kToma,
     ).valor
-    proximaToma = construirPrediccion(
-      new Date(ultimaToma.inicio).getTime(),
-      valor,
-      banda,
-      pesoPersonal,
-      pesoReciente,
-      patron.n,
-      ahora,
-    )
+    // La cantidad de la última toma modula el intervalo: comió poco →
+    // pedirá antes; comió de más → aguantará algo más
+    const factorCantidad = factorCantidadDe(ultimaToma, datos.tomas, ahora)
+    proximaToma = {
+      ...construirPrediccion(
+        new Date(ultimaToma.inicio).getTime(),
+        valor * factorCantidad,
+        banda,
+        pesoPersonal,
+        pesoReciente,
+        patron.n,
+        ahora,
+      ),
+      factorCantidad: Math.round(factorCantidad * 100) / 100,
+    }
   }
 
   // --- Próxima siesta ---
@@ -639,6 +717,7 @@ export function aFilaPrediccion(p: Predicciones): {
       ajustes: AJUSTES,
       pesoPersonalToma: p.proximaToma?.pesoPersonal ?? null,
       pesoRecienteToma: p.proximaToma?.pesoReciente ?? null,
+      factorCantidadToma: p.proximaToma?.factorCantidad ?? null,
       muestrasToma: p.proximaToma?.muestras ?? null,
       pesoPersonalSiesta: p.proximaSiesta?.pesoPersonal ?? null,
       pesoRecienteSiesta: p.proximaSiesta?.pesoReciente ?? null,
