@@ -14,3 +14,6 @@ export const logoUrl = import.meta.env.BASE_URL + 'icon.svg'
  * archivo no existe, la vista cae al logo (@error).
  */
 export const fotoBebeUrl = import.meta.env.BASE_URL + 'carlota.jpg'
+
+/** Icono de la card "Cómo va el día" (calendario con check) */
+export const iconoDiaUrl = import.meta.env.BASE_URL + 'icono-dia.png'
