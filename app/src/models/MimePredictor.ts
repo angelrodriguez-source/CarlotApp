@@ -121,6 +121,41 @@ export const AJUSTES = {
    * hueco no cuenta como ventana de vigilia (contaminaría la mediana).
    */
   miniDespertarMin: 25,
+  /**
+   * SIESTA CORTA: una siesta por debajo de su duración típica restaura
+   * menos y la SIGUIENTE ventana se acorta — las guías (Taking Cara
+   * Babies, BabySleepSite) recortan ~45 min la ventana tras una siesta
+   * de <45 min (≈ un ciclo de sueño infantil). factorSiesta =
+   * 1 + sensibilidad·(duración/típica − 1), acotado. Calibrado por
+   * barrido sens∈{0..0.7} con bebés acoplados (vigilia·(dur/50)^β): con
+   * 0.4 el acople fuerte baja de MAE 23→17.5 y el medio de 17→13,
+   * pagando +3 min un bebé sin acople — y aquí la literatura es unánime
+   * en que el acople existe, así que se acepta más sensibilidad que en
+   * las tomas.
+   */
+  sensibilidadSiesta: 0.4,
+  minFactorSiesta: 0.55,
+  maxFactorSiesta: 1.25,
+  /** Mínimo de siestas medidas para fiarse de la duración típica */
+  minSiestasMedidas: 3,
+  /**
+   * SUEÑO NOCTURNO: si la próxima siesta proyectada cae a menos de este
+   * margen de su hora de acostarse, lo previsto ya no es una siesta sino
+   * el sueño largo, anclado a la hora de acostarse PERSONAL (mediana de
+   * inicios del sueño nocturno, shrinkage kAcostar hacia la base por
+   * edad — el acostarse es circadiano, no una ventana más).
+   */
+  /**
+   * Margen calibrado por barrido {30..90} contra el error de TODOS los
+   * inicios de sueño vespertinos (17-23h): 45-60 son el óptimo (~12 min
+   * de MAE) y desde 75 las siestas tardías se marcan mal como noche
+   * (MAE 17-26). 60 cubre además las noches que se adelantan.
+   */
+  margenAcostarMin: 60,
+  kAcostar: 3,
+  /** Un bloque de 3 h+ que empieza a partir de las 17:00 es "nocturno" */
+  minSuenoNocturnoMin: 3 * 60,
+  horaAcostarDesde: 17,
 } as const
 
 export interface Prediccion {
@@ -148,6 +183,16 @@ export interface Prediccion {
   esRemate?: boolean
   /** Solo en próxima toma: ml estimados de la siguiente (remate o ración típica) */
   mlPrevisto?: number
+  /**
+   * Solo en próxima siesta: cuánto moduló la duración de la ÚLTIMA
+   * siesta a la ventana (<1 = siesta corta, le tocará dormir antes)
+   */
+  factorSiesta?: number
+  /**
+   * Solo en próxima siesta: true si lo previsto ya no es una siesta sino
+   * el SUEÑO NOCTURNO (anclado a su hora de acostarse)
+   */
+  esSuenoNocturno?: boolean
 }
 
 export interface Incomodidad {
@@ -286,22 +331,17 @@ export function intervalosToma(
 }
 
 /**
- * Ventanas de vigilia reales (fin de un sueño → inicio del siguiente).
- * Los tramos separados por un MINI-DESPERTAR (< miniDespertarMin) se
- * consolidan antes en un mismo bloque: despertarse 10-20 min y volver a
- * dormirse no es una ventana de vigilia y rompería la mediana.
+ * Bloques de sueño CONSOLIDADOS del histórico: tramos separados por un
+ * mini-despertar (< miniDespertarMin) se funden en uno. Base compartida
+ * de las ventanas de vigilia, la siesta típica y la hora de acostarse.
  */
-export function ventanasVigilia(
-  suenos: Sueno[],
-  ahora: Date,
-): { historico: PatronIntervalo; reciente: PatronIntervalo } {
+function bloquesSueno(suenos: Sueno[], ahora: Date): { inicio: number; fin: number }[] {
   const desde = ahora.getTime() - AJUSTES.historicoDias * 86_400_000
   const tramos = suenos
     .filter((s) => s.fin !== null)
     .map((s) => ({ inicio: new Date(s.inicio).getTime(), fin: new Date(s.fin!).getTime() }))
     .filter((s) => s.fin >= desde && s.fin <= ahora.getTime())
     .sort((a, b) => a.inicio - b.inicio)
-  // Consolidar mini-despertares en bloques de sueño
   const bloques: { inicio: number; fin: number }[] = []
   for (const tramo of tramos) {
     const ultimo = bloques[bloques.length - 1]
@@ -311,6 +351,77 @@ export function ventanasVigilia(
       bloques.push({ ...tramo })
     }
   }
+  return bloques
+}
+
+/** ¿El bloque es una SIESTA diurna? (empieza de día y no dura como una noche) */
+function esSiestaDiurna(bloque: { inicio: number; fin: number }): boolean {
+  return (
+    !esDeNoche(new Date(bloque.inicio)) &&
+    (bloque.fin - bloque.inicio) / 60_000 < AJUSTES.minSuenoNocturnoMin
+  )
+}
+
+/** Duración típica de sus siestas (mediana de bloques diurnos), o null */
+function duracionSiestaTipica(bloques: { inicio: number; fin: number }[]): number | null {
+  const duraciones = bloques.filter(esSiestaDiurna).map((b) => (b.fin - b.inicio) / 60_000)
+  if (duraciones.length < AJUSTES.minSiestasMedidas) return null
+  return mediana(duraciones)
+}
+
+/**
+ * Hora de acostarse PERSONAL: mediana (y dispersión) del minuto del día
+ * en que empiezan sus sueños nocturnos (bloques de 3 h+ iniciados a
+ * partir de las 17:00).
+ */
+function horaAcostarPersonal(bloques: { inicio: number; fin: number }[]): PatronIntervalo {
+  const minutos = bloques
+    .filter((b) => {
+      const inicio = new Date(b.inicio)
+      return (
+        inicio.getHours() >= AJUSTES.horaAcostarDesde &&
+        (b.fin - b.inicio) / 60_000 >= AJUSTES.minSuenoNocturnoMin
+      )
+    })
+    .map((b) => {
+      const inicio = new Date(b.inicio)
+      return inicio.getHours() * 60 + inicio.getMinutes()
+    })
+  return patronDe(minutos)
+}
+
+/**
+ * Factor de la última siesta: <1 si fue más corta que su típica (menos
+ * restauradora → la siguiente ventana se acorta), >1 si fue más larga.
+ */
+function factorSiestaDe(
+  bloques: { inicio: number; fin: number }[],
+  ultimoFinMs: number,
+): { factor: number; aplicado: boolean } {
+  const ultimoBloque = bloques.filter((b) => b.fin <= ultimoFinMs).pop()
+  const tipica = duracionSiestaTipica(bloques)
+  if (!ultimoBloque || tipica === null || !esSiestaDiurna(ultimoBloque)) {
+    return { factor: 1, aplicado: false }
+  }
+  const duracion = (ultimoBloque.fin - ultimoBloque.inicio) / 60_000
+  const cociente = Math.min(
+    AJUSTES.maxFactorSiesta,
+    Math.max(AJUSTES.minFactorSiesta, duracion / tipica),
+  )
+  return { factor: 1 + AJUSTES.sensibilidadSiesta * (cociente - 1), aplicado: true }
+}
+
+/**
+ * Ventanas de vigilia reales (fin de un sueño → inicio del siguiente).
+ * Los tramos separados por un MINI-DESPERTAR (< miniDespertarMin) se
+ * consolidan antes en un mismo bloque: despertarse 10-20 min y volver a
+ * dormirse no es una ventana de vigilia y rompería la mediana.
+ */
+export function ventanasVigilia(
+  suenos: Sueno[],
+  ahora: Date,
+): { historico: PatronIntervalo; reciente: PatronIntervalo } {
+  const bloques = bloquesSueno(suenos, ahora)
   const ventanas: { finMs: number; intervalo: number; cruzaFranja: boolean }[] = []
   for (let i = 1; i < bloques.length; i++) {
     const ventana = (bloques[i]!.inicio - bloques[i - 1]!.fin) / 60_000
@@ -610,15 +721,68 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
       patrones.historico.n,
       AJUSTES.kSueno,
     ).valor
-    proximaSiesta = construirPrediccion(
-      ultimoFin,
-      valor,
-      banda,
-      pesoPersonal,
-      pesoReciente,
-      patrones.historico.n,
-      ahora,
-    )
+    // SIESTA CORTA: si la última siesta restauró menos, la ventana se acorta
+    const bloques = bloquesSueno(datos.suenos, ahora)
+    const { factor: factorSiesta, aplicado } = factorSiestaDe(bloques, ultimoFin)
+    const previstaMs = ultimoFin + valor * factorSiesta * 60_000
+
+    // SUEÑO NOCTURNO: de día, si la proyección cae pegada a su hora de
+    // acostarse, lo previsto ya es el sueño largo (ancla circadiana)
+    let nocturno = false
+    if (!nocheAhora) {
+      const acostar = horaAcostarPersonal(bloques)
+      const acostarMezcla = mezclar(
+        acostar.medianaMin,
+        centro(etapa.horaAcostar),
+        acostar.n,
+        AJUSTES.kAcostar,
+      )
+      const acostarHoy = new Date(ahora)
+      acostarHoy.setHours(0, 0, 0, 0)
+      const acostarHoyMs = acostarHoy.getTime() + acostarMezcla.valor * 60_000
+      // En zona de acostarse por proyección O por hora actual: la última
+      // ventana del día es la más larga (una siesta proyectada "pendiente"
+      // al caer la tarde suele ser, en realidad, el sueño nocturno)
+      if (
+        Math.max(previstaMs, ahora.getTime()) >=
+        acostarHoyMs - AJUSTES.margenAcostarMin * 60_000
+      ) {
+        nocturno = true
+        const bandaAcostar = mezclar(
+          acostar.iqrMin === null ? null : acostar.iqrMin * 0.75,
+          semiancho(etapa.horaAcostar),
+          acostar.n,
+          AJUSTES.kAcostar,
+        ).valor
+        proximaSiesta = {
+          ...construirPrediccion(
+            ultimoFin,
+            (acostarHoyMs - ultimoFin) / 60_000,
+            bandaAcostar,
+            acostarMezcla.peso,
+            0,
+            acostar.n,
+            ahora,
+          ),
+          esSuenoNocturno: true,
+        }
+      }
+    }
+    if (!nocturno) {
+      proximaSiesta = {
+        ...construirPrediccion(
+          ultimoFin,
+          valor * factorSiesta,
+          banda,
+          pesoPersonal,
+          pesoReciente,
+          patrones.historico.n,
+          ahora,
+        ),
+        esSuenoNocturno: false,
+        ...(aplicado ? { factorSiesta: Math.round(factorSiesta * 100) / 100 } : {}),
+      }
+    }
   }
 
   // --- Incomodidad (presión de pañal/molestia) ---
@@ -837,6 +1001,8 @@ export function aFilaPrediccion(p: Predicciones): {
       muestrasToma: p.proximaToma?.muestras ?? null,
       pesoPersonalSiesta: p.proximaSiesta?.pesoPersonal ?? null,
       pesoRecienteSiesta: p.proximaSiesta?.pesoReciente ?? null,
+      factorSiesta: p.proximaSiesta?.factorSiesta ?? null,
+      esSuenoNocturno: p.proximaSiesta?.esSuenoNocturno ?? null,
       muestrasSiesta: p.proximaSiesta?.muestras ?? null,
     },
   }
