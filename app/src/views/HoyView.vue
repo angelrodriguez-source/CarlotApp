@@ -977,21 +977,33 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
         <div class="seccion-hoy">
           <span class="etiqueta-seccion">Objetivos del día</span>
-          <BarraObjetivo
-            :valor-texto="valorSuenoTexto"
-            :objetivo-texto="objetivoSuenoTexto"
-            :valor="minutosSuenoHoy"
-            :min="objetivoSueno.min"
-            :max="objetivoSueno.max"
-          />
-          <BarraObjetivo
+          <RouterLink
+            class="enlace-objetivo"
+            :to="{ name: 'evolucion', query: { grafica: 'sueno' } }"
+            aria-label="Ver la evolución del sueño por día"
+          >
+            <BarraObjetivo
+              :valor-texto="valorSuenoTexto"
+              :objetivo-texto="objetivoSuenoTexto"
+              :valor="minutosSuenoHoy"
+              :min="objetivoSueno.min"
+              :max="objetivoSueno.max"
+            />
+          </RouterLink>
+          <RouterLink
             v-if="objetivoLeche"
-            :valor-texto="valorLecheTexto"
-            :objetivo-texto="objetivoLecheTexto"
-            :valor="resumen.mlBiberon"
-            :min="objetivoLeche.min"
-            :max="objetivoLeche.max"
-          />
+            class="enlace-objetivo"
+            :to="{ name: 'evolucion', query: { grafica: 'tomas' } }"
+            aria-label="Ver la evolución de las tomas por día"
+          >
+            <BarraObjetivo
+              :valor-texto="valorLecheTexto"
+              :objetivo-texto="objetivoLecheTexto"
+              :valor="resumen.mlBiberon"
+              :min="objetivoLeche.min"
+              :max="objetivoLeche.max"
+            />
+          </RouterLink>
           <RouterLink
             v-else
             :to="{ name: 'evolucion', query: { nueva: '1' } }"
@@ -1594,6 +1606,17 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   display: inline-block;
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
+}
+
+/* Los objetivos enlazan a sus gráficas de día a día en Evolución */
+.enlace-objetivo {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.enlace-objetivo + .enlace-objetivo {
+  margin-top: 0.6rem;
 }
 
 /* Lápiz de edición, igual que en el Historial */
