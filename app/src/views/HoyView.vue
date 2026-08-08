@@ -1143,7 +1143,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <BarraObjetivo
               :valor-texto="valorSuenoTexto"
               :objetivo-texto="objetivoSuenoTexto"
-              :icono="ICONOS_REGISTRO.sueno_post"
+              :icono="ICONOS_REGISTRO.objetivo_sueno"
               :valor="minutosSuenoHoy"
               :min="objetivoSueno.min"
               :max="objetivoSueno.max"

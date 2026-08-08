@@ -44,6 +44,7 @@ export const ICONOS_REGISTRO: Partial<Record<string, string>> = {
   toma: urlPublica('icono-toma.png'),
   sueno: urlPublica('icono-sueno.png'),
   sueno_post: urlPublica('icono-sueno-post.png'),
+  objetivo_sueno: urlPublica('icono-objetivo-sueno.png'),
   bano: urlPublica('icono-bano.png'),
   vitamina_d: urlPublica('icono-vitamina.png'),
   medicacion: urlPublica('icono-medicacion.png'),
