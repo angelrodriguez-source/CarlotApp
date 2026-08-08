@@ -90,18 +90,20 @@ function abrirRegistro() {
 
 <template>
   <header v-if="userStore.isLoggedIn" class="cabecera">
-    <RouterLink :to="{ name: 'hoy' }" class="marca" aria-label="Ir al inicio">
-      <img :src="logoUrl" alt="" class="logo-cabecera" />
-      <strong>CarlotApp</strong>
-    </RouterLink>
-    <button
-      class="bolita"
-      aria-label="Menú de usuario"
-      :aria-expanded="menuAbierto"
-      @click="menuAbierto = !menuAbierto"
-    >
-      {{ inicialUsuario }}
-    </button>
+    <div class="cabecera-interior">
+      <RouterLink :to="{ name: 'hoy' }" class="marca" aria-label="Ir al inicio">
+        <img :src="logoUrl" alt="" class="logo-cabecera" />
+        <strong>CarlotApp</strong>
+      </RouterLink>
+      <button
+        class="bolita"
+        aria-label="Menú de usuario"
+        :aria-expanded="menuAbierto"
+        @click="menuAbierto = !menuAbierto"
+      >
+        {{ inicialUsuario }}
+      </button>
+    </div>
   </header>
 
   <!-- Menú de usuario -->
@@ -134,13 +136,24 @@ function abrirRegistro() {
 </template>
 
 <style scoped>
+/* Cabecera pegajosa: CarlotApp y el usuario siempre a la vista */
 .cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: color-mix(in srgb, var(--color-fondo) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding-top: env(safe-area-inset-top);
+}
+
+.cabecera-interior {
   display: flex;
   justify-content: space-between;
   align-items: center;
   max-width: 540px;
   margin: 0 auto;
-  padding: 0.75rem 1rem 0;
+  padding: 0.6rem 1rem;
 }
 
 .marca {
