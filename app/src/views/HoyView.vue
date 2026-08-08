@@ -1020,18 +1020,24 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <div
             v-for="registro in registroExpandido ? lineaDeTiempo : lineaDeTiempo.slice(0, 2)"
             :key="registro.id"
-            class="fila-registro deslizable editable"
+            class="fila-registro deslizable"
             :class="{ deslizada: filaDeslizada === registro.id }"
             @touchstart.passive="inicioToqueFila"
             @touchend.passive="finToqueFila($event, registro.id)"
-            @click="registroEnEdicion = registro.editable"
           >
             <span class="hora">{{ horaCorta(registro.hora) }}</span>
             <span class="detalle">{{ registro.texto }}</span>
             <button
+              class="boton peligro editar"
+              aria-label="Editar registro"
+              @click="registroEnEdicion = registro.editable"
+            >
+              ✎
+            </button>
+            <button
               class="boton peligro borrar-fila"
               aria-label="Borrar registro"
-              @click.stop="ejecutar(registro.borrar)"
+              @click="ejecutar(registro.borrar)"
             >
               ✕
             </button>
@@ -1590,9 +1596,9 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   font-size: 0.8rem;
 }
 
-/* Tocar la fila abre su edición */
-.fila-registro.editable {
-  cursor: pointer;
+/* Lápiz de edición, igual que en el Historial */
+.fila-registro .editar {
+  color: var(--color-texto-suave);
 }
 
 /* Swipe a la izquierda (o hover con ratón) para revelar el borrar */
