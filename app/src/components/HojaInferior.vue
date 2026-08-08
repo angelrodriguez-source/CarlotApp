@@ -17,19 +17,38 @@ const panel = ref<HTMLElement | null>(null)
 
 const FOCUSABLES = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
+// Quien tenía el foco al abrirse: al cerrar se le devuelve (WCAG 2.4.3)
+let origenFoco: HTMLElement | null = null
+
+// Si esta instancia contribuye al scroll-lock (el contador compartido está
+// a nivel de módulo, ver el <script> de abajo)
+let estaBloqueando = false
+
+function bloquear(abierta: boolean) {
+  if (abierta === estaBloqueando) return
+  estaBloqueando = abierta
+  hojasAbiertas += abierta ? 1 : -1
+  document.body.style.overflow = hojasAbiertas > 0 ? 'hidden' : ''
+}
+
 watch(
   () => props.abierta,
   async (abierta) => {
-    document.body.style.overflow = abierta ? 'hidden' : ''
+    bloquear(abierta)
     if (abierta) {
+      origenFoco = document.activeElement instanceof HTMLElement ? document.activeElement : null
       await nextTick()
       panel.value?.focus()
+    } else {
+      origenFoco?.focus()
+      origenFoco = null
     }
   },
 )
 
 onUnmounted(() => {
-  document.body.style.overflow = ''
+  bloquear(false)
+  origenFoco?.focus()
 })
 
 /** Trampa de foco: Tab desde el último enfocable vuelve al primero (y al revés) */
@@ -51,6 +70,13 @@ function atraparTab(evento: KeyboardEvent) {
     primero.focus()
   }
 }
+</script>
+
+<script lang="ts">
+// Contador de hojas abiertas COMPARTIDO entre instancias: cuando una hoja
+// sustituye a otra en el mismo tick, la que se cierra no debe desbloquear
+// el fondo de la que se abre
+let hojasAbiertas = 0
 </script>
 
 <template>

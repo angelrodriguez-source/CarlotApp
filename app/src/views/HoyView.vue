@@ -31,6 +31,7 @@ import {
   hoyLocal,
   mensajeError,
   minutosSuenoEnDia,
+  numeroONull,
   objetivoLecheMl,
   objetivoSuenoMinutos,
   percentilRedondeado,
@@ -1257,7 +1258,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         titulo="🍼 Toma terminada — ¿cuántos ml?"
         @cerrar="formulario = null"
       >
-        <form @submit.prevent="terminarToma(mlFinToma)">
+        <form @submit.prevent="terminarToma(numeroONull(mlFinToma))">
           <div class="campo">
             <label for="fin-toma-ml">Cantidad (ml)</label>
             <input id="fin-toma-ml" v-model.number="mlFinToma" type="number" min="1" />
@@ -1380,7 +1381,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     </template>
 
     <!-- Toast de deshacer -->
-    <div v-if="deshacer" class="toast-deshacer">
+    <div v-if="deshacer" class="toast-deshacer" role="status">
       {{ deshacer.texto }}
       <button class="boton" @click="ejecutarDeshacer">Deshacer</button>
     </div>
@@ -1717,13 +1718,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   display: none;
 }
 
-.fila-registro.deslizable.deslizada .borrar-fila {
-  display: inline-block;
+.fila-registro.deslizable.deslizada .borrar-fila,
+.fila-registro.deslizable:focus-within .borrar-fila {
+  display: inline-flex;
 }
 
 @media (hover: hover) {
   .fila-registro.deslizable:hover .borrar-fila {
-    display: inline-block;
+    display: inline-flex;
   }
 }
 

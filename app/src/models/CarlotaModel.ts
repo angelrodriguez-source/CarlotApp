@@ -130,6 +130,15 @@ export function agruparPorDia<T>(items: T[], fechaDe: (item: T) => string): Map<
   return new Map([...grupos.entries()].sort((a, b) => b[0].localeCompare(a[0])))
 }
 
+/**
+ * Un <input type="number"> vaciado llega como '' (no null) por looseToNumber:
+ * normaliza a numero o null antes de mandar nada a la base de datos.
+ */
+export function numeroONull(valor: number | null): number | null {
+  if (valor === null || (valor as unknown) === '') return null
+  return Number.isNaN(Number(valor)) ? null : Number(valor)
+}
+
 /** Mensaje legible de cualquier error capturado (patron comun de las vistas) */
 export function mensajeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e)

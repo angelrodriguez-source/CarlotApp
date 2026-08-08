@@ -24,6 +24,7 @@ import {
   mensajeError,
   minutosEnDia,
   mlEnDia,
+  numeroONull,
   rangoDesde,
   recortarVaciosIniciales,
   ultimosDias,
@@ -399,6 +400,13 @@ describe('serieGrafica', () => {
 })
 
 describe('helpers compartidos', () => {
+  it('numeroONull normaliza el "" de un input number vaciado', () => {
+    expect(numeroONull(120)).toBe(120)
+    expect(numeroONull(null)).toBeNull()
+    expect(numeroONull('' as unknown as number)).toBeNull()
+    expect(numeroONull(NaN)).toBeNull()
+  })
+
   it('mensajeError extrae el mensaje de cualquier cosa lanzada', () => {
     expect(mensajeError(new Error('boom'))).toBe('boom')
     expect(mensajeError('texto plano')).toBe('texto plano')

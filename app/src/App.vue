@@ -147,7 +147,7 @@ function abrirRegistro() {
     </RouterLink>
   </nav>
 
-  <div v-if="swEsperando" class="toast-sw">
+  <div v-if="swEsperando" class="toast-sw" role="status">
     Hay una versión nueva.
     <button class="boton" @click="actualizarApp">Actualizar</button>
   </div>
@@ -317,7 +317,7 @@ function abrirRegistro() {
 
 .toast-sw {
   position: fixed;
-  bottom: 80px;
+  bottom: calc(80px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   background: var(--color-toast-fondo);

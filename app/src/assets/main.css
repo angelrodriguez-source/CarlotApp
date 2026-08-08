@@ -126,6 +126,8 @@ textarea {
   background: var(--color-primario-suave);
   border: none;
   box-shadow: none;
+  /* Sobre el tinte, el texto suave global se queda en 4.19:1 — aquí más oscuro */
+  --color-texto-suave: #3f6a61;
 }
 
 /* Etiqueta de sección dentro de una tarjeta */
