@@ -1505,6 +1505,11 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   margin-top: 1.1rem;
 }
 
+/* Aire entre el título de la sección y su contenido */
+.seccion-hoy > .etiqueta-seccion {
+  margin-bottom: 0.6rem;
+}
+
 .seccion-hoy + .seccion-hoy {
   border-top: 1px solid var(--color-borde);
   padding-top: 1.1rem;
@@ -1520,6 +1525,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   background: none;
   border: none;
   padding: 0;
+  margin-bottom: 0.6rem;
   text-align: left;
   color: inherit;
 }
