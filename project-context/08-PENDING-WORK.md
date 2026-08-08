@@ -51,12 +51,13 @@
 ### Hechas
 
 - [x] Curvas estandar OMS de fondo en peso y altura (2026-08-08): las
-      graficas de Valor pintan de fondo los deciles P10-P90 (de 10 en 10,
-      P50 punteada, etiquetados a la derecha) de los ultimos 60 dias de
-      edad, con la serie medida encima — se ve entre que percentiles va.
-      Nuevo GraficaCrecimiento.vue (eje X en dias de edad) y
-      valorPercentilOMS en el modelo (con test). El PC mantiene la banda
-      P3-P97
+      graficas de Valor pintan de fondo los deciles P0-P100 (de 10 en 10;
+      P0/P100 son los extremos de la cartilla, ±3 desviaciones; P50
+      punteada, etiquetados a la derecha) en una ventana de 60 dias con
+      hoy en el dia 45 — los 15 dias a la derecha de la marca «hoy»
+      ensenan como deberia progresar. Nuevo GraficaCrecimiento.vue (eje X
+      en dias de edad) y valorPercentilOMS en el modelo (con test). El PC
+      mantiene la banda P3-P97
 
 - [x] Graficas de dia a dia en Evolucion (2026-08-08): leche tomada
       (ml/dia) y sueno (h/dia) de los ultimos 7/14/30 dias, con el sueno

@@ -379,8 +379,11 @@ export function bandaOMS(tipo: MedidaOMS, dias: number): BandaOMS | null {
   return { p3: valorEnZ(-Z_P97), p50: m, p97: valorEnZ(Z_P97) }
 }
 
-// z de los percentiles decilares (cuantiles de la normal estándar)
+// z de los percentiles decilares (cuantiles de la normal estándar).
+// El P0 y el P100 exactos no existen en una normal: se usan los extremos
+// de la cartilla OMS (P0.1 y P99.9, ±3 desviaciones) con esas etiquetas.
 const Z_DECILES: Record<number, number> = {
+  0: -3.0902323062,
   10: -1.2815515655,
   20: -0.8416212336,
   30: -0.5244005127,
@@ -390,6 +393,7 @@ const Z_DECILES: Record<number, number> = {
   70: 0.5244005127,
   80: 0.8416212336,
   90: 1.2815515655,
+  100: 3.0902323062,
 }
 
 /**
