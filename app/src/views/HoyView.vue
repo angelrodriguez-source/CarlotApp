@@ -12,7 +12,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import { useUserStore } from '../stores/userStore'
-import { fotoBebeUrl, logoUrl } from '../assets/branding'
+import { fotoBebeUrl, iconoDiaUrl, logoUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
@@ -930,7 +930,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <section class="tarjeta">
         <div class="cabecera-datos-hoy">
           <span class="fecha-hoy suave">{{ fechaHoyCorta }}</span>
-          <h3>📅 Cómo va el día</h3>
+          <h3><img :src="iconoDiaUrl" alt="" class="icono-titulo" /> Cómo va el día</h3>
           <span class="hora-actual suave">{{ horaActual }}</span>
         </div>
 
@@ -1277,6 +1277,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.icono-titulo {
+  width: 26px;
+  height: 26px;
 }
 
 .cabecera-datos-hoy .hora-actual {
