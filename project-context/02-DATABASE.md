@@ -56,6 +56,9 @@ Migraciones existentes:
    (poco/medio/mucho, opcional).
 3. `202608072100_eventos_unas.sql` — tipo de evento 'unas' (corte de unas):
    recrea el CHECK de `eventos` con el valor nuevo.
+4. `202608072230_nombre_completo.sql` — nombre completo del bebe.
+5. `202608080030_medidas_origen.sql` — columna `origen` en `medidas`
+   ('casa' por defecto / 'oficial' — pediatra o farmacia).
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

@@ -55,6 +55,9 @@ export interface Evento {
   descripcion: string | null
 }
 
+/** 'casa' = medición nuestra; 'oficial' = validada (pediatra o farmacia) */
+export type OrigenMedida = 'casa' | 'oficial'
+
 export interface Medida {
   id: string
   bebe_id: string
@@ -62,6 +65,7 @@ export interface Medida {
   peso_gramos: number | null
   altura_cm: number | null
   perimetro_craneal_cm: number | null
+  origen: OrigenMedida
   notas: string | null
 }
 
@@ -104,6 +108,11 @@ export const ETIQUETAS_EVENTO: Record<TipoEvento, string> = {
   unas: 'Uñas cortadas',
   hito: 'Momento',
   otro: 'Otro',
+}
+
+export const ETIQUETAS_ORIGEN_MEDIDA: Record<OrigenMedida, string> = {
+  casa: '🏠 En casa',
+  oficial: '✅ Oficial (pediatra/farmacia)',
 }
 
 export const ETIQUETAS_CITA: Record<TipoCita, string> = {

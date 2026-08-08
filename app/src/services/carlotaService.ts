@@ -331,7 +331,7 @@ export async function eliminarEvento(id: string): Promise<void> {
 export async function registrarMedida(
   medida: Pick<
     Medida,
-    'bebe_id' | 'fecha' | 'peso_gramos' | 'altura_cm' | 'perimetro_craneal_cm' | 'notas'
+    'bebe_id' | 'fecha' | 'peso_gramos' | 'altura_cm' | 'perimetro_craneal_cm' | 'origen' | 'notas'
   >,
 ): Promise<Medida> {
   const { data, error } = await supabase.from('medidas').insert(medida).select().single()

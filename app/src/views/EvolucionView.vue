@@ -17,7 +17,7 @@ import {
   type MedidaOMS,
   type PuntoGrafica,
 } from '../models/CarlotaModel'
-import type { Medida } from '../types'
+import { ETIQUETAS_ORIGEN_MEDIDA, type Medida, type OrigenMedida } from '../types'
 import GraficaLinea from '../components/GraficaLinea.vue'
 
 const bebeStore = useBebeStore()
@@ -37,6 +37,7 @@ const nuevaMedida = ref({
   pesoGramos: null as number | null,
   alturaCm: null as number | null,
   perimetroCm: null as number | null,
+  origen: 'casa' as OrigenMedida,
   notas: '',
 })
 
@@ -72,6 +73,7 @@ async function guardarMedida() {
       peso_gramos: nuevaMedida.value.pesoGramos,
       altura_cm: nuevaMedida.value.alturaCm,
       perimetro_craneal_cm: nuevaMedida.value.perimetroCm,
+      origen: nuevaMedida.value.origen,
       notas: nuevaMedida.value.notas || null,
     })
     mostrarFormulario.value = false
@@ -80,6 +82,7 @@ async function guardarMedida() {
       pesoGramos: null,
       alturaCm: null,
       perimetroCm: null,
+      origen: 'casa',
       notas: '',
     }
     await cargar()
@@ -216,6 +219,14 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
         />
       </div>
       <div class="campo">
+        <label for="medida-origen">Tipo de medición</label>
+        <select id="medida-origen" v-model="nuevaMedida.origen">
+          <option v-for="(etiqueta, valor) in ETIQUETAS_ORIGEN_MEDIDA" :key="valor" :value="valor">
+            {{ etiqueta }}
+          </option>
+        </select>
+      </div>
+      <div class="campo">
         <label for="medida-notas">Notas (ej. "revisión pediatra")</label>
         <input id="medida-notas" v-model="nuevaMedida.notas" type="text" />
       </div>
@@ -276,6 +287,9 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
             }}
           </template>
           <template v-if="medida.notas"> · {{ medida.notas }}</template>
+          <span class="origen-medida" :title="ETIQUETAS_ORIGEN_MEDIDA[medida.origen]">
+            {{ medida.origen === 'oficial' ? '✅' : '🏠' }}
+          </span>
         </span>
         <button class="boton peligro" @click="borrarMedida(medida.id)">✕</button>
       </div>
