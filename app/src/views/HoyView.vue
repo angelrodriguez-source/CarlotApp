@@ -1229,12 +1229,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   justify-content: center;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
 }
 
 .cabecera-bebe h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
 }
 
@@ -1265,11 +1265,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   display: flex;
   justify-content: center;
   align-items: baseline;
+  margin-bottom: 0.5rem;
 }
 
 .cabecera-datos-hoy h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
 }
 
@@ -1282,9 +1283,9 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
 .titulo-accesos {
   text-align: center;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  margin: 0 0 0.75rem;
+  margin: 0 0 1.25rem;
 }
 
 .hora-actual {
