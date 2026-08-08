@@ -413,7 +413,11 @@ const filasHitosVisibles = computed(() =>
 // Plegado muestra los 2 últimos; expandido, todo el día
 const registroExpandido = ref(false)
 
-// ---- Hora actual (cabecera de "Datos de Hoy") ----
+// ---- Fecha y hora actuales (cabecera de "Cómo va el día") ----
+const fechaHoyCorta = computed(() =>
+  ahora.value.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+)
+
 const horaActual = computed(() =>
   ahora.value.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
 )
@@ -925,6 +929,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Card 2 · Datos de Hoy: objetivos del día + últimos hitos -->
       <section class="tarjeta">
         <div class="cabecera-datos-hoy">
+          <span class="fecha-hoy suave">{{ fechaHoyCorta }}</span>
           <h3>📅 Cómo va el día</h3>
           <span class="hora-actual suave">{{ horaActual }}</span>
         </div>
@@ -1277,6 +1282,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 .cabecera-datos-hoy .hora-actual {
   position: absolute;
   right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.cabecera-datos-hoy .fecha-hoy {
+  position: absolute;
+  left: 0;
   top: 50%;
   transform: translateY(-50%);
 }
