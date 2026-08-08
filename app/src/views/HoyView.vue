@@ -373,12 +373,12 @@ interface FilaHito {
 const CATALOGO_HITOS = [
   { id: 'toma', etiqueta: 'Última toma', img: ICONOS_REGISTRO.toma },
   { id: 'sueno', etiqueta: 'Sueño', img: ICONOS_REGISTRO.sueno },
-  { id: 'panal', etiqueta: '🧷 Último pañal', img: undefined },
+  { id: 'panal', etiqueta: 'Último pañal', img: ICONOS_REGISTRO.panal },
   { id: 'bano', etiqueta: 'Último baño', img: ICONOS_REGISTRO.bano },
   { id: 'vitamina_d', etiqueta: 'Vitamina D', img: ICONOS_REGISTRO.vitamina_d },
   { id: 'medicacion', etiqueta: 'Medicación', img: ICONOS_REGISTRO.medicacion },
   { id: 'unas', etiqueta: '✂️ Uñas cortadas', img: undefined },
-  { id: 'hito', etiqueta: '✨ Último momento', img: undefined },
+  { id: 'hito', etiqueta: 'Último momento', img: ICONOS_REGISTRO.hito },
   { id: 'otro', etiqueta: '⭐ Otro evento', img: undefined },
 ] as const
 
@@ -453,7 +453,8 @@ const todasLasFilasHitos = computed<FilaHito[]>(() => {
   // Pañal
   filas.push({
     id: 'panal',
-    etiqueta: '🧷 Último pañal',
+    etiqueta: 'Último pañal',
+    img: ICONOS_REGISTRO.panal,
     valor: ultimoPanal.value ? haceTexto(ultimoPanal.value.fecha) : 'sin registros aún',
   })
   // Eventos por tipo (baño, vitamina D, medicación, uñas, momento, otro)
@@ -642,10 +643,10 @@ function alternarSueno() {
 // y, en caca/mixto, la cantidad como botones que guardan directamente
 const nuevoPanal = ref<{ tipo: TipoPanal; hora: string } | null>(null)
 
-const TITULOS_PANAL: Record<TipoPanal, string> = {
-  pis: '🧷 Pis',
-  caca: '💩 Caca',
-  mixto: '💩 Pis + caca',
+const TITULOS_PANAL: Record<TipoPanal, { texto: string; icono?: string }> = {
+  pis: { texto: 'Pis', icono: ICONOS_REGISTRO.pis },
+  caca: { texto: 'Caca', icono: ICONOS_REGISTRO.caca },
+  mixto: { texto: 'Pis + caca', icono: ICONOS_REGISTRO.caca },
 }
 
 function abrirPanal(tipo: TipoPanal) {
@@ -786,16 +787,15 @@ const accionesRegistro = computed<AccionRegistro[]>(() => [
     etiqueta: tomaAbierta.value ? `Termina toma (${minutosTomaAbierta.value} min)` : 'Toma',
     vivo: !!tomaAbierta.value,
   },
-  { id: 'pis', icono: '💧', etiqueta: 'Pis' },
-  { id: 'caca', icono: '💩', etiqueta: 'Caca' },
-  { id: 'mixto', icono: '💧💩', etiqueta: 'Mixto' },
+  { id: 'pis', icono: '💧', img: ICONOS_REGISTRO.pis, etiqueta: 'Pis' },
+  { id: 'caca', icono: '💩', img: ICONOS_REGISTRO.caca, etiqueta: 'Caca' },
   {
     id: 'sueno_post',
     icono: '🛌',
     img: ICONOS_REGISTRO.sueno_post,
     etiqueta: 'Sueño a posteriori',
   },
-  { id: 'momento', icono: '✨', etiqueta: 'Momento' },
+  { id: 'momento', icono: '✨', img: ICONOS_REGISTRO.momento, etiqueta: 'Momento' },
   { id: 'bano', icono: '🛁', img: ICONOS_REGISTRO.bano, etiqueta: 'Baño' },
   {
     id: 'vitamina_d',
@@ -824,7 +824,6 @@ function ejecutarAccion(id: string) {
       break
     case 'pis':
     case 'caca':
-    case 'mixto':
       abrirPanal(id)
       break
     case 'sueno_post':
@@ -987,7 +986,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     ...panales.value.map((p): Registro => ({
       id: p.id,
       hora: p.fecha,
-      texto: textoPanal(p),
+      texto: textoConIcono(textoPanal(p), ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca']),
+      img: ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca'],
       borrar: () => servicio.eliminarPanal(p.id),
       editable: { kind: 'panal', panal: p },
     })),
@@ -1253,7 +1253,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Hojas inferiores (formularios) -->
       <HojaInferior
         :abierta="nuevoPanal !== null"
-        :titulo="nuevoPanal ? TITULOS_PANAL[nuevoPanal.tipo] : ''"
+        :titulo="nuevoPanal ? TITULOS_PANAL[nuevoPanal.tipo].texto : ''"
+        :icono="nuevoPanal ? TITULOS_PANAL[nuevoPanal.tipo].icono : undefined"
         @cerrar="nuevoPanal = null"
       >
         <template v-if="nuevoPanal">
@@ -1375,7 +1376,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       <!-- Momento -->
       <HojaInferior
         :abierta="formulario === 'momento'"
-        titulo="✨ Momento"
+        titulo="Momento"
+        :icono="ICONOS_REGISTRO.momento"
         @cerrar="formulario = null"
       >
         <form @submit.prevent="guardarMomento">

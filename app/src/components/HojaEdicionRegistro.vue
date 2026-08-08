@@ -96,7 +96,7 @@ function construir(registro: RegistroEditable): Edicion {
 const TITULOS: Record<RegistroEditable['kind'], { texto: string; icono?: string }> = {
   toma: { texto: 'Editar toma', icono: ICONOS_REGISTRO.toma },
   sueno: { texto: 'Editar sueño', icono: ICONOS_REGISTRO.sueno },
-  panal: { texto: '🧷 Editar pañal' },
+  panal: { texto: 'Editar pañal', icono: ICONOS_REGISTRO.panal },
   evento: { texto: '⭐ Editar evento' },
 }
 
