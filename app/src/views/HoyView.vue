@@ -1011,7 +1011,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
       <!-- Accesos directos (configurables desde el menú de usuario; el + de la nav lo tiene todo) -->
       <section class="tarjeta">
-        <span class="etiqueta-seccion">⚡ Accesos directos</span>
+        <h3 class="titulo-accesos">⚡ Accesos directos</h3>
         <p v-if="accesosVisibles.length === 0" class="suave">
           Elige tus accesos con ⚙ — y recuerda que el ＋ de abajo lo tiene todo.
         </p>
@@ -1226,6 +1226,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 /* Card 1 · La bebé */
 .cabecera-bebe {
   display: flex;
+  justify-content: center;
   align-items: center;
   gap: 0.6rem;
   margin-bottom: 0.75rem;
@@ -1233,7 +1234,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
 .cabecera-bebe h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
 .avatar-bebe {
@@ -1259,15 +1261,30 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
 /* Card 2 · Datos de Hoy */
 .cabecera-datos-hoy {
+  position: relative;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: baseline;
-  gap: 0.5rem;
 }
 
 .cabecera-datos-hoy h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.cabecera-datos-hoy .hora-actual {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.titulo-accesos {
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
 }
 
 .hora-actual {
