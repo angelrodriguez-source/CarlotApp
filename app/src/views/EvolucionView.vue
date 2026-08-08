@@ -20,6 +20,7 @@ import {
   percentilOMS,
   serieGrafica,
   ultimosDias,
+  valorPercentilOMS,
   type BandaOMS,
   type MedidaOMS,
   type PuntoGrafica,
@@ -32,6 +33,10 @@ import {
   type Toma,
 } from '../types'
 import GraficaLinea from '../components/GraficaLinea.vue'
+import GraficaCrecimiento, {
+  type CurvaPercentil,
+  type PuntoCrecimiento,
+} from '../components/GraficaCrecimiento.vue'
 import HojaInferior from '../components/HojaInferior.vue'
 
 const bebeStore = useBebeStore()
@@ -172,20 +177,6 @@ function borrarMedidaEnEdicion() {
   ejecutarEdicion(() => servicio.eliminarMedida(e.id))
 }
 
-const seriePeso = computed(() =>
-  serieGrafica(
-    medidas.value,
-    (m) => m.fecha,
-    (m) => m.peso_gramos,
-  ),
-)
-const serieAltura = computed(() =>
-  serieGrafica(
-    medidas.value,
-    (m) => m.fecha,
-    (m) => m.altura_cm,
-  ),
-)
 const seriePerimetro = computed(() =>
   serieGrafica(
     medidas.value,
@@ -217,9 +208,49 @@ function bandaDe(tipo: MedidaOMS, serie: PuntoGrafica[]): (BandaOMS | null)[] {
   return serie.map((p) => bandaOMS(tipo, edadDias(nacimiento, p.etiqueta)))
 }
 
-const bandaPeso = computed(() => bandaDe('peso', seriePeso.value))
-const bandaAltura = computed(() => bandaDe('altura', serieAltura.value))
 const bandaPerimetro = computed(() => bandaDe('pc', seriePerimetro.value))
+
+// ---- Peso y altura con las curvas estándar de fondo (P10-P90) ----
+
+const DECILES = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+const VENTANA_DIAS = 60
+
+/** Ventana de edad: los últimos 60 días (o desde el nacimiento) */
+const ventana = computed(() => {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  if (!nacimiento) return null
+  const hasta = Math.max(edadDias(nacimiento, hoyLocal()), 7)
+  return { desde: Math.max(0, hasta - VENTANA_DIAS), hasta }
+})
+
+function curvasDe(tipo: MedidaOMS): CurvaPercentil[] {
+  const v = ventana.value
+  if (!v) return []
+  const dias: number[] = []
+  for (let d = v.desde; d <= v.hasta; d++) dias.push(d)
+  return DECILES.map((p) => ({
+    nombre: `P${p}`,
+    puntos: dias
+      .map((d) => ({ dia: d, valor: valorPercentilOMS(tipo, p, d) }))
+      .filter((punto): punto is { dia: number; valor: number } => punto.valor !== null),
+  }))
+}
+
+const curvasPeso = computed(() => curvasDe('peso'))
+const curvasAltura = computed(() => curvasDe('altura'))
+
+function medidosEnVentana(valorDe: (m: Medida) => number | null): PuntoCrecimiento[] {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento
+  const v = ventana.value
+  if (!nacimiento || !v) return []
+  return medidas.value
+    .map((m) => ({ dia: edadDias(nacimiento, m.fecha), valor: valorDe(m), etiqueta: m.fecha }))
+    .filter((p): p is PuntoCrecimiento => p.valor !== null && p.dia >= v.desde && p.dia <= v.hasta)
+    .sort((a, b) => a.dia - b.dia)
+}
+
+const medidosPeso = computed(() => medidosEnVentana((m) => m.peso_gramos))
+const medidosAltura = computed(() => medidosEnVentana((m) => m.altura_cm))
 
 const seriePercentilPeso = computed(() =>
   serieGrafica(
@@ -412,8 +443,13 @@ const franjaLeche = computed(() => {
     </div>
 
     <template v-if="modo === 'valor'">
-      <GraficaLinea titulo="⚖️ Peso" :puntos="seriePeso" unidad="g" :banda="bandaPeso" />
-      <GraficaLinea titulo="📏 Altura" :puntos="serieAltura" unidad="cm" :banda="bandaAltura" />
+      <GraficaCrecimiento titulo="⚖️ Peso" unidad="g" :puntos="medidosPeso" :curvas="curvasPeso" />
+      <GraficaCrecimiento
+        titulo="📏 Altura"
+        unidad="cm"
+        :puntos="medidosAltura"
+        :curvas="curvasAltura"
+      />
       <GraficaLinea
         titulo="👶 Perímetro craneal"
         :puntos="seriePerimetro"
