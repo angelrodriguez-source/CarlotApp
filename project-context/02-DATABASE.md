@@ -30,6 +30,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | `eventos` | fecha, tipo, descripcion | tipo: bano/vitamina_d/medicacion/unas/hito/otro |
 | `citas` | fecha, titulo, tipo, lugar, notas, completada | tipo: medica/tramite/otro |
 | `usuarios_autorizados` | email, nota | Lista blanca (ver arriba) |
+| `predicciones` | calculado_en, proxima_toma(+franja), proxima_siesta(+franja), durmiendo, incomodidad_prob, parametros | Mime Predictor: UNA fila viva por bebe (upsert), con los parametros del calculo en JSONB. La linea base poblacional vive en el codigo (prediccionBase.ts) |
 | `_migrations` | name, applied_at | Control del runner de migraciones. RLS sin policies |
 
 Todas las tablas de datos llevan ademas `registrado_por UUID DEFAULT auth.uid()`
@@ -58,6 +59,8 @@ Migraciones existentes:
    al nombre completo (no anade columna).
 5. `202608080030_medidas_origen.sql` — columna `origen` en `medidas`
    ('casa' por defecto / 'oficial' — pediatra o farmacia).
+6. `202608081700_predicciones.sql` — tabla `predicciones` del Mime
+   Predictor (una fila viva por bebe, RLS con la lista blanca).
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

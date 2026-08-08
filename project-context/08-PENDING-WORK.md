@@ -20,7 +20,19 @@
 
 ### Mime Predictor (la super idea ⭐)
 
-- [ ] **Mime Predictor**: algoritmo de prediccion que combina dos capas:
+- [x] FASE 1 — Algoritmo + datos + BBDD (2026-08-08): linea base
+      poblacional precargada (prediccionBase.ts, fuentes publicas),
+      algoritmo puro en MimePredictor.ts (shrinkage base↔personal con
+      medianas/IQR de 7 dias separando dia/noche), tabla `predicciones`
+      con RLS (fila viva por bebe) y persistencia en el servicio.
+      Calibrado por backtesting recursivo (3 rondas de barrido k×historico
+      contra 7 bebes simulados; k=3, historico=7d; la franja de confianza
+      paso de IQR/2 a 0.75·IQR al detectar cobertura del 50%). 13 tests
+      de contrato: MAE tomas <25 min y siestas <22 min (bebe regular),
+      acotado en irregulares, arranque en frio cae en la base, porQueLlora
+      ordena bien los escenarios. PENDIENTE FASE 2: UI (panel Mime
+      Predictor + boton ¿Por que llora? con su diagrama)
+- [ ] FASE 2 — UI del **Mime Predictor**: algoritmo de prediccion que combina dos capas:
       (1) linea base poblacional precargada de estadisticas publicas
       (ventanas de vigilia, intervalos entre tomas y siestas tipicas por
       edad en semanas — mismo enfoque que las tablas OMS/semanas ya

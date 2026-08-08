@@ -77,6 +77,23 @@ Sin DOM, sin red — lo unico testeado (Vitest, `models/__tests__/`):
 - `objetivoSuenoMinutos`, `objetivoLecheMl` — objetivos diarios orientativos
   por edad (sueno: rangos NSF/AASM; leche: regla ml/kg sobre el peso)
 
+Ademas, el **Mime Predictor** (algoritmo listo, UI pendiente):
+
+- `models/prediccionBase.ts` — linea base poblacional precargada por edad
+  (ventanas de vigilia, intervalos de toma dia/noche, panales/dia; fuentes:
+  Taking Cara Babies, Huckleberry, Cleveland Clinic, AAP/Enfamil, Pampers)
+- `models/MimePredictor.ts` — `predecir()` (proxima toma, proxima siesta,
+  incomodidad, con franja de confianza) y `porQueLlora()` (probabilidades
+  Sueno/Hambre/Incomodidad por softmax de presiones). Mezcla shrinkage
+  peso=n/(n+k) entre la base y el patron personal (medianas/IQR de los
+  ultimos 7 dias, separando dia/noche). Parametros k=3 e historico=7d
+  calibrados por backtesting (MimePredictor.spec.ts: bebes simulados con
+  RNG sembrado + walk-forward, MAE tomas <25 min y siestas <22 min en
+  bebe regular; casos frio, cambiante e irregular acotados)
+- Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
+  (upsert de una fila viva por bebe en `predicciones`) +
+  `aFilaPrediccion()` para serializar
+
 Ademas, `models/referenciaOMS.ts` (GENERADO, no editar a mano): estandares
 OMS de ninas semanas 0-100 (P3/P15/P50/P85/P97 + parametros LMS de peso,
 altura y perimetro craneal). Se regenera con
