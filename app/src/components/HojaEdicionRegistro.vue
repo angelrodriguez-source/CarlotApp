@@ -112,29 +112,42 @@ async function ejecutar(accion: () => Promise<unknown>) {
   }
 }
 
+/** Un input numérico vaciado llega como '' (no null): normaliza a número o null */
+function numeroONull(valor: number | null): number | null {
+  if (valor === null || (valor as unknown) === '') return null
+  return Number.isNaN(Number(valor)) ? null : Number(valor)
+}
+
 function guardar() {
   const e = edicion.value
   if (!e) return
   const inicioIso = new Date(e.inicio).toISOString()
   if (e.kind === 'toma') {
     const esBiberonToma = e.tipoToma.startsWith('biberon')
+    const cantidadMl = numeroONull(e.cantidadMl)
+    const duracionMin = numeroONull(e.duracionMin)
+    if (!esBiberonToma && duracionMin === null) {
+      error.value = 'Indica la duración de la toma de pecho'
+      return
+    }
+    if (esBiberonToma && cantidadMl === null && duracionMin === null) {
+      // Sin ml ni duración quedaría como "toma en curso" fantasma
+      error.value = 'Indica la cantidad del biberón'
+      return
+    }
     // duracionMin viene precargada del registro original, así que editar un
-    // biberón con fin (cronómetro) conserva su duración; != null para no
-    // convertir una toma de 0 min en "en curso". Una toma de pecho sin
-    // duración se cierra con fin = inicio: nunca debe quedar "en curso"
-    // (dispararía el cronómetro fantasma de Hoy).
+    // biberón con fin (cronómetro) conserva su duración; la comprobación de
+    // null evita convertir una toma cerrada en "en curso"
     const fin =
-      e.duracionMin != null
-        ? new Date(new Date(e.inicio).getTime() + e.duracionMin * 60_000).toISOString()
-        : esBiberonToma
-          ? null
-          : inicioIso
+      duracionMin !== null
+        ? new Date(new Date(e.inicio).getTime() + duracionMin * 60_000).toISOString()
+        : null
     ejecutar(() =>
       servicio.actualizarToma(e.id, {
         inicio: inicioIso,
         fin,
         tipo: e.tipoToma,
-        cantidad_ml: esBiberonToma ? e.cantidadMl : null,
+        cantidad_ml: esBiberonToma ? cantidadMl : null,
         notas: e.notas || null,
       }),
     )
@@ -199,11 +212,11 @@ function borrar() {
         </div>
         <div v-if="esBiberon" class="campo">
           <label for="ed-ml">Cantidad (ml)</label>
-          <input id="ed-ml" v-model.number="edicion.cantidadMl" type="number" min="1" />
+          <input id="ed-ml" v-model.number="edicion.cantidadMl" type="number" min="1" required />
         </div>
         <div v-else class="campo">
           <label for="ed-min">Duración (min)</label>
-          <input id="ed-min" v-model.number="edicion.duracionMin" type="number" min="1" />
+          <input id="ed-min" v-model.number="edicion.duracionMin" type="number" min="1" required />
         </div>
         <div class="campo">
           <label for="ed-notas">Notas</label>

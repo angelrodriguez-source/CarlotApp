@@ -8,7 +8,6 @@ import { computed } from 'vue'
 import {
   claveDia,
   fechaCortaDia,
-  minutoDelDia,
   minutosEnDia,
   tramoEnDia,
   type TramoRitmo,
@@ -49,25 +48,34 @@ interface Fila {
 }
 
 const filas = computed<Fila[]>(() =>
-  props.dias.map((dia, i) => ({
-    dia,
-    y: yFila(i),
-    minutosDia: minutosEnDia(dia),
-    tramos: props.suenos
-      .map((s) => tramoEnDia(s.inicio, s.fin, dia))
-      .filter((t): t is TramoRitmo => t !== null),
-    tomasMin: props.tomas
-      .filter((t) => claveDia(t.inicio) === dia)
-      .map((t) => ({
-        minuto: minutoDelDia(t.inicio),
-        hora: new Date(t.inicio).toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      })),
-  })),
+  props.dias.map((dia, i) => {
+    // Minutos TRANSCURRIDOS desde la medianoche local (misma base que
+    // tramoEnDia): en los días de cambio de hora, hora de reloj y minutos
+    // transcurridos difieren y mezclarlos desalineaba tomas y sueños
+    const inicioDia = new Date(dia + 'T00:00:00').getTime()
+    return {
+      dia,
+      y: yFila(i),
+      minutosDia: minutosEnDia(dia),
+      tramos: props.suenos
+        .map((s) => tramoEnDia(s.inicio, s.fin, dia))
+        .filter((t): t is TramoRitmo => t !== null),
+      tomasMin: props.tomas
+        .filter((t) => claveDia(t.inicio) === dia)
+        .map((t) => ({
+          minuto: Math.round((new Date(t.inicio).getTime() - inicioDia) / 60_000),
+          hora: new Date(t.inicio).toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        })),
+    }
+  }),
 )
 
+// Eje global a escala 1440: en los 2 días de cambio de hora del año las
+// líneas horarias se desvían ~4% respecto a esas filas (el contenido de
+// cada fila sí es exacto porque escala con su duración real)
 const HORAS_EJE = [0, 6, 12, 18, 24]
 </script>
 

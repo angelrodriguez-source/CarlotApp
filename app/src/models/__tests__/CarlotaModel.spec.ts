@@ -45,6 +45,14 @@ describe('edadTexto', () => {
   })
 })
 
+describe('edadTexto con nacimiento a fin de mes', () => {
+  it('clampa el ancla en meses cortos (nacida el 31)', () => {
+    // 6 meses de una nacida el 31-ago caen el 28-feb (no el 3-mar)
+    expect(edadTexto('2025-08-31', new Date('2026-03-01T12:00:00'))).toBe('6 meses y 1 día')
+    expect(edadTexto('2025-08-31', new Date('2026-03-20T12:00:00'))).toBe('6 meses y 20 días')
+  })
+})
+
 describe('edadCorta', () => {
   it('compacta dias, semanas y meses', () => {
     expect(edadCorta('2026-06-06', new Date('2026-06-08T12:00:00'))).toBe('2 d')
