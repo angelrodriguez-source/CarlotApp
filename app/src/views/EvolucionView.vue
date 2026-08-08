@@ -2,22 +2,33 @@
 /**
  * EvolucionView.vue — Medidas (peso/altura/perímetro craneal):
  * alta de una medición, gráficas de evolución y tabla histórica.
+ * Además, gráficas del día a día (leche y sueño); los objetivos de
+ * Hoy llegan aquí con ?grafica=tomas|sueno y se hace scroll a ellas.
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import {
   bandaOMS,
+  claveDia,
   edadDias,
   hoyLocal,
+  minutosSuenoEnDia,
   percentilOMS,
   serieGrafica,
+  ultimosDias,
   type BandaOMS,
   type MedidaOMS,
   type PuntoGrafica,
 } from '../models/CarlotaModel'
-import { ETIQUETAS_ORIGEN_MEDIDA, type Medida, type OrigenMedida } from '../types'
+import {
+  ETIQUETAS_ORIGEN_MEDIDA,
+  type Medida,
+  type OrigenMedida,
+  type Sueno,
+  type Toma,
+} from '../types'
 import GraficaLinea from '../components/GraficaLinea.vue'
 import HojaInferior from '../components/HojaInferior.vue'
 
@@ -45,7 +56,7 @@ const nuevaMedida = ref({
 async function cargar() {
   const bebe = await bebeStore.cargar()
   if (!bebe) return
-  medidas.value = await servicio.listarMedidas(bebe.id)
+  ;[medidas.value] = await Promise.all([servicio.listarMedidas(bebe.id), cargarDiarios()])
 }
 
 onMounted(async () => {
@@ -54,12 +65,19 @@ onMounted(async () => {
     mostrarFormulario.value = true
     router.replace({ query: {} })
   }
+  // Los objetivos de Hoy llegan con ?grafica=tomas|sueno
+  const grafica = route.query.grafica
   try {
     await cargar()
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     cargando.value = false
+  }
+  if (grafica === 'tomas' || grafica === 'sueno') {
+    router.replace({ query: {} })
+    await nextTick()
+    document.getElementById(`grafica-${grafica}`)?.scrollIntoView({ behavior: 'smooth' })
   }
 })
 
@@ -224,6 +242,65 @@ const seriePercentilPerimetro = computed(() =>
 )
 
 const medidasRecientes = computed(() => [...medidas.value].reverse())
+
+// ---- Día a día: leche tomada y sueño por día ----
+
+const diasDiarios = ref(14)
+const tomas = ref<Toma[]>([])
+const suenos = ref<Sueno[]>([])
+
+async function cargarDiarios() {
+  const bebe = bebeStore.bebe
+  if (!bebe) return
+  const desde = new Date()
+  desde.setDate(desde.getDate() - (diasDiarios.value - 1))
+  desde.setHours(0, 0, 0, 0)
+  // Sueños desde un día antes: el nocturno que empezó la víspera
+  // aporta sus horas de madrugada al primer día visible
+  const desdeSuenos = new Date(desde)
+  desdeSuenos.setDate(desdeSuenos.getDate() - 1)
+  ;[tomas.value, suenos.value] = await Promise.all([
+    servicio.listarTomas(bebe.id, desde.toISOString()),
+    servicio.listarSuenos(bebe.id, desdeSuenos.toISOString()),
+  ])
+}
+
+watch(diasDiarios, async () => {
+  error.value = ''
+  try {
+    await cargarDiarios()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
+})
+
+/** Días del rango en orden cronológico (ultimosDias los da recientes primero) */
+const diasSerie = computed(() => [...ultimosDias(diasDiarios.value)].reverse())
+
+/** Quita los días iniciales sin datos (antes del primer registro) */
+function recortarVacios(puntos: PuntoGrafica[]): PuntoGrafica[] {
+  const primero = puntos.findIndex((p) => p.valor > 0)
+  return primero === -1 ? [] : puntos.slice(primero)
+}
+
+const serieLeche = computed<PuntoGrafica[]>(() => {
+  const porDia = new Map<string, number>()
+  for (const t of tomas.value) {
+    if (!t.cantidad_ml) continue
+    const dia = claveDia(t.inicio)
+    porDia.set(dia, (porDia.get(dia) ?? 0) + t.cantidad_ml)
+  }
+  return recortarVacios(diasSerie.value.map((d) => ({ etiqueta: d, valor: porDia.get(d) ?? 0 })))
+})
+
+const serieSueno = computed<PuntoGrafica[]>(() =>
+  recortarVacios(
+    diasSerie.value.map((d) => ({
+      etiqueta: d,
+      valor: Math.round((minutosSuenoEnDia(suenos.value, d) / 60) * 10) / 10,
+    })),
+  ),
+)
 </script>
 
 <template>
@@ -319,6 +396,22 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
       <GraficaLinea titulo="📏 Percentil de altura" :puntos="seriePercentilAltura" unidad="P" />
       <GraficaLinea titulo="👶 Percentil de PC" :puntos="seriePercentilPerimetro" unidad="P" />
     </template>
+
+    <!-- Día a día: leche y sueño (los objetivos de Hoy enlazan aquí) -->
+    <div v-if="!cargando" class="cabecera-diarios">
+      <span class="etiqueta-seccion">Día a día</span>
+      <select v-model.number="diasDiarios" aria-label="Días de las gráficas diarias">
+        <option :value="7">Últimos 7 días</option>
+        <option :value="14">Últimos 14 días</option>
+        <option :value="30">Últimos 30 días</option>
+      </select>
+    </div>
+    <div v-if="!cargando" id="grafica-tomas">
+      <GraficaLinea titulo="🍼 Leche al día" :puntos="serieLeche" unidad="ml" />
+    </div>
+    <div v-if="!cargando" id="grafica-sueno">
+      <GraficaLinea titulo="😴 Sueño al día" :puntos="serieSueno" unidad="h" />
+    </div>
 
     <div class="tarjeta">
       <h3>📋 Mediciones</h3>
@@ -455,6 +548,22 @@ const medidasRecientes = computed(() => [...medidas.value].reverse())
 
 .fila-registro .editar {
   color: var(--color-texto-suave);
+}
+
+.cabecera-diarios {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.cabecera-diarios .etiqueta-seccion {
+  margin-bottom: 0;
+}
+
+.cabecera-diarios select {
+  width: auto;
 }
 
 .botones-edicion {
