@@ -900,6 +900,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             </span>
             <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
           </button>
+          <button
+            v-if="!mostrarSemana"
+            class="ver-mas"
+            aria-label="Ver la semana"
+            @click="mostrarSemana = true"
+          >
+            ⋯
+          </button>
           <template v-if="mostrarSemana">
             <ul class="lista-cambios">
               <li v-for="cambio in etapaSemana.cambios" :key="cambio">{{ cambio }}</li>
@@ -949,6 +957,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               <strong class="cuanto" :class="{ vivo: fila.vivo }">{{ fila.valor }}</strong>
             </div>
           </div>
+          <button
+            v-if="!hitosExpandidos && filasHitosVisibles.length < todasLasFilasHitos.length"
+            class="ver-mas"
+            aria-label="Ver todos los hitos"
+            @click="hitosExpandidos = true"
+          >
+            ⋯
+          </button>
         </div>
 
         <div class="seccion-hoy">
@@ -1011,6 +1027,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
               ✕
             </button>
           </div>
+          <button
+            v-if="!registroExpandido && lineaDeTiempo.length > 2"
+            class="ver-mas"
+            aria-label="Ver todo el día"
+            @click="registroExpandido = true"
+          >
+            ⋯
+          </button>
         </div>
       </section>
 

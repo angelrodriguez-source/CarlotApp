@@ -218,6 +218,20 @@ textarea {
   flex: 1;
 }
 
+/* Pista de "hay más": puntos suspensivos tocables al pie de lo plegado */
+.ver-mas {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  color: var(--color-texto-suave);
+  font-size: 1.3rem;
+  line-height: 1;
+  letter-spacing: 0.15em;
+  padding: 0.2rem 0 0;
+}
+
 /* ---- Skeletons de carga (siluetas de tarjeta con brillo) ---- */
 
 .esqueleto {
