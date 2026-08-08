@@ -31,6 +31,8 @@ function bloquear(abierta: boolean) {
   document.body.style.overflow = hojasAbiertas > 0 ? 'hidden' : ''
 }
 
+// immediate: una hoja puede montarse ya abierta (p. ej. ?config= mientras
+// cargaba la vista) y también debe bloquear el scroll y capturar el foco
 watch(
   () => props.abierta,
   async (abierta) => {
@@ -44,6 +46,7 @@ watch(
       origenFoco = null
     }
   },
+  { immediate: true },
 )
 
 onUnmounted(() => {
