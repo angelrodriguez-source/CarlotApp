@@ -433,17 +433,14 @@ function percentilTile(tipo: 'peso' | 'altura', dato: { valor: number; fecha: st
 const percentilPeso = computed(() => percentilTile('peso', ultimoPeso.value))
 const percentilAltura = computed(() => percentilTile('altura', ultimaAltura.value))
 
-// ---- Próxima cita (banda bajo el hero si está a menos de 7 días) ----
+// ---- Próxima cita del calendario (la más cercana, sin límite de días) ----
 const proximaCita = computed(() => {
   const ahoraMs = ahora.value.getTime()
-  const en7Dias = ahoraMs + 7 * 86_400_000
   return (
     citas.value
       .filter((c) => !c.completada)
-      .filter((c) => {
-        const fecha = new Date(c.fecha).getTime()
-        return fecha >= ahoraMs - 6 * 3600_000 && fecha <= en7Dias
-      })
+      // margen de 6 h: una cita de esta mañana sigue siendo "la próxima"
+      .filter((c) => new Date(c.fecha).getTime() >= ahoraMs - 6 * 3600_000)
       .sort((a, b) => a.fecha.localeCompare(b.fecha))[0] ?? null
   )
 })
@@ -892,7 +889,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </RouterLink>
         </div>
 
-        <!-- Próxima cita a menos de 7 días → Citas -->
+        <!-- Próxima cita del calendario → Citas -->
         <RouterLink v-if="proximaCita" :to="{ name: 'citas' }" class="cita-bebe">
           <span>🗓️ {{ proximaCita.titulo }} · {{ fechaCita(proximaCita.fecha) }}</span>
           <span class="suave">→</span>
