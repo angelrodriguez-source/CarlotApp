@@ -41,6 +41,11 @@ onMounted(async () => {
 })
 
 /** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
+function borrarCita(cita: Cita) {
+  if (!window.confirm(`¿Borrar la cita "${cita.titulo}"?`)) return
+  ejecutar(() => servicio.eliminarCita(cita.id))
+}
+
 async function ejecutar(accion: () => Promise<unknown>): Promise<boolean> {
   error.value = ''
   try {
@@ -175,7 +180,7 @@ function icono(tipo: TipoCita): string {
         <button
           class="boton peligro"
           :aria-label="`Borrar cita: ${cita.titulo}`"
-          @click="ejecutar(() => servicio.eliminarCita(cita.id))"
+          @click="borrarCita(cita)"
         >
           ✕
         </button>
@@ -201,7 +206,7 @@ function icono(tipo: TipoCita): string {
           <button
             class="boton peligro"
             :aria-label="`Borrar cita: ${cita.titulo}`"
-            @click="ejecutar(() => servicio.eliminarCita(cita.id))"
+            @click="borrarCita(cita)"
           >
             ✕
           </button>

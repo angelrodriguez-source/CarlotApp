@@ -496,6 +496,10 @@ const esBiberon = computed(() => nuevaToma.value.tipo.startsWith('biberon'))
 
 function abrirFormularioToma() {
   nuevaToma.value.inicio = aInputLocal(new Date())
+  // Cantidad y duración empiezan vacías: los ml de la toma anterior no
+  // deben colarse precargados en la siguiente
+  nuevaToma.value.cantidadMl = null
+  nuevaToma.value.duracionMin = null
   formulario.value = formulario.value === 'toma' ? null : 'toma'
 }
 
