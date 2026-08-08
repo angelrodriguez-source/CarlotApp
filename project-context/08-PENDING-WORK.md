@@ -52,8 +52,11 @@
 
 - [x] Graficas de dia a dia en Evolucion (2026-08-08): leche tomada
       (ml/dia) y sueno (h/dia) de los ultimos 7/14/30 dias, con el sueno
-      repartido por dia real (minutosSuenoEnDia). Las barras de objetivos
-      de Hoy enlazan a su grafica (?grafica=tomas|sueno con scroll)
+      repartido por dia real (minutosSuenoEnDia) y franja naranja
+      transparente del rango recomendado por edad (objetivoSuenoMinutos /
+      objetivoLecheMl con el peso vigente en cada dia). Las barras de
+      objetivos de Hoy enlazan a su grafica (?grafica=tomas|sueno con
+      scroll); van despues de la tabla de Mediciones
 
 - [x] Edicion en todas partes (2026-08-08): las mediciones de Evolucion se
       editan (✎ abre hoja inferior con todos los campos + borrar, via
