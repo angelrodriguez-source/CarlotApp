@@ -63,7 +63,10 @@
       resincronizado, login con estado ocupado, toasts con role=status y
       safe-area. Ronda 4: guard anti doble-pulsacion en las altas, los
       formularios de Hoy solo se limpian si el alta fue bien, watch
-      immediate en las hojas que nacen abiertas
+      immediate en las hojas que nacen abiertas. Ronda 5: el guard se
+      retiene hasta despues de la recarga, los 10 llamadores comprueban
+      el resultado, botones :disabled durante el alta. Ronda 6:
+      verificacion final → SIN HALLAZGOS
 
 - [x] Ultra-revision multiagente (2026-08-08): 4 revisores (correccion,
       UX/accesibilidad, calidad, docs/config) → ~40 arreglos aplicados.
