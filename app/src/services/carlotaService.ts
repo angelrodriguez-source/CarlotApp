@@ -349,6 +349,19 @@ export async function listarMedidas(bebeId: string): Promise<Medida[]> {
   return (data ?? []) as Medida[]
 }
 
+export async function actualizarMedida(
+  id: string,
+  cambios: Partial<
+    Pick<
+      Medida,
+      'fecha' | 'peso_gramos' | 'altura_cm' | 'perimetro_craneal_cm' | 'origen' | 'notas'
+    >
+  >,
+): Promise<void> {
+  const { error } = await supabase.from('medidas').update(cambios).eq('id', id)
+  lanzarSi(error)
+}
+
 export async function eliminarMedida(id: string): Promise<void> {
   const { error } = await supabase.from('medidas').delete().eq('id', id)
   lanzarSi(error)

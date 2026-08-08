@@ -17,9 +17,9 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion) + semana 🌱 plegable; (2) "📅 Datos de Hoy" con hora actual y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
-| `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior |
-| `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil (3 graficas) con bandas P3-P97 de la OMS y mediana punteada + tabla con percentiles |
+| `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion) + semana 🌱 plegable; (2) "📅 Datos de Hoy" con hora actual y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar, tocar una fila abre su edicion); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
+| `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior (HojaEdicionRegistro) |
+| `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil (3 graficas) con bandas P3-P97 de la OMS y mediana punteada + tabla con percentiles; ✎ en cada medicion abre su edicion/borrado en hoja inferior |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
 
 Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
@@ -95,6 +95,11 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   objetivo + barra con marca en el minimo; relleno verde al entrar en rango).
 - **HojaInferior.vue**: bottom sheet (Teleport a body) para formularios,
   con transicion "hoja" y cierre por fondo o ✕.
+- **HojaEdicionRegistro.vue**: hoja de edicion/borrado de cualquier
+  registro (toma, sueno, panal, evento). Prop `registro:
+  RegistroEditable | null` (union discriminada de
+  `components/registroEditable.ts`), emite `cerrar`/`guardado`. La usan
+  el registro del dia de Hoy (tocar una fila) y el Historial (✎).
 
 ## Estilos
 

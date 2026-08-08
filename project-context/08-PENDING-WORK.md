@@ -50,6 +50,13 @@
 
 ### Hechas
 
+- [x] Edicion en todas partes (2026-08-08): las mediciones de Evolucion se
+      editan (✎ abre hoja inferior con todos los campos + borrar, via
+      `actualizarMedida`) y el registro del dia de Hoy tambien (tocar una
+      fila abre la misma hoja de edicion que el Historial). El formulario
+      de edicion de registros se extrajo a un componente reutilizable
+      (`HojaEdicionRegistro.vue` + `registroEditable.ts`)
+
 - [x] Origen de las mediciones (2026-08-08): columna `origen` en medidas —
       🏠 en casa (por defecto) o ✅ oficial (pediatra/farmacia) — con
       selector en el alta de Evolucion e insignia en la lista. Preparado

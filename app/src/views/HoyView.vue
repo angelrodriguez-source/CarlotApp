@@ -16,6 +16,8 @@ import { fotoBebeUrl, iconoDiaUrl, logoUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
+import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
+import type { RegistroEditable } from '../components/registroEditable'
 import { desarrolloSemana } from '../models/semanasDesarrollo'
 import {
   aInputLocal,
@@ -781,6 +783,15 @@ interface Registro {
   hora: string // ISO
   texto: string
   borrar: () => Promise<void>
+  editable: RegistroEditable
+}
+
+// Tocar una fila abre su edición (misma hoja que en el Historial)
+const registroEnEdicion = ref<RegistroEditable | null>(null)
+
+function alGuardarEdicion() {
+  registroEnEdicion.value = null
+  cargarDia()
 }
 
 function horaCorta(iso: string): string {
@@ -808,24 +819,28 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       hora: t.inicio,
       texto: textoToma(t),
       borrar: () => servicio.eliminarToma(t.id),
+      editable: { kind: 'toma', toma: t } as RegistroEditable,
     })),
     ...suenos.value.map((s) => ({
       id: s.id,
       hora: s.inicio,
       texto: textoSueno(s),
       borrar: () => servicio.eliminarSueno(s.id),
+      editable: { kind: 'sueno', sueno: s } as RegistroEditable,
     })),
     ...panales.value.map((p) => ({
       id: p.id,
       hora: p.fecha,
       texto: textoPanal(p),
       borrar: () => servicio.eliminarPanal(p.id),
+      editable: { kind: 'panal', panal: p } as RegistroEditable,
     })),
     ...eventos.value.map((e) => ({
       id: e.id,
       hora: e.fecha,
       texto: textoEvento(e),
       borrar: () => servicio.eliminarEvento(e.id),
+      editable: { kind: 'evento', evento: e } as RegistroEditable,
     })),
   ]
   return registros.sort((a, b) => b.hora.localeCompare(a.hora))
@@ -1005,17 +1020,18 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <div
             v-for="registro in registroExpandido ? lineaDeTiempo : lineaDeTiempo.slice(0, 2)"
             :key="registro.id"
-            class="fila-registro deslizable"
+            class="fila-registro deslizable editable"
             :class="{ deslizada: filaDeslizada === registro.id }"
             @touchstart.passive="inicioToqueFila"
             @touchend.passive="finToqueFila($event, registro.id)"
+            @click="registroEnEdicion = registro.editable"
           >
             <span class="hora">{{ horaCorta(registro.hora) }}</span>
             <span class="detalle">{{ registro.texto }}</span>
             <button
               class="boton peligro borrar-fila"
               aria-label="Borrar registro"
-              @click="ejecutar(registro.borrar)"
+              @click.stop="ejecutar(registro.borrar)"
             >
               ✕
             </button>
@@ -1234,6 +1250,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         </label>
         <button class="boton" @click="mostrarConfig = false">Listo</button>
       </HojaInferior>
+
+      <!-- Edición de un registro del día (misma hoja que en el Historial) -->
+      <HojaEdicionRegistro
+        :registro="registroEnEdicion"
+        @cerrar="registroEnEdicion = null"
+        @guardado="alGuardarEdicion"
+      />
     </template>
 
     <!-- Toast de deshacer -->
@@ -1565,6 +1588,11 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   display: inline-block;
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
+}
+
+/* Tocar la fila abre su edición */
+.fila-registro.editable {
+  cursor: pointer;
 }
 
 /* Swipe a la izquierda (o hover con ratón) para revelar el borrar */
