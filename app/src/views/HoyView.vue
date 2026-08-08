@@ -2,7 +2,8 @@
 /**
  * HoyView.vue — Dashboard de inicio.
  *
- * Card 1 "La bebé": carita + nombre + edad/peso/altura + semana 🌱.
+ * Card 1 "La bebé": carita + nombre + edad/peso/altura (la semana de
+ * desarrollo vive en el bocadillo de Ñeñeñi, que es voz de experto).
  * Card 2 "Datos de Hoy": objetivos del día, últimos hitos (configurables
  * por usuario) y registro del día (2 últimos, expandible).
  * Card 3 "Accesos directos": las acciones que configure cada usuario;
@@ -18,7 +19,6 @@ import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import type { RegistroEditable } from '../components/registroEditable'
-import { desarrolloSemana } from '../models/semanasDesarrollo'
 import {
   LIMITES_ENTRADA,
   primerError,
@@ -346,11 +346,6 @@ const valorLecheTexto = computed(
 const objetivoLecheTexto = computed(() =>
   objetivoLeche.value ? `objetivo ${objetivoLeche.value.min}-${objetivoLeche.value.max} ml` : '',
 )
-
-// ---- ¿Qué hay de nuevo esta semana? ----
-const semanaActual = computed(() => Math.floor(edadDiasHoy.value / 7))
-const etapaSemana = computed(() => desarrolloSemana(semanaActual.value))
-const mostrarSemana = ref(false)
 
 // ---- Contadores "hace X" ----
 function haceTexto(iso: string): string {
@@ -1126,34 +1121,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           <span class="suave">→</span>
         </RouterLink>
 
-        <!-- ¿Qué hay de nuevo esta semana? -->
-        <div v-if="etapaSemana" class="bloque-semana">
-          <button class="cabecera-semana" @click="mostrarSemana = !mostrarSemana">
-            <span>
-              🌱 <strong>Semana {{ semanaActual }}</strong> · {{ etapaSemana.titulo }}
-            </span>
-            <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
-          </button>
-          <button
-            v-if="!mostrarSemana"
-            class="ver-mas"
-            aria-label="Ver la semana"
-            @click="mostrarSemana = true"
-          >
-            ⋯
-          </button>
-          <template v-if="mostrarSemana">
-            <ul class="lista-cambios">
-              <li v-for="cambio in etapaSemana.cambios" :key="cambio">{{ cambio }}</li>
-            </ul>
-            <p class="ajuste">😴 {{ etapaSemana.sueno }}</p>
-            <p class="ajuste">🍼 {{ etapaSemana.tomas }}</p>
-            <button class="boton secundario" @click="abrirMomento()">✨ Guardar un momento</button>
-            <p class="suave nota-semana">
-              Orientativo (hitos CDC/AAP/NHS): cada bebé va a su ritmo. Las dudas, al pediatra.
-            </p>
-          </template>
-        </div>
+        <!-- "Qué esperar esta semana" vive ahora en el bocadillo de Ñeñeñi
+             (voz de experto, no dato registrado) -->
       </section>
 
       <!-- Card 2 · Datos de Hoy: objetivos del día + últimos hitos -->
@@ -1627,13 +1596,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   margin-bottom: 0;
 }
 
-/* La semana 🌱 dentro de la tarjeta de la bebé */
-.bloque-semana {
-  border-top: 1px solid var(--color-borde);
-  margin-top: 0.75rem;
-  padding-top: 0.6rem;
-}
-
 /* Card 2 · Datos de Hoy */
 .cabecera-datos-hoy {
   position: relative;
@@ -1958,39 +1920,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   .fila-registro.deslizable:hover .borrar-fila {
     display: inline-flex;
   }
-}
-
-/* ¿Qué hay de nuevo esta semana? */
-.cabecera-semana {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 1rem;
-  color: inherit;
-  text-align: left;
-}
-
-.lista-cambios {
-  margin: 0.75rem 0 0.5rem;
-  padding-left: 1.25rem;
-}
-
-.lista-cambios li {
-  margin-bottom: 0.35rem;
-}
-
-.ajuste {
-  margin: 0.35rem 0;
-}
-
-.nota-semana {
-  margin: 0.5rem 0 0;
-  font-size: 0.78rem;
 }
 
 .botones-toma {
