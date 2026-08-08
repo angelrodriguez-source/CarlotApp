@@ -1431,7 +1431,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 }
 
 .ver-patron {
-  display: inline-block;
+  display: block;
+  text-align: center;
   margin-top: 0.5rem;
   font-size: 0.8rem;
   text-decoration: none;
