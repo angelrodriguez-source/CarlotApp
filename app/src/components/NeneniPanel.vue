@@ -38,6 +38,7 @@ import {
   type PronosticoNoche,
 } from '../models/MimePredictor'
 import { frasesNeneni, notaAprendizaje } from '../models/frasesNeneni'
+import { desarrolloSemana } from '../models/semanasDesarrollo'
 import { edadDias, hoyLocal, mensajeError } from '../models/CarlotaModel'
 import { ICONOS_REGISTRO, neneniUrl } from '../assets/branding'
 import { EVENTO_DATOS_CAMBIADOS } from '../services/carlotaService'
@@ -84,6 +85,7 @@ usarModal(() => props.abierta, panel, {
   },
   alCerrar() {
     mostrarLlanto.value = false
+    mostrarSemana.value = false
   },
 })
 
@@ -138,6 +140,15 @@ const barrasLlanto = computed(() => {
     { etiqueta: 'Incomodidad', p: r.incomodidad, icono: ICONOS_REGISTRO.panal },
   ].sort((a, b) => b.p - a.p)
 })
+
+// ---- Qué esperar esta semana (voz de experto, datos macro CDC/AAP/NHS) ----
+const mostrarSemana = ref(false)
+const semanaActual = computed(() =>
+  prediccion.value ? Math.floor(prediccion.value.edadDias / 7) : null,
+)
+const etapaSemana = computed(() =>
+  semanaActual.value === null ? null : desarrolloSemana(semanaActual.value),
+)
 </script>
 
 <template>
@@ -207,6 +218,39 @@ const barrasLlanto = computed(() => {
             <p v-if="esNoche && !noche" class="nenei-nota suave">
               Es de noche pero no tengo tomas recientes para el pronóstico nocturno.
             </p>
+
+            <!-- Qué esperar esta semana: voz de experto (macro CDC/AAP/NHS) -->
+            <div v-if="etapaSemana" class="nenei-semana">
+              <button
+                class="nenei-semana-cabecera"
+                :aria-expanded="mostrarSemana"
+                @click="mostrarSemana = !mostrarSemana"
+              >
+                <span>
+                  <strong>Semana {{ semanaActual }}</strong> · {{ etapaSemana.titulo }}
+                </span>
+                <span class="suave">{{ mostrarSemana ? '▲' : '▼' }}</span>
+              </button>
+              <template v-if="mostrarSemana">
+                <p class="nenei-bocadillo">
+                  Esta semana {{ nombreBebe }} anda con esto entre manos:
+                </p>
+                <ul class="nenei-cambios">
+                  <li v-for="cambio in etapaSemana.cambios" :key="cambio">{{ cambio }}</li>
+                </ul>
+                <p class="nenei-ajuste">
+                  <img v-if="ICONOS_REGISTRO.sueno" :src="ICONOS_REGISTRO.sueno" alt="Sueño" />
+                  {{ etapaSemana.sueno }}
+                </p>
+                <p class="nenei-ajuste">
+                  <img v-if="ICONOS_REGISTRO.toma" :src="ICONOS_REGISTRO.toma" alt="Tomas" />
+                  {{ etapaSemana.tomas }}
+                </p>
+                <p class="nenei-nota suave">
+                  Orientativo (hitos CDC/AAP/NHS): cada bebé va a su ritmo. Las dudas, al pediatra.
+                </p>
+              </template>
+            </div>
           </template>
         </div>
       </div>
@@ -366,6 +410,54 @@ const barrasLlanto = computed(() => {
   padding-left: 1.1rem;
   font-size: 0.78rem;
   line-height: 1.5;
+}
+
+/* Qué esperar esta semana (plegable, tras ¿Por qué llora?) */
+.nenei-semana {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--color-borde);
+  padding-top: 0.6rem;
+}
+
+.nenei-semana-cabecera {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0.35rem 0;
+  font-size: 0.92rem;
+  color: var(--color-texto);
+  text-align: left;
+}
+
+.nenei-semana .nenei-bocadillo {
+  margin-top: 0.5rem;
+}
+
+.nenei-cambios {
+  margin: 0.35rem 0 0.5rem;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.nenei-ajuste {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.nenei-ajuste img {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* Transición del bocadillo: fundido + caída suave desde la cabecera */

@@ -17,7 +17,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | Ruta | Vista | Que hace |
 |------|-------|----------|
 | `/` | LoginView | Boton "Entrar con Google" |
-| `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion) + semana 🌱 plegable; (2) "Cómo va el día" (icono icono-dia.png) con fecha y hora actual en la cabecera y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar, tocar una fila abre su edicion); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); panales, eventos y momentos se registran en una hoja con hora editable (precargada con ahora); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
+| `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion); (2) "Cómo va el día" (icono icono-dia.png) con fecha y hora actual en la cabecera y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar, tocar una fila abre su edicion); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); panales, eventos y momentos se registran en una hoja con hora editable (precargada con ahora); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
 | `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior (HojaEdicionRegistro) |
 | `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil: peso y altura con las curvas estandar OMS de fondo (deciles P0-P100, ventana de 60 dias con hoy en el dia 45, GraficaCrecimiento) y PC con banda P3-P97 + tabla con percentiles + graficas de dia a dia (leche ml/dia y sueno h/dia, rango 7/14/30, con franja naranja del rango recomendado por edad; ?grafica=tomas\|sueno hace scroll hasta ellas — enlazan los objetivos de Hoy); ✎ en cada medicion abre su edicion/borrado en hoja inferior |
 | `/citas` | CitasView | Proximas y hechas, alta, check de completada |
@@ -180,7 +180,10 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   lo cuenta en primera persona con las frases de models/frasesNeneni.ts
   (proxima toma con franja, proxima siesta, pronostico de la noche si es
   de noche), con nota de cuanto pesa ya el patron personal. Boton
-  "¿Por que llora?" con barras Sueno/Hambre/Incomodidad + explicaciones.
+  "¿Por que llora?" con barras Sueno/Hambre/Incomodidad + explicaciones,
+  y despues la seccion plegable "Semana N" (semanasDesarrollo.ts, voz de
+  experto: cambios + ajustes de sueno/tomas de la semana — vivia en la
+  card de la bebe de Hoy y se movio aqui).
   Es un modal completo (mismo patron que HojaInferior: foco, trampa de
   Tab, Escape, scroll-lock via components/modal.ts, Teleport). Persiste
   el calculo en `predicciones` en segundo plano con boton de reintento
