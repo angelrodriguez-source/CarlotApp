@@ -6,7 +6,7 @@
  *  - Assets con hash de Vite (/assets/): cache primero (son inmutables)
  *  - Resto: red con fallback a cache
  */
-const CACHE = 'carlotapp-v7'
+const CACHE = 'carlotapp-v8'
 
 // Estaticos de public/ (sin hash): precacheados para que el avatar y los
 // iconos de la navegacion funcionen offline desde el primer arranque
@@ -37,7 +37,13 @@ const PRECACHE = [
 ]
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)))
+  // allSettled y no addAll: addAll es atomico y un solo 404 (p. ej. un
+  // icono renombrado con la lista sin actualizar) abortaria TODAS las
+  // instalaciones futuras del SW sin sintoma visible. Con allSettled el
+  // recurso que falte solo pierde su copia offline.
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => Promise.allSettled(PRECACHE.map((url) => cache.add(url)))),
+  )
 })
 
 // La app envia SKIP_WAITING cuando el usuario acepta actualizar

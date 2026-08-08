@@ -216,9 +216,12 @@ export function intervalosToma(
     if (intervalo < AJUSTES.minIntervaloTomaMin || intervalo > tope) continue
     ;(enNoche ? noche : dia).push({ finMs: inicios[i]!, intervalo, cruzaFranja })
   }
+  // Los intervalos que cruzan franja (el hueco del amanecer, el salto
+  // tarde→noche) tampoco representan la cadencia del HISTORICO de su
+  // franja: inflaban la mediana de día y deflactaban la de noche
   return {
-    dia: patronDe(dia.map((x) => x.intervalo)),
-    noche: patronDe(noche.map((x) => x.intervalo)),
+    dia: patronDe(dia.filter((x) => !x.cruzaFranja).map((x) => x.intervalo)),
+    noche: patronDe(noche.filter((x) => !x.cruzaFranja).map((x) => x.intervalo)),
     recienteDia: patronReciente(dia, ahora),
     recienteNoche: patronReciente(noche, ahora),
   }
@@ -315,6 +318,17 @@ function mezclarTresCapas(
   }
 }
 
+/**
+ * Última toma que NO esté en el futuro. Con la hora editable en los
+ * registros rápidos, una toma guardada por error con hora futura no debe
+ * anclar la predicción (el aprendizaje ya filtraba; el ancla también).
+ */
+function ultimaTomaAntesDe(tomas: Toma[], ahora: Date): Toma | undefined {
+  return tomas
+    .filter((t) => new Date(t.inicio).getTime() <= ahora.getTime())
+    .sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime())[0]
+}
+
 /** ¿Hay un sueño en curso? (fin null, empezado en las últimas 24 h) */
 function suenoEnCurso(suenos: Sueno[], ahora: Date): Sueno | null {
   const hace24h = ahora.getTime() - 24 * 3600_000
@@ -346,9 +360,7 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
 
   // --- Próxima toma ---
   let proximaToma: Prediccion | null = null
-  const ultimaToma = [...datos.tomas].sort(
-    (a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime(),
-  )[0]
+  const ultimaToma = ultimaTomaAntesDe(datos.tomas, ahora)
   if (ultimaToma) {
     const patrones = intervalosToma(datos.tomas, ahora)
     const patron = nocheAhora ? patrones.noche : patrones.dia
@@ -360,10 +372,12 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
       centro(baseRango),
       AJUSTES.kToma,
     )
-    // Semiancho personal = 0.75·IQR ≈ ±1σ en una normal (cobertura ~70%);
-    // IQR/2 solo cubriría el 50% por definición (lo detectó el backtest)
+    // Semiancho personal = 1.0·IQR ≈ ±1.35σ en una normal (cobertura ~80%
+    // teórica). Recalibrado por backtest al excluir cruzaFranja del
+    // histórico: el IQR dejó de estar inflado por los huecos del amanecer
+    // y con 0.75 la cobertura real caía al ~50%
     const banda = mezclar(
-      patron.iqrMin === null ? null : patron.iqrMin * 0.75,
+      patron.iqrMin === null ? null : patron.iqrMin,
       semiancho(baseRango),
       patron.n,
       AJUSTES.kToma,
@@ -395,6 +409,9 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
       centro(etapa.ventanaVigilia),
       AJUSTES.kSueno,
     )
+    // Aquí sigue 0.75·IQR: las ventanas de vigilia nunca incluyeron
+    // intervalos que cruzan franja (el IQR no estaba inflado), así que la
+    // recalibración de la banda de tomas no aplica
     const banda = mezclar(
       patrones.historico.iqrMin === null ? null : patrones.historico.iqrMin * 0.75,
       semiancho(etapa.ventanaVigilia),
@@ -413,9 +430,9 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
   }
 
   // --- Incomodidad (presión de pañal/molestia) ---
-  const ultimoPanal = [...datos.panales].sort(
-    (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
-  )[0]
+  const ultimoPanal = datos.panales
+    .filter((p) => new Date(p.fecha).getTime() <= ahora.getTime())
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0]
   let incomodidad: Incomodidad = { probabilidad: 0.1, minutosDesdeUltimoPanal: null }
   if (ultimoPanal) {
     const minutos = Math.round((ahora.getTime() - new Date(ultimoPanal.fecha).getTime()) / 60_000)
@@ -468,9 +485,7 @@ export function pronosticoNoche(
   ahora: Date,
 ): PronosticoNoche | null {
   if (!esDeNoche(ahora)) return null
-  const ultimaToma = [...datos.tomas].sort(
-    (a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime(),
-  )[0]
+  const ultimaToma = ultimaTomaAntesDe(datos.tomas, ahora)
   if (!ultimaToma) return null
 
   const etapa = etapaPrediccion(edadDias)
@@ -487,9 +502,21 @@ export function pronosticoNoche(
   finNoche.setHours(AJUSTES.horaNocheHasta, 0, 0, 0)
   if (finNoche.getTime() <= ahora.getTime()) finNoche.setDate(finNoche.getDate() + 1)
 
-  // Proyectar desde la última toma con la cadencia nocturna
+  // Primer eslabón: si la última toma fue DIURNA (recién entrada la
+  // noche), la siguiente aún sigue la cadencia de día — proyectar el
+  // salto entero con el intervalo nocturno se saltaría esa toma
+  const primerPaso = esDeNoche(new Date(ultimaToma.inicio))
+    ? valor
+    : mezclarTresCapas(
+        patrones.recienteDia,
+        patrones.dia,
+        centro(etapa.intervaloToma),
+        AJUSTES.kToma,
+      ).valor
+
+  // Proyectar desde la última toma; a partir de ahí, cadencia nocturna
   const tomas: string[] = []
-  let t = new Date(ultimaToma.inicio).getTime() + valor * 60_000
+  let t = new Date(ultimaToma.inicio).getTime() + primerPaso * 60_000
   // Si la prevista ya pasó, la siguiente cuenta desde ahora ("ya toca")
   if (t < ahora.getTime()) t = ahora.getTime()
   while (t < finNoche.getTime() && tomas.length < 8) {
@@ -523,7 +550,11 @@ export function porQueLlora(datos: DatosPredictor, edadDias: number, ahora: Date
 
   let presionSueno = presionDe(prediccion.proximaSiesta, centro(etapa.ventanaVigilia))
   if (prediccion.durmiendo) presionSueno = 0 // durmiendo: el sueño no es la causa
-  const presionHambre = presionDe(prediccion.proximaToma, centro(etapa.intervaloToma))
+  // La presión se normaliza con el intervalo de la MISMA franja que usó la
+  // predicción: de noche el esperado es ~el doble y cada minuto de retraso
+  // no puede contar el doble en el softmax
+  const rangoTomaAhora = esDeNoche(ahora) ? etapa.intervaloTomaNoche : etapa.intervaloToma
+  const presionHambre = presionDe(prediccion.proximaToma, centro(rangoTomaAhora))
   // La incomodidad ya es una probabilidad 0-1: se escala a presión comparable
   const presionIncomodidad = 0.35 + prediccion.incomodidad.probabilidad * 0.9
 
@@ -562,7 +593,7 @@ export function porQueLlora(datos: DatosPredictor, edadDias: number, ahora: Date
       texto:
         prediccion.incomodidad.minutosDesdeUltimoPanal === null
           ? 'Sin pañales registrados para afinar'
-          : `Último pañal hace ${Math.round(prediccion.incomodidad.minutosDesdeUltimoPanal / 60)} h ${prediccion.incomodidad.minutosDesdeUltimoPanal % 60} min`,
+          : `Último pañal hace ${Math.floor(prediccion.incomodidad.minutosDesdeUltimoPanal / 60)} h ${prediccion.incomodidad.minutosDesdeUltimoPanal % 60} min`,
     },
   ]
   partes.sort((a, b) => b.p - a.p)

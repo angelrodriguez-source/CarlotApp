@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  aFilaPrediccion,
   intervalosToma,
   porQueLlora,
   predecir,
@@ -305,14 +306,41 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
     const etapa = etapaPrediccion(63)
     const prediccion = predecir(frio, 63, ahora)
     // Con pocas muestras la base pesa: el intervalo usado queda dentro
-    // (con margen) del rango poblacional de la etapa
+    // (con margen) del rango poblacional de la etapa. El ancla es la
+    // última toma REAL antes de `ahora` (las futuras ya no anclan)
     expect(prediccion.proximaToma!.pesoPersonal).toBeLessThan(0.75)
-    const intervaloUsado =
-      (new Date(prediccion.proximaToma!.prevista).getTime() -
-        new Date(frio.tomas[frio.tomas.length - 2]!.inicio).getTime()) /
-      60_000
+    const ancla = frio.tomas
+      .map((t) => new Date(t.inicio).getTime())
+      .filter((t) => t <= ahora.getTime())
+      .sort((a, b) => b - a)[0]!
+    const intervaloUsado = (new Date(prediccion.proximaToma!.prevista).getTime() - ancla) / 60_000
     expect(intervaloUsado).toBeGreaterThan(etapa.intervaloToma.min - 45)
     expect(intervaloUsado).toBeLessThan(etapa.intervaloToma.max + 45)
+  })
+
+  it('una toma con hora futura no ancla la predicción', () => {
+    const ahora = new Date(2026, 7, 7, 12, 0)
+    const conFutura: DatosPredictor = {
+      ...regular,
+      tomas: [
+        ...regular.tomas,
+        {
+          id: 'futura',
+          bebe_id: 'b',
+          inicio: new Date(2026, 7, 7, 19, 0).toISOString(), // error de tecleo
+          fin: null,
+          tipo: 'biberon_formula',
+          cantidad_ml: 120,
+          notas: null,
+        },
+      ],
+    }
+    const p = predecir(conFutura, 63, ahora).proximaToma!
+    // La prevista sale de la última toma REAL (antes de las 12:00), no de
+    // la fantasma de las 19:00: nunca más allá de las 12:00 + 8 h de tope
+    expect(new Date(p.prevista).getTime()).toBeLessThan(new Date(2026, 7, 7, 19, 0).getTime())
+    const sinFutura = predecir(regular, 63, ahora).proximaToma!
+    expect(p.prevista).toBe(sinFutura.prevista)
   })
 
   it('sin ningún dato: no revienta y no predice', () => {
@@ -389,6 +417,58 @@ describe('MimePredictor — patrones aprendidos', () => {
   })
 })
 
+describe('aFilaPrediccion — contrato con la tabla predicciones', () => {
+  // Las claves deben coincidir EXACTAMENTE con las columnas de la
+  // migración 202608081700_predicciones.sql (sin bebe_id, que lo pone el
+  // servicio): un desajuste haría fallar el upsert en silencio, porque el
+  // único llamador persiste con .catch(() => undefined)
+  const COLUMNAS = [
+    'calculado_en',
+    'edad_dias',
+    'proxima_toma',
+    'proxima_toma_desde',
+    'proxima_toma_hasta',
+    'proxima_siesta',
+    'proxima_siesta_desde',
+    'proxima_siesta_hasta',
+    'durmiendo',
+    'incomodidad_prob',
+    'parametros',
+  ].sort()
+
+  it('serializa una predicción completa con el conjunto exacto de columnas', () => {
+    const bebe = generarBebe({
+      dias: 10,
+      tomaDiaMu: 180,
+      tomaDiaSd: 12,
+      vigiliaMu: 80,
+      vigiliaSd: 10,
+      siestaMu: 50,
+      siestaSd: 10,
+      semilla: 3,
+    })
+    const fila = aFilaPrediccion(predecir(bebe, 63, new Date(2026, 7, 7, 12, 0)))
+    expect(Object.keys(fila).sort()).toEqual(COLUMNAS)
+    expect(typeof fila.edad_dias).toBe('number')
+    expect(typeof fila.durmiendo).toBe('boolean')
+    expect(fila.proxima_toma).not.toBeNull()
+    expect(fila.parametros).toHaveProperty('ajustes')
+  })
+
+  it('sin datos: los campos de toma y siesta salen null (columnas NULLables)', () => {
+    const fila = aFilaPrediccion(
+      predecir({ tomas: [], suenos: [], panales: [] }, 63, new Date(2026, 7, 7, 12, 0)),
+    )
+    expect(Object.keys(fila).sort()).toEqual(COLUMNAS)
+    expect(fila.proxima_toma).toBeNull()
+    expect(fila.proxima_toma_desde).toBeNull()
+    expect(fila.proxima_toma_hasta).toBeNull()
+    expect(fila.proxima_siesta).toBeNull()
+    expect(fila.proxima_siesta_desde).toBeNull()
+    expect(fila.proxima_siesta_hasta).toBeNull()
+  })
+})
+
 describe('Pronóstico de la noche', () => {
   const bebe = generarBebe({
     dias: 10,
@@ -430,7 +510,9 @@ describe('Pronóstico de la noche', () => {
       panales: [],
     }
     expect(pronosticoNoche(datos, 63, mediodia)).toBeNull()
-    expect(pronosticoNoche({ tomas: [], suenos: [], panales: [] }, 63, new Date(2026, 7, 7, 23, 0))).toBeNull()
+    expect(
+      pronosticoNoche({ tomas: [], suenos: [], panales: [] }, 63, new Date(2026, 7, 7, 23, 0)),
+    ).toBeNull()
   })
 })
 

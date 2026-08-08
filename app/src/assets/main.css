@@ -23,6 +23,8 @@
   --color-peligro: #b32828;
   --color-toast-fondo: #2c423e;
   --color-toast-texto: #ffffff;
+  /* Scrim de los diálogos modales (HojaInferior, panel de Ñeñeñi) */
+  --color-scrim: rgb(20 40 36 / 0.45);
   --radio: 18px;
   --radio-s: 12px;
   --sombra:
@@ -48,6 +50,7 @@
   --color-aviso: #f0b98a;
   --color-aviso-texto: #f0b98a;
   --color-peligro: #ff8b8b;
+  --color-scrim: rgb(0 10 8 / 0.55);
   --sombra:
     0 1px 2px rgb(0 0 0 / 0.3),
     0 6px 18px rgb(0 0 0 / 0.35);

@@ -8,10 +8,16 @@
  * pronóstico de la noche. El botón "¿Por qué llora?" despliega el
  * diagrama de probabilidades Sueño/Hambre/Incomodidad de `porQueLlora()`.
  *
- * El cálculo se persiste en `predicciones` (una fila viva por bebé) en
- * segundo plano; si falla, el bocadillo funciona igual.
+ * Es un diálogo modal de verdad (mismo patrón que HojaInferior): captura
+ * y devuelve el foco, atrapa Tab, cierra con Escape y bloquea el scroll
+ * del fondo (contador compartido en modal.ts). Las frases viven en
+ * models/frasesNeneni.ts (lógica pura, testeada).
+ *
+ * El cálculo se memoiza 60 s (reabrir el bocadillo no repite consultas) y
+ * se persiste en `predicciones` (una fila viva por bebé) en segundo
+ * plano; si falla, el bocadillo funciona igual.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import {
   guardarPrediccion,
@@ -31,38 +37,63 @@ import {
   type PorQueLlora,
   type PronosticoNoche,
 } from '../models/MimePredictor'
-import { edadDias, formatoDuracion, horaCorta, hoyLocal, mensajeError } from '../models/CarlotaModel'
+import { frasesNeneni, notaAprendizaje } from '../models/frasesNeneni'
+import { edadDias, hoyLocal, mensajeError } from '../models/CarlotaModel'
 import { ICONOS_REGISTRO, neneniUrl } from '../assets/branding'
+import { EVENTO_DATOS_CAMBIADOS } from '../services/carlotaService'
+import { atraparTab, usarModal } from './modal'
 
 const props = defineProps<{ abierta: boolean }>()
 const emit = defineEmits<{ cerrar: [] }>()
 
 const bebeStore = useBebeStore()
 
+const panel = ref<HTMLElement | null>(null)
 const cargando = ref(false)
 const error = ref('')
 const prediccion = ref<Predicciones | null>(null)
 const noche = ref<PronosticoNoche | null>(null)
 const llanto = ref<PorQueLlora | null>(null)
+const esNoche = ref(false)
 const mostrarLlanto = ref(false)
 const nombreBebe = ref('la bebé')
 
-watch(
-  () => props.abierta,
-  (abierta) => {
-    if (abierta) void calcular()
-    else mostrarLlanto.value = false
+// Memoización: reabrir el bocadillo antes de 1 min no repite las
+// consultas. Se invalida al registrar/editar/borrar cualquier dato (el
+// servicio emite EVENTO_DATOS_CAMBIADOS): recién apuntada una toma, el
+// bocadillo debe recalcular aunque no haya pasado el minuto.
+const FRESCURA_MS = 60_000
+let calculadoEnMs = 0
+
+function invalidarMemo() {
+  calculadoEnMs = 0
+}
+
+onMounted(() => window.addEventListener(EVENTO_DATOS_CAMBIADOS, invalidarMemo))
+onUnmounted(() => window.removeEventListener(EVENTO_DATOS_CAMBIADOS, invalidarMemo))
+
+// Token de generación: si se cierra y reabre con red lenta, el cálculo
+// viejo no debe pisar al nuevo (ni al revés)
+let generacion = 0
+
+// Ciclo de vida modal compartido (scroll-lock, foco, immediate: el
+// componente es async y puede montarse con el bocadillo YA pedido)
+usarModal(() => props.abierta, panel, {
+  alAbrir() {
+    if (Date.now() - calculadoEnMs >= FRESCURA_MS || !prediccion.value) void calcular()
   },
-)
+  alCerrar() {
+    mostrarLlanto.value = false
+  },
+})
 
 async function calcular() {
+  const gen = ++generacion
   cargando.value = true
   error.value = ''
-  llanto.value = null
   try {
     const bebe = await bebeStore.cargar()
     if (!bebe) throw new Error('Sin acceso a los datos de la bebé')
-    nombreBebe.value = bebe.nombre.split(' ')[0] ?? 'la bebé'
     const ahora = new Date()
     const desdeIso = new Date(
       ahora.getTime() - (AJUSTES.historicoDias + 1) * 86_400_000,
@@ -72,83 +103,31 @@ async function calcular() {
       listarSuenos(bebe.id, desdeIso),
       listarPanales(bebe.id, desdeIso),
     ])
+    if (gen !== generacion) return // hay un cálculo más nuevo en vuelo
     const datos: DatosPredictor = { tomas, suenos, panales }
     const edad = edadDias(bebe.fecha_nacimiento, hoyLocal(ahora))
+    nombreBebe.value = bebe.nombre.split(' ')[0] ?? 'la bebé'
     prediccion.value = predecir(datos, edad, ahora)
     noche.value = pronosticoNoche(datos, edad, ahora)
     llanto.value = porQueLlora(datos, edad, ahora)
+    esNoche.value = esHoraNocturna(ahora)
+    calculadoEnMs = Date.now()
     // Persistir el cálculo (fila viva) sin bloquear el bocadillo
     void guardarPrediccion({ bebe_id: bebe.id, ...aFilaPrediccion(prediccion.value) }).catch(
       () => undefined,
     )
   } catch (e) {
-    error.value = mensajeError(e)
+    if (gen === generacion) error.value = mensajeError(e)
   } finally {
-    cargando.value = false
+    if (gen === generacion) cargando.value = false
   }
 }
 
-/** Frases del bocadillo, en el orden en que las "dice" Ñeñeñi */
-const frases = computed<string[]>(() => {
-  const p = prediccion.value
-  if (!p) return []
-  const lista: string[] = []
+const frases = computed<string[]>(() =>
+  prediccion.value ? frasesNeneni(prediccion.value, noche.value, nombreBebe.value) : [],
+)
 
-  // Próxima toma
-  if (p.proximaToma) {
-    const t = p.proximaToma
-    if (t.minutosRestantes <= 0) {
-      lista.push(
-        `¡La próxima toma ya toca! La esperaba hacia las ${horaCorta(t.prevista)}.`,
-      )
-    } else {
-      lista.push(
-        `Yo creo que la próxima toma será a las ${horaCorta(t.prevista)} (entre las ${horaCorta(t.franja.desde)} y las ${horaCorta(t.franja.hasta)}).`,
-      )
-    }
-  } else {
-    lista.push('Todavía no tengo tomas registradas para predecir la siguiente.')
-  }
-
-  // Sueño
-  if (p.durmiendo) {
-    lista.push(`Ahora mismo ${nombreBebe.value} está durmiendo… ¡a aprovechar!`)
-  } else if (p.proximaSiesta) {
-    const s = p.proximaSiesta
-    if (s.minutosRestantes <= 0) {
-      lista.push('Ya le va tocando dormir: lleva despierta más de lo habitual en ella.')
-    } else {
-      lista.push(
-        `Y en unos ${formatoDuracion(s.minutosRestantes)} le tocará dormir, hacia las ${horaCorta(s.prevista)}.`,
-      )
-    }
-  }
-
-  // Pronóstico de la noche (solo en franja nocturna)
-  const n = noche.value
-  if (n) {
-    if (n.tomas.length === 0) {
-      lista.push('Con su ritmo, no espero más tomas hasta las 07:00. ¡Feliz noche!')
-    } else {
-      const horas = n.tomas.map((t) => horaCorta(t)).join(' y a las ')
-      lista.push(
-        `Esta noche creo que ${nombreBebe.value} pedirá ${n.tomas.length === 1 ? 'una toma más' : `${n.tomas.length} tomas más`}, más o menos cada ${formatoDuracion(n.intervaloMin)}: a las ${horas}.`,
-      )
-    }
-  }
-  return lista
-})
-
-/** Nota de honestidad: cuánto pesa ya el patrón propio frente a la base */
-const notaAprendizaje = computed(() => {
-  const t = prediccion.value?.proximaToma
-  if (!t) return 'Ñeñeñi aprende del ritmo real según se registran tomas, sueños y pañales.'
-  const pct = Math.round(t.pesoPersonal * 100)
-  if (pct < 40)
-    return `Aún estoy aprendiendo su ritmo (el patrón propio solo pesa un ${pct}%): de momento me apoyo en lo típico para su edad.`
-  const reciente = t.pesoReciente > 0 ? ` y lo que va de hoy un ${Math.round(t.pesoReciente * 100)}%` : ''
-  return `El ritmo propio de ${nombreBebe.value} ya pesa un ${pct}% en mi cálculo${reciente}.`
-})
+const nota = computed(() => notaAprendizaje(prediccion.value, nombreBebe.value))
 
 const barrasLlanto = computed(() => {
   const r = llanto.value
@@ -159,61 +138,80 @@ const barrasLlanto = computed(() => {
     { etiqueta: 'Incomodidad', p: r.incomodidad, icono: ICONOS_REGISTRO.panal },
   ].sort((a, b) => b.p - a.p)
 })
-
-const esNoche = computed(() => esHoraNocturna(new Date()))
 </script>
 
 <template>
-  <Transition name="aparecer">
-    <div v-if="abierta" class="nenei-fondo" @click.self="emit('cerrar')">
-      <div class="nenei-panel" role="dialog" aria-label="Ñeñeñi, el Mime experto en bebés">
-        <button class="nenei-cerrar" aria-label="Cerrar" @click="emit('cerrar')">✕</button>
+  <Teleport to="body">
+    <Transition name="aparecer">
+      <div
+        v-if="abierta"
+        class="nenei-fondo"
+        @click.self="emit('cerrar')"
+        @keydown.esc="emit('cerrar')"
+        @keydown.tab="atraparTab(panel, $event)"
+      >
+        <div
+          ref="panel"
+          class="nenei-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ñeñeñi, el Mime experto en bebés"
+          tabindex="-1"
+        >
+          <button class="nenei-cerrar" aria-label="Cerrar" @click="emit('cerrar')">✕</button>
 
-        <div class="nenei-cabecera">
-          <img :src="neneniUrl" alt="" class="nenei-grande" />
-          <div class="nenei-quien">
-            <strong>Ñeñeñi</strong>
-            <span class="suave">Mime experto en bebés</span>
-          </div>
-        </div>
-
-        <div v-if="cargando" class="nenei-bocadillo esqueleto pulso">Pensando…</div>
-        <div v-else-if="error" class="nenei-bocadillo nenei-error">{{ error }}</div>
-        <template v-else>
-          <p v-for="(frase, i) in frases" :key="i" class="nenei-bocadillo">{{ frase }}</p>
-          <p class="nenei-nota suave">{{ notaAprendizaje }}</p>
-
-          <button
-            v-if="llanto && !mostrarLlanto"
-            class="boton nenei-boton-llanto"
-            @click="mostrarLlanto = true"
-          >
-            ¿Por qué llora?
-          </button>
-
-          <div v-if="mostrarLlanto && llanto" class="nenei-llanto">
-            <div v-for="barra in barrasLlanto" :key="barra.etiqueta" class="nenei-barra">
-              <span class="nenei-barra-etiqueta">
-                <img v-if="barra.icono" :src="barra.icono" alt="" />
-                {{ barra.etiqueta }}
-              </span>
-              <span class="nenei-barra-pista">
-                <span class="nenei-barra-relleno" :style="{ width: Math.round(barra.p * 100) + '%' }" />
-              </span>
-              <strong class="nenei-barra-pct">{{ Math.round(barra.p * 100) }}%</strong>
+          <div class="nenei-cabecera">
+            <img :src="neneniUrl" alt="" class="nenei-grande" />
+            <div class="nenei-quien">
+              <strong>Ñeñeñi</strong>
+              <span class="suave">Mime experto en bebés</span>
             </div>
-            <ul class="nenei-explicaciones suave">
-              <li v-for="texto in llanto.explicaciones" :key="texto">{{ texto }}</li>
-            </ul>
           </div>
 
-          <p v-if="esNoche && !noche" class="nenei-nota suave">
-            Es de noche pero no tengo tomas recientes para el pronóstico nocturno.
-          </p>
-        </template>
+          <div v-if="cargando" class="nenei-bocadillo pulso">Pensando…</div>
+          <div v-else-if="error" class="nenei-bocadillo nenei-error">
+            {{ error }}
+            <button class="boton nenei-reintentar" @click="calcular()">Reintentar</button>
+          </div>
+          <template v-else>
+            <p v-for="(frase, i) in frases" :key="i" class="nenei-bocadillo">{{ frase }}</p>
+            <p class="nenei-nota suave">{{ nota }}</p>
+
+            <button
+              v-if="llanto && !mostrarLlanto"
+              class="boton nenei-boton-llanto"
+              @click="mostrarLlanto = true"
+            >
+              ¿Por qué llora?
+            </button>
+
+            <div v-if="mostrarLlanto && llanto" class="nenei-llanto">
+              <div v-for="barra in barrasLlanto" :key="barra.etiqueta" class="nenei-barra">
+                <span class="nenei-barra-etiqueta">
+                  <img v-if="barra.icono" :src="barra.icono" alt="" />
+                  {{ barra.etiqueta }}
+                </span>
+                <span class="nenei-barra-pista" aria-hidden="true">
+                  <span
+                    class="nenei-barra-relleno"
+                    :style="{ width: Math.round(barra.p * 100) + '%' }"
+                  />
+                </span>
+                <strong class="nenei-barra-pct">{{ Math.round(barra.p * 100) }}%</strong>
+              </div>
+              <ul class="nenei-explicaciones suave">
+                <li v-for="texto in llanto.explicaciones" :key="texto">{{ texto }}</li>
+              </ul>
+            </div>
+
+            <p v-if="esNoche && !noche" class="nenei-nota suave">
+              Es de noche pero no tengo tomas recientes para el pronóstico nocturno.
+            </p>
+          </template>
+        </div>
       </div>
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -221,7 +219,7 @@ const esNoche = computed(() => esHoraNocturna(new Date()))
   position: fixed;
   inset: 0;
   z-index: 15;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--color-scrim);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -240,12 +238,16 @@ const esNoche = computed(() => esHoraNocturna(new Date()))
   padding: 1rem 1rem 1.1rem;
 }
 
+.nenei-panel:focus {
+  outline: none;
+}
+
 .nenei-cerrar {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 32px;
-  height: 32px;
+  top: 0.35rem;
+  right: 0.35rem;
+  min-width: 40px;
+  min-height: 40px;
   border: none;
   border-radius: 50%;
   background: var(--color-fondo);
@@ -293,6 +295,11 @@ const esNoche = computed(() => esHoraNocturna(new Date()))
 
 .nenei-error {
   background: color-mix(in srgb, var(--color-peligro) 12%, var(--color-tarjeta));
+}
+
+.nenei-reintentar {
+  display: block;
+  margin-top: 0.6rem;
 }
 
 .nenei-nota {

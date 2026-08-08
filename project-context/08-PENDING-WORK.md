@@ -12,16 +12,31 @@
 - [ ] Secrets `MAIL_USERNAME` y `MAIL_PASSWORD` (contrasena de aplicacion
       Gmail) para el recordatorio nocturno por email (ver 07-DEPLOYMENT)
 
-## Super analisis 2026-08-08 (revision multi-agente, pendiente de ejecutar)
+## Super analisis 2026-08-08 (revision multi-agente — EJECUTADO ese mismo dia)
 
 Revision de 6 dimensiones (correccion, UX, accesibilidad, rendimiento,
 robustez de datos, arquitectura) con verificacion adversarial de cada
 hallazgo: 27 confirmados, 3 refutados. Deduplicados y priorizados.
-SOLO APUNTADO — nada de esto esta corregido todavia.
+TODO CORREGIDO el 2026-08-08 (misma sesion). Notas de la ejecucion:
+la banda de confianza de TOMAS se recalibro de 0.75·IQR a 1.0·IQR al
+excluir cruzaFranja del historico (el IQR dejo de estar inflado;
+cobertura 69-88% con el mismo MAE en el backtest; la de siestas sigue
+en 0.75·IQR porque la vigilia nunca tuvo esa inflacion); las frases de
+Ñeñeñi viven en models/frasesNeneni.ts (11 tests nuevos, 64 en total);
+el ciclo de vida modal completo (scroll-lock, foco con immediate,
+trampa de Tab) se compartio como `usarModal()` en components/modal.ts.
+Una code-review posterior sobre el diff aporto 7 ajustes residuales,
+tambien aplicados: immediate en el modal del panel (podia montarse ya
+abierto al ser async), la memoizacion del bocadillo se invalida con el
+evento EVENTO_DATOS_CAMBIADOS que emite el servicio en cada escritura
+de tomas/suenos/panales, Tab cierra el menu de usuario (el foco no se
+escapa detras del overlay), guardarPrediccion usa getSession (local)
+en vez de getUser (round-trip), y el tope :max tambien en los 5 inputs
+de HojaEdicionRegistro.
 
 ### Prioridad alta
 
-- [ ] **NeneniPanel sin semantica modal** (NeneniPanel.vue:168): declara
+- [x] **NeneniPanel sin semantica modal** (NeneniPanel.vue:168): declara
       `role="dialog"` pero le falta todo lo que HojaInferior si hace
       (HojaInferior.vue:27-102): `aria-modal`, captura/devolucion de foco,
       trampa de Tab (se tabula al contenido de fondo), Escape y bloqueo de
@@ -30,57 +45,57 @@ SOLO APUNTADO — nada de esto esta corregido todavia.
 
 ### Prioridad media
 
-- [ ] **Anclas de prediccion admiten registros con hora futura**
+- [x] **Anclas de prediccion admiten registros con hora futura**
       (MimePredictor.ts:349, 416, 471): el aprendizaje filtra
       `<= ahora` pero `ultimaToma` y `ultimoPanal` no — una toma guardada
       con hora futura por error ancla la prediccion ("proxima toma en
       7 h") y un panal futuro da "hace -1 h -30 min". Filtrar el futuro en
       los tres anclas + `:max` en los `datetime-local` de HoyView
       (1263, 1301, 1396, 1440) como segundo cinturon.
-- [ ] **porQueLlora normaliza el hambre con el intervalo de DIA tambien
+- [x] **porQueLlora normaliza el hambre con el intervalo de DIA tambien
       de noche** (MimePredictor.ts:526): `presionDe(..., centro(etapa.
       intervaloToma))` mientras la prediccion nocturna uso
       `intervaloTomaNoche` — de noche cada minuto de retraso cuenta doble
       y las barras se sesgan hacia Hambre. Usar la franja de `ahora`.
-- [ ] **"Ultimo panal hace X h Y min" mezcla Math.round con modulo**
+- [x] **"Ultimo panal hace X h Y min" mezcla Math.round con modulo**
       (MimePredictor.ts:565): 100 min se muestra como "2 h 40 min"
       (deberia ser 1 h 40). Cambiar a Math.floor (pasa la mitad de las
       veces que el resto es >= 30 min).
-- [ ] **pronosticoNoche proyecta cadencia nocturna desde una ultima toma
+- [x] **pronosticoNoche proyecta cadencia nocturna desde una ultima toma
       diurna** (MimePredictor.ts:492): a las 21:15 con ultima toma 18:45
       se salta la toma de ~22:00 (cadencia diurna) y la lista queda corta
       justo cuando mas se consulta (21-23h). Primer eslabon con la mezcla
       diurna si la ultima toma es de dia; encadenar el resto en nocturna.
-- [ ] **esNoche congelado en NeneniPanel** (NeneniPanel.vue:163):
+- [x] **esNoche congelado en NeneniPanel** (NeneniPanel.vue:163):
       `computed(() => esHoraNocturna(new Date()))` sin dependencia
       reactiva — Vue lo cachea para siempre y la nota nocturna puede salir
       a mediodia (o nunca). Pasarlo a ref asignado dentro de calcular()
       con el mismo `ahora`.
-- [ ] **Import estatico de NeneniPanel infla el chunk de entrada**
+- [x] **Import estatico de NeneniPanel infla el chunk de entrada**
       (App.vue:12): arrastra MimePredictor + CarlotaModel + tabla OMS
       (~40 KB, ~10 KB gzip) al index-*.js que se descarga antes del login.
       Cambiar a `defineAsyncComponent(() => import(...))`. (Verificado: el
       chunk branding-*.js de 278 KB es @supabase/supabase-js entero,
       necesario en arranque — ahi no hay recorte.)
-- [ ] **nenei.png pesa 117 KB para pintarse a 36/76 px**: reprocesar a
+- [x] **nenei.png pesa 117 KB para pintarse a 36/76 px**: reprocesar a
       192x192 + paleta 256 colores (~9 KB medidos) en el mismo path y
       subir el SW a v8. Ahorro ~108 KB en cada instalacion del precache.
-- [ ] **Cada apertura del bocadillo repite 3 SELECT de 8 dias + 1 upsert**
+- [x] **Cada apertura del bocadillo repite 3 SELECT de 8 dias + 1 upsert**
       (NeneniPanel.vue:50): abrir/cerrar 3 veces = 9 consultas + 3
       escrituras identicas. Memoizar: saltar el refetch si hay prediccion
       de hace < 60 s.
-- [ ] **Menu de usuario sin teclado ni gestion de foco** (App.vue:138):
+- [x] **Menu de usuario sin teclado ni gestion de foco** (App.vue:138):
       Escape no cierra, el foco no entra/vuelve, `role="menu"` promete
       flechas que no existen y a `.bolita` le falta `aria-haspopup`.
       Minimo: aria-haspopup + foco al abrir/cerrar + @keydown.esc (o
       quitar los roles de menu y dejar botones).
-- [ ] **Reglas de dominio en computeds de NeneniPanel** (frases:92,
+- [x] **Reglas de dominio en computeds de NeneniPanel** (frases:92,
       notaAprendizaje:143): umbrales ("ya toca" con minutos <= 0,
       pct < 40 "aun estoy aprendiendo", singular/plural del pronostico)
       viven en el componente y quedan sin test, rompiendo la convencion
       (logica pura en models/). Extraer `frasesNeneni()` y
       `notaAprendizaje()` a models/ + 2-3 tests.
-- [ ] **aFilaPrediccion sin test de contrato** (MimePredictor.ts:583): es
+- [x] **aFilaPrediccion sin test de contrato** (MimePredictor.ts:583): es
       la funcion que serializa a las columnas de `predicciones` y su unico
       llamador persiste con `.catch(() => undefined)` — un desajuste de
       claves fallaria en silencio para siempre. Test que compruebe el
@@ -88,43 +103,43 @@ SOLO APUNTADO — nada de esto esta corregido todavia.
 
 ### Prioridad baja
 
-- [ ] **calcular() sin guard de concurrencia** (NeneniPanel.vue:50):
+- [x] **calcular() sin guard de concurrencia** (NeneniPanel.vue:50):
       abrir-cerrar-abrir rapido con red lenta lanza dos calculos que
       escriben los mismos refs fuera de orden (y dos upserts). Guard
       `if (cargando.value) return` o token de generacion.
-- [ ] **Zonas tactiles pequenas en lo nuevo**: boton-nenei 36px
+- [x] **Zonas tactiles pequenas en lo nuevo**: boton-nenei 36px
       (App.vue:243), bolita 34px, ✕ del panel 32px (NeneniPanel.vue:247)
       — el propio proyecto ya adopto min 40px (HojaInferior ✕,
       .boton.peligro). Ampliar zona de toque a 40-44px sin crecer el
       circulo visual.
-- [ ] **El "Pensando…" no luce el skeleton** (NeneniPanel.vue:180): el
+- [x] **El "Pensando…" no luce el skeleton** (NeneniPanel.vue:180): el
       background scoped de .nenei-bocadillo pisa el gradiente de
       .esqueleto (especificidad) — solo se ve el pulso. Quitar la clase o
       replicar el gradiente en una regla scoped.
-- [ ] **Scrim distinto al resto de dialogos** (NeneniPanel.vue:224):
+- [x] **Scrim distinto al resto de dialogos** (NeneniPanel.vue:224):
       rgba(0,0,0,.35) vs rgb(20 40 36 / .45) de HojaInferior. Extraer
       token --color-scrim en main.css y usarlo en ambos.
-- [ ] **Error del bocadillo sin reintento** (NeneniPanel.vue:181): sin
+- [x] **Error del bocadillo sin reintento** (NeneniPanel.vue:181): sin
       red solo queda cerrar y volver a abrir. Boton "Reintentar" que
       relance calcular().
-- [ ] **Precache atomico del SW** (sw.js:40): `cache.addAll` con 22
+- [x] **Precache atomico del SW** (sw.js:40): `cache.addAll` con 22
       entradas — un solo 404 (p.ej. icono renombrado y lista sin
       actualizar) aborta TODAS las instalaciones futuras sin sintoma.
       Cambiar a `Promise.allSettled(PRECACHE.map((u) => cache.add(u)))`.
-- [ ] **El chunk "branding-*.js" (278 KB) es en realidad supabase-js**:
+- [x] **El chunk "branding-*.js" (278 KB) es en realidad supabase-js**:
       nombre enganoso en cada auditoria del build. `manualChunks:
       { supabase: ['@supabase/supabase-js'] }` en vite.config.ts (cambio
       de nombre, no de peso).
-- [ ] **registrado_por fosilizado en la fila viva de predicciones**
+- [x] **registrado_por fosilizado en la fila viva de predicciones**
       (carlotaService.ts:428): el upsert no incluye la columna y conserva
       para siempre el uid del primer insert. Incluir el uid en el payload
       (o quitar la columna).
-- [ ] **Los intervalos que cruzan franja entran en el historico dia/noche**
+- [x] **Los intervalos que cruzan franja entran en el historico dia/noche**
       (MimePredictor.ts:217): el hueco del amanecer infla la mediana "dia"
       cada dia y el salto tarde→noche deflacta la "noche" (pocas
       muestras). Excluir cruzaFranja tambien del historico y REVALIDAR el
       backtest completo antes de dar por buenos los k actuales.
-- [ ] **Docs desfasados (2 lineas)**: 03-FRONTEND (menu de usuario sin
+- [x] **Docs desfasados (2 lineas)**: 03-FRONTEND (menu de usuario sin
       "Acerca de") y la deuda "Solo hay tests de CarlotaModel" (ya se
       testean 3 modulos de models/).
 
@@ -354,7 +369,8 @@ SOLO APUNTADO — nada de esto esta corregido todavia.
       semana)
 - [x] HoyView e HistorialView duplican el mapeo registro→texto (2026-08-07:
       extraido a `textoToma/textoSueno/textoPanal/textoEvento` en CarlotaModel)
-- [ ] Solo hay tests de CarlotaModel; las vistas no se testean (aceptado)
+- [ ] Solo se testean los models/ (CarlotaModel, MimePredictor,
+      frasesNeneni, semanasDesarrollo); las vistas no se testean (aceptado)
 
 ## Bugs conocidos
 
