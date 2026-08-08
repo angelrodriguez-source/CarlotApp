@@ -15,11 +15,12 @@
   --color-fondo: #eefaf7;
   --color-tarjeta: #ffffff;
   --color-texto: #2c423e;
-  --color-texto-suave: #6f978f;
+  --color-texto-suave: #4d7a71;
   --color-borde: #cfeae3;
   --color-ok: #4caf7d;
   --color-aviso: #e5a173;
-  --color-peligro: #d95d5d;
+  --color-aviso-texto: #9a5a22;
+  --color-peligro: #b32828;
   --color-toast-fondo: #2c423e;
   --color-toast-texto: #ffffff;
   --radio: 18px;
@@ -45,6 +46,7 @@
   --color-borde: #35504b;
   --color-ok: #6fd39c;
   --color-aviso: #f0b98a;
+  --color-aviso-texto: #f0b98a;
   --color-peligro: #ff8b8b;
   --sombra:
     0 1px 2px rgb(0 0 0 / 0.3),
@@ -165,9 +167,12 @@ textarea {
   border: none;
   padding: 0.35rem 0.6rem;
   font-size: 0.9rem;
-  /* Zona de toque suficiente para dedos (los ✎/✕ de las filas) */
+  /* Zona de toque suficiente para dedos (los ✎/✕ de las filas), centrada */
   min-width: 40px;
   min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .campo {
@@ -193,7 +198,7 @@ textarea {
 
 .fila-registro {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0;
   border-bottom: 1px solid var(--color-borde);
@@ -219,6 +224,14 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* Checkboxes dentro de filas (marcar cita hecha): tamaño tocable */
+.fila-registro input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  margin: 0.4rem 0.25rem;
+  flex-shrink: 0;
 }
 
 /* Pista de "hay más": puntos suspensivos tocables al pie de lo plegado */

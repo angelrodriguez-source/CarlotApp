@@ -55,13 +55,18 @@ function desglosarEdad(fechaNacimiento: string, hoy: Date): EdadDesglosada {
   if (dias < 7) return { unidad: 'dias', mayor: 0, dias }
   if (dias < 70) return { unidad: 'semanas', mayor: Math.floor(dias / 7), dias: dias % 7 }
 
-  // Meses de calendario + días sueltos
+  // Meses de calendario + días sueltos. El ancla clampa el día del mes:
+  // una nacida el 31 "cumple mes" el 28/30 en los meses cortos (setMonth a
+  // pelo desbordaría a principios del mes siguiente y congelaría la edad)
+  const anclaDe = (meses: number): Date => {
+    const base = new Date(nacimiento.getFullYear(), nacimiento.getMonth() + meses, 1)
+    const ultimoDia = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
+    return new Date(base.getFullYear(), base.getMonth(), Math.min(nacimiento.getDate(), ultimoDia))
+  }
   let meses =
     (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth())
-  if (hoy.getDate() < nacimiento.getDate()) meses--
-  const ancla = new Date(nacimiento)
-  ancla.setMonth(ancla.getMonth() + meses)
-  const diasSueltos = Math.round((medianocheHoy.getTime() - ancla.getTime()) / 86_400_000)
+  if (anclaDe(meses).getTime() > medianocheHoy.getTime()) meses--
+  const diasSueltos = Math.round((medianocheHoy.getTime() - anclaDe(meses).getTime()) / 86_400_000)
   return { unidad: 'meses', mayor: meses, dias: Math.max(0, diasSueltos) }
 }
 

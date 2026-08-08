@@ -156,7 +156,14 @@ const historial = computed<DiaHistorial[]>(() => {
 // Se refresca en cada cargar() para no quedarse obsoleto pasada la medianoche
 const hoy = ref(claveDia(new Date().toISOString()))
 
-const diasRitmo = computed(() => ultimosDias(dias.value))
+// Días del rango, sin inventar días previos al nacimiento
+const diasRitmo = computed(() => {
+  const nacimiento = bebeStore.bebe?.fecha_nacimiento ?? ''
+  return ultimosDias(dias.value).filter((dia) => dia >= nacimiento)
+})
+
+/** ¿Hay algún registro en el rango? (para el estado vacío y la gráfica) */
+const hayRegistros = computed(() => historial.value.some((d) => d.registros.length > 0))
 
 /** Resumen del día en una sola línea compacta */
 function resumenLinea(resumen: ReturnType<typeof resumenDia>): string {
@@ -211,10 +218,10 @@ async function borrarMomento(momento: Evento) {
       <div class="esqueleto" style="height: 90px"></div>
     </template>
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-if="!cargando && historial.length === 0" class="suave">Sin registros en este periodo.</p>
+    <p v-if="!cargando && !hayRegistros" class="suave">Sin registros en este periodo.</p>
 
     <GraficaRitmo
-      v-if="!cargando && historial.length > 0"
+      v-if="!cargando && hayRegistros"
       :dias="diasRitmo"
       :suenos="suenos"
       :tomas="tomas"

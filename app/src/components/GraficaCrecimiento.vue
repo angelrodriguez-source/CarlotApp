@@ -240,8 +240,9 @@ const etiquetasX = computed(() => {
 }
 
 .etiqueta-hoy {
-  font-size: 7px;
-  fill: var(--color-aviso);
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--color-aviso-texto);
 }
 
 .linea-serie {

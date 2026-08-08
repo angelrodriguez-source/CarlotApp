@@ -110,6 +110,9 @@ async function cargarDia() {
   const bebe = await bebeStore.cargar()
   if (!bebe) return
   const version = ++versionCarga
+  // El día y su inicio se capturan ANTES de las peticiones: si la respuesta
+  // llega pasada la medianoche, los datos son del día capturado
+  const dia = hoyLocal()
   const desde = inicioDiaIso()
   const datos = await Promise.all([
     servicio.listarTomas(bebe.id, desde),
@@ -126,8 +129,13 @@ async function cargarDia() {
     servicio.getUltimosEventosPorTipo(bebe.id),
   ])
   if (version !== versionCarga) return
-  diaCargado = hoyLocal()
+  diaCargado = dia
   filaDeslizada.value = null
+  // Cota superior del día: un registro tecleado con fecha futura por error
+  // no debe contar en "hoy" (la cota inferior ya la pone la consulta)
+  datos[0] = datos[0].filter((t) => claveDia(t.inicio) === dia)
+  datos[2] = datos[2].filter((pa) => claveDia(pa.fecha) === dia)
+  datos[3] = datos[3].filter((ev) => claveDia(ev.fecha) === dia)
   ;[
     tomas.value,
     suenosDesdeAyer.value,
@@ -496,6 +504,10 @@ const esBiberon = computed(() => nuevaToma.value.tipo.startsWith('biberon'))
 
 function abrirFormularioToma() {
   nuevaToma.value.inicio = aInputLocal(new Date())
+  // Cantidad y duración empiezan vacías: los ml de la toma anterior no
+  // deben colarse precargados en la siguiente
+  nuevaToma.value.cantidadMl = null
+  nuevaToma.value.duracionMin = null
   formulario.value = formulario.value === 'toma' ? null : 'toma'
 }
 
@@ -879,7 +891,7 @@ const registroEnEdicion = ref<RegistroEditable | null>(null)
 
 function alGuardarEdicion() {
   registroEnEdicion.value = null
-  cargarDia()
+  cargarDia().catch((e) => (error.value = mensajeError(e)))
 }
 
 // Swipe hacia la izquierda para revelar el borrar (en escritorio, con hover)
