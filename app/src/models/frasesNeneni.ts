@@ -19,20 +19,33 @@ export function frasesNeneni(
 ): string[] {
   const lista: string[] = []
 
-  // Próxima toma (con el matiz de cantidad si la última fue corta/copiosa)
+  // Próxima toma: remate (la comida quedó corta) o cadencia normal con
+  // su matiz de cantidad
   if (p.proximaToma) {
     const t = p.proximaToma
-    if (t.minutosRestantes <= 0) {
-      lista.push(`¡La próxima toma ya toca! La esperaba hacia las ${horaCorta(t.prevista)}.`)
-    } else {
+    if (t.esRemate) {
+      const remate = t.mlPrevisto !== undefined ? ` de unos ${t.mlPrevisto} ml` : ''
       lista.push(
-        `Yo creo que la próxima toma será a las ${horaCorta(t.prevista)} (entre las ${horaCorta(t.franja.desde)} y las ${horaCorta(t.franja.hasta)}).`,
+        t.minutosRestantes <= 0
+          ? `La última comida se quedó corta y el remate${remate} ya toca (lo esperaba hacia las ${horaCorta(t.prevista)}).`
+          : `La última comida se quedó corta: creo que hacia las ${horaCorta(t.prevista)} pedirá un remate${remate} para completarla.`,
       )
-    }
-    if (t.factorCantidad !== undefined && t.factorCantidad <= 0.9) {
-      lista.push('Como la última toma ha sido más corta de lo habitual, la he adelantado un poco.')
-    } else if (t.factorCantidad !== undefined && t.factorCantidad >= 1.1) {
-      lista.push('Con lo bien que ha comido, seguramente aguante un poco más de lo normal.')
+    } else {
+      const racion = t.mlPrevisto !== undefined ? `, de unos ${t.mlPrevisto} ml,` : ''
+      if (t.minutosRestantes <= 0) {
+        lista.push(`¡La próxima toma ya toca! La esperaba hacia las ${horaCorta(t.prevista)}.`)
+      } else {
+        lista.push(
+          `Yo creo que la próxima toma${racion} será a las ${horaCorta(t.prevista)} (entre las ${horaCorta(t.franja.desde)} y las ${horaCorta(t.franja.hasta)}).`,
+        )
+      }
+      if (t.factorCantidad !== undefined && t.factorCantidad <= 0.9) {
+        lista.push(
+          'Como la última toma ha sido más corta de lo habitual, la he adelantado un poco.',
+        )
+      } else if (t.factorCantidad !== undefined && t.factorCantidad >= 1.1) {
+        lista.push('Con lo bien que ha comido, seguramente aguante un poco más de lo normal.')
+      }
     }
   } else {
     lista.push('Todavía no tengo tomas registradas para predecir la siguiente.')

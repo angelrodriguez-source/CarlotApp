@@ -60,6 +60,12 @@ interface ConfigBebe {
   acoplarCantidad?: { alpha: number; mlMu: number; mlSd: number }
   /** Probabilidad de que una siesta se parta en dos con un mini-despertar */
   fragmentarSiestas?: number
+  /**
+   * Probabilidad de que una comida se PARTA: toma corta (35-60% de la
+   * ración) + remate 25-45 min después con el resto; la cadencia normal
+   * se retoma desde el remate
+   */
+  partirTomas?: number
 }
 
 interface BebeSimulado extends DatosPredictor {
@@ -85,12 +91,10 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
       esUltimoDia && config.hoyTomaMu !== undefined ? config.hoyTomaMu : config.tomaDiaMu
 
     // Tomas de día: desde ~7:30 cada tomaDiaMu±sd hasta las 21:00.
-    // Con acoplarCantidad, los ml varían y modulan el intervalo siguiente
-    let t = 7.5 * 60 + rng.normal(0, 20)
-    while (t < 21 * 60) {
-      const inicio = new Date(base.getTime() + t * 60_000)
-      const acople = config.acoplarCantidad
-      const ml = acople ? Math.max(30, Math.round(rng.normal(acople.mlMu, acople.mlSd))) : 120
+    // Con acoplarCantidad los ml varían y modulan el intervalo; con
+    // partirTomas algunas comidas se dividen en toma corta + remate
+    const nuevaToma = (minuto: number, ml: number) => {
+      const inicio = new Date(base.getTime() + minuto * 60_000)
       tomas.push({
         id: nuevaId(),
         bebe_id: 'b',
@@ -101,8 +105,25 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
         notas: null,
       })
       iniciosTomaDia.push(inicio)
-      const factor = acople ? Math.pow(ml / acople.mlMu, acople.alpha) : 1
-      t += Math.max(60, rng.normal(tomaMu, config.tomaDiaSd) * factor)
+    }
+    let t = 7.5 * 60 + rng.normal(0, 20)
+    while (t < 21 * 60) {
+      const acople = config.acoplarCantidad
+      const mlTotal = acople ? Math.max(30, Math.round(rng.normal(acople.mlMu, acople.mlSd))) : 120
+      const factor = acople ? Math.pow(mlTotal / acople.mlMu, acople.alpha) : 1
+      const partir = config.partirTomas !== undefined && rng.uniforme() < config.partirTomas
+      if (partir) {
+        const ml1 = Math.round(mlTotal * (0.35 + rng.uniforme() * 0.25))
+        nuevaToma(t, ml1)
+        const hueco = 25 + rng.uniforme() * 20
+        const t2 = t + hueco
+        if (t2 < 21 * 60) nuevaToma(t2, mlTotal - ml1)
+        // La cadencia se retoma desde el remate (la ración ya es completa)
+        t = t2 + Math.max(60, rng.normal(tomaMu, config.tomaDiaSd) * factor * 0.95)
+      } else {
+        nuevaToma(t, mlTotal)
+        t += Math.max(60, rng.normal(tomaMu, config.tomaDiaSd) * factor)
+      }
     }
     // Toma nocturna (~3:30±40)
     const nocturna = new Date(base.getTime() + (3.5 * 60 + rng.normal(0, 40)) * 60_000)
@@ -356,7 +377,7 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
     expect(intervaloUsado).toBeLessThan(etapa.intervaloToma.max + 45)
   })
 
-  it('una toma corta adelanta la próxima; una copiosa la retrasa', () => {
+  it('comida corta → REMATE cercano con sus ml; moderada/copiosa → cadencia modulada', () => {
     const ahora = new Date(2026, 7, 7, 12, 0)
     const conUltima = (ml: number): DatosPredictor => ({
       ...regular,
@@ -373,17 +394,97 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
         },
       ],
     })
-    const corta = predecir(conUltima(60), 63, ahora).proximaToma!
-    const normal = predecir(conUltima(120), 63, ahora).proximaToma!
+    // El bebé regular NUNCA ha rematado: una toma de 60 ml NO debe
+    // predecir remate (según comportamiento), solo adelantar la cadencia
+    const cortaSinHistorial = predecir(conUltima(60), 63, ahora).proximaToma!
+    expect(cortaSinHistorial.esRemate).toBe(false)
+    expect(cortaSinHistorial.factorCantidad!).toBeLessThan(0.9)
+    // Con historial de remates (comidas partidas a diario), la misma toma
+    // corta SÍ predice un remate cercano con los ml que faltan
+    const rematador = generarBebe({
+      dias: 14,
+      tomaDiaMu: 180,
+      tomaDiaSd: 15,
+      vigiliaMu: 80,
+      vigiliaSd: 12,
+      siestaMu: 50,
+      siestaSd: 12,
+      semilla: 5,
+      partirTomas: 0.35,
+      acoplarCantidad: { alpha: 0, mlMu: 120, mlSd: 20 },
+    })
+    const conCorta: DatosPredictor = {
+      ...rematador,
+      tomas: [
+        ...rematador.tomas.filter((t) => new Date(t.inicio).getTime() < ahora.getTime() - 3600_000),
+        {
+          id: 'ultima',
+          bebe_id: 'b',
+          inicio: new Date(2026, 7, 7, 11, 0).toISOString(),
+          fin: null,
+          tipo: 'biberon_formula',
+          cantidad_ml: 60,
+          notas: null,
+        },
+      ],
+    }
+    const corta = predecir(conCorta, 63, ahora).proximaToma!
+    expect(corta.esRemate).toBe(true)
+    const gapCorta = new Date(corta.prevista).getTime() - new Date(2026, 7, 7, 11, 0).getTime()
+    expect(gapCorta).toBeGreaterThan(20 * 60_000)
+    expect(gapCorta).toBeLessThan(60 * 60_000)
+    expect(corta.mlPrevisto).toBeGreaterThanOrEqual(50)
+    expect(corta.mlPrevisto).toBeLessThanOrEqual(70)
+    // 100 ml (moderadamente corta): cadencia normal algo adelantada
+    const moderada = predecir(conUltima(100), 63, ahora).proximaToma!
+    expect(moderada.esRemate).toBe(false)
+    expect(moderada.factorCantidad!).toBeLessThan(1)
+    // 200 ml (copiosa): cadencia normal algo retrasada, ración típica prevista
     const copiosa = predecir(conUltima(200), 63, ahora).proximaToma!
-    expect(corta.factorCantidad!).toBeLessThan(1)
+    expect(copiosa.esRemate).toBe(false)
     expect(copiosa.factorCantidad!).toBeGreaterThan(1)
-    const msCorta = new Date(corta.prevista).getTime()
-    const msNormal = new Date(normal.prevista).getTime()
-    const msCopiosa = new Date(copiosa.prevista).getTime()
-    // 60 ml frente a los ~120 típicos: la prevista se adelanta >15 min
-    expect(msNormal - msCorta).toBeGreaterThan(15 * 60_000)
-    expect(msCopiosa).toBeGreaterThan(msNormal)
+    expect(copiosa.mlPrevisto).toBe(120)
+    expect(new Date(copiosa.prevista).getTime()).toBeGreaterThan(
+      new Date(moderada.prevista).getTime(),
+    )
+  })
+
+  it('comidas partidas: el modo remate predice la toma de completar', () => {
+    // Un tercio de las comidas se parten (toma corta + remate 25-45 min
+    // después); walk-forward con 15 min de antelación sobre TODAS las
+    // tomas del día, remates incluidos
+    const partido = generarBebe({
+      dias: 14,
+      tomaDiaMu: 185,
+      tomaDiaSd: 15,
+      vigiliaMu: 80,
+      vigiliaSd: 12,
+      siestaMu: 50,
+      siestaSd: 12,
+      semilla: 13,
+      partirTomas: 0.35,
+      acoplarCantidad: { alpha: 0, mlMu: 120, mlSd: 22 },
+    })
+    const limite = new Date(2026, 7, 2)
+    const objetivos = partido.iniciosTomaDia.filter((f) => f >= limite && f.getHours() >= 9)
+    const errores: number[] = []
+    let rematesPredichos = 0
+    for (const objetivo of objetivos) {
+      const ahora = new Date(objetivo.getTime() - 15 * 60_000)
+      const datos: DatosPredictor = {
+        tomas: hasta(partido.tomas as never, 'inicio', ahora),
+        suenos: [],
+        panales: [],
+      }
+      const p = predecir(datos, 63, ahora).proximaToma
+      if (!p) continue
+      if (p.esRemate) rematesPredichos++
+      errores.push(Math.abs(new Date(p.prevista).getTime() - objetivo.getTime()) / 60_000)
+    }
+    const mae = errores.reduce((a, b) => a + b, 0) / errores.length
+    expect(mae).toBeLessThan(25)
+    // El modo remate se activa de verdad (hay comidas partidas a diario)
+    expect(rematesPredichos).toBeGreaterThan(3)
   })
 
   it('bebé acoplado a cantidad: la capa de ml mantiene el MAE acotado', () => {
