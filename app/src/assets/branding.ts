@@ -20,3 +20,6 @@ export const iconoDiaUrl = import.meta.env.BASE_URL + 'icono-dia.png'
 
 /** Icono de Inicio en la navegación inferior (portapapeles con mano) */
 export const iconoInicioUrl = import.meta.env.BASE_URL + 'icono-inicio.png'
+
+/** Icono de Citas en la navegación inferior (calendario) */
+export const iconoCitasUrl = import.meta.env.BASE_URL + 'icono-citas.png'
