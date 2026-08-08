@@ -8,7 +8,7 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
-import { iconoInicioUrl, logoUrl } from './assets/branding'
+import { iconoCitasUrl, iconoInicioUrl, logoUrl } from './assets/branding'
 
 const userStore = useUserStore()
 const bebeStore = useBebeStore()
@@ -129,7 +129,10 @@ function abrirRegistro() {
     <RouterLink :to="{ name: 'historial' }">📖<span>Historial</span></RouterLink>
     <button class="fab" aria-label="Registrar" @click="abrirRegistro">＋</button>
     <RouterLink :to="{ name: 'evolucion' }">📈<span>Evolución</span></RouterLink>
-    <RouterLink :to="{ name: 'citas' }">🗓️<span>Citas</span></RouterLink>
+    <RouterLink :to="{ name: 'citas' }">
+      <img :src="iconoCitasUrl" alt="" class="icono-nav" />
+      <span>Citas</span>
+    </RouterLink>
   </nav>
 
   <div v-if="swEsperando" class="toast-sw">
