@@ -18,6 +18,29 @@
 
 (el primer bloque del brainstorming se completo el 2026-08-07, ver "Hechas")
 
+### Mime Predictor (la super idea ⭐)
+
+- [ ] **Mime Predictor**: algoritmo de prediccion que combina dos capas:
+      (1) linea base poblacional precargada de estadisticas publicas
+      (ventanas de vigilia, intervalos entre tomas y siestas tipicas por
+      edad en semanas — mismo enfoque que las tablas OMS/semanas ya
+      precargadas), y (2) adaptacion al comportamiento observado de
+      Carlota: a partir de su historico real, medias moviles por hora del
+      dia y tiempo transcurrido desde el ultimo evento de cada tipo.
+      Con eso genera predicciones de: proxima ventana de sueno, proxima
+      toma, y probabilidad de incomodidad (panal/gases segun patrones).
+      La prediccion se guarda y se recalcula al abrir la app o al
+      desplegar el panel "Mime Predictor", que muestra "creo que querra
+      dormir ~15:40" / "siguiente toma ~16:30" con su franja de
+      confianza. Logica pura en el modelo (testeable) sobre los datos ya
+      registrados; sin backend nuevo.
+- [ ] **¿Por que llora?**: boton companion del Predictor que, con la
+      hora actual y el tiempo desde ultima toma / ultimo sueno / ultimo
+      panal, pinta un diagrama de probabilidad entre Sueno, Hambre e
+      Incomodidad (barras o tarta simple en SVG, como las graficas
+      existentes) con una linea de explicacion por hipotesis ("lleva
+      2 h 40 despierta: lo mas probable es sueno").
+
 ### Analisis y graficas
 
 - [ ] Estadisticas semanales: media de ml/dia, nº tomas, horas de sueno,
