@@ -29,3 +29,8 @@ export const iconoEvolucionUrl = import.meta.env.BASE_URL + 'icono-evolucion.png
 
 /** Icono de Historial en la navegación inferior (libro con pluma) */
 export const iconoHistorialUrl = import.meta.env.BASE_URL + 'icono-historial.png'
+
+/** URL de un estático de public/ respetando la base (/CarlotApp/ en Pages) */
+export function urlPublica(archivo: string): string {
+  return import.meta.env.BASE_URL + archivo
+}

@@ -12,7 +12,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import { useUserStore } from '../stores/userStore'
-import { fotoBebeUrl, iconoDiaUrl, logoUrl } from '../assets/branding'
+import { fotoBebeUrl, iconoDiaUrl, logoUrl, urlPublica } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
@@ -758,7 +758,8 @@ function abrirEvento(tipo: TipoEvento) {
 
 interface AccionRegistro {
   id: string
-  icono: string
+  icono: string // emoji de reserva (se usa si no hay imagen)
+  img?: string // icono propio (public/icono-*.png)
   etiqueta: string
   vivo?: boolean
 }
@@ -767,23 +768,40 @@ const accionesRegistro = computed<AccionRegistro[]>(() => [
   {
     id: 'sueno',
     icono: '😴',
+    img: urlPublica('icono-sueno.png'),
     etiqueta: suenoAbierto.value ? 'Termina sueño' : 'Empieza sueño',
     vivo: !!suenoAbierto.value,
   },
   {
     id: 'toma',
     icono: '🍼',
+    img: urlPublica('icono-toma.png'),
     etiqueta: tomaAbierta.value ? `Termina toma (${minutosTomaAbierta.value} min)` : 'Toma',
     vivo: !!tomaAbierta.value,
   },
   { id: 'pis', icono: '💧', etiqueta: 'Pis' },
   { id: 'caca', icono: '💩', etiqueta: 'Caca' },
   { id: 'mixto', icono: '💧💩', etiqueta: 'Mixto' },
-  { id: 'sueno_post', icono: '🛌', etiqueta: 'Sueño a posteriori' },
+  {
+    id: 'sueno_post',
+    icono: '🛌',
+    img: urlPublica('icono-sueno-post.png'),
+    etiqueta: 'Sueño a posteriori',
+  },
   { id: 'momento', icono: '✨', etiqueta: 'Momento' },
-  { id: 'bano', icono: '🛁', etiqueta: 'Baño' },
-  { id: 'vitamina_d', icono: '☀️', etiqueta: 'Vitamina D' },
-  { id: 'medicacion', icono: '💊', etiqueta: 'Medicación' },
+  { id: 'bano', icono: '🛁', img: urlPublica('icono-bano.png'), etiqueta: 'Baño' },
+  {
+    id: 'vitamina_d',
+    icono: '☀️',
+    img: urlPublica('icono-vitamina.png'),
+    etiqueta: 'Vitamina D',
+  },
+  {
+    id: 'medicacion',
+    icono: '💊',
+    img: urlPublica('icono-medicacion.png'),
+    etiqueta: 'Medicación',
+  },
   { id: 'unas', icono: '✂️', etiqueta: 'Uñas' },
   { id: 'otro', icono: '⭐', etiqueta: 'Otro evento' },
 ])
@@ -1201,7 +1219,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             :disabled="registrando"
             @click="ejecutarAccion(accion.id)"
           >
-            <span class="icono">{{ accion.icono }}</span>
+            <img v-if="accion.img" :src="accion.img" alt="" class="icono icono-img" />
+            <span v-else class="icono">{{ accion.icono }}</span>
             {{ accion.etiqueta }}
           </button>
         </div>
@@ -1320,7 +1339,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             :disabled="registrando"
             @click="ejecutarAccion(accion.id)"
           >
-            <span class="icono">{{ accion.icono }}</span>
+            <img v-if="accion.img" :src="accion.img" alt="" class="icono icono-img" />
+            <span v-else class="icono">{{ accion.icono }}</span>
             {{ accion.etiqueta }}
           </button>
         </div>
@@ -1414,7 +1434,11 @@ const lineaDeTiempo = computed<Registro[]>(() => {
         <span class="etiqueta-seccion seccion-config">Accesos directos de la card</span>
         <label v-for="accion in accionesRegistro" :key="accion.id" class="opcion-hito">
           <input v-model="accesosConfig" type="checkbox" :value="accion.id" />
-          <span>{{ accion.icono }} {{ accion.etiqueta }}</span>
+          <span class="opcion-texto">
+            <img v-if="accion.img" :src="accion.img" alt="" class="icono-opcion" />
+            <template v-else>{{ accion.icono }}</template>
+            {{ accion.etiqueta }}
+          </span>
         </label>
         <button class="boton" @click="mostrarConfig = false">Listo</button>
       </HojaInferior>
@@ -1714,6 +1738,22 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 .acceso .icono {
   font-size: 1.7rem;
   line-height: 1;
+}
+
+.acceso .icono-img {
+  width: 30px;
+  height: 30px;
+}
+
+.opcion-texto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.icono-opcion {
+  width: 18px;
+  height: 18px;
 }
 
 .acceso:hover {
