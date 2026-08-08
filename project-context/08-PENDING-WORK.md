@@ -40,28 +40,21 @@
       paso de IQR/2 a 0.75·IQR al detectar cobertura del 50%). 13 tests
       de contrato: MAE tomas <25 min y siestas <22 min (bebe regular),
       acotado en irregulares, arranque en frio cae en la base, porQueLlora
-      ordena bien los escenarios. PENDIENTE FASE 2: UI (panel Mime
-      Predictor + boton ¿Por que llora? con su diagrama)
-- [ ] FASE 2 — UI del **Mime Predictor**: algoritmo de prediccion que combina dos capas:
-      (1) linea base poblacional precargada de estadisticas publicas
-      (ventanas de vigilia, intervalos entre tomas y siestas tipicas por
-      edad en semanas — mismo enfoque que las tablas OMS/semanas ya
-      precargadas), y (2) adaptacion al comportamiento observado de
-      Carlota: a partir de su historico real, medias moviles por hora del
-      dia y tiempo transcurrido desde el ultimo evento de cada tipo.
-      Con eso genera predicciones de: proxima ventana de sueno, proxima
-      toma, y probabilidad de incomodidad (panal/gases segun patrones).
-      La prediccion se guarda y se recalcula al abrir la app o al
-      desplegar el panel "Mime Predictor", que muestra "creo que querra
-      dormir ~15:40" / "siguiente toma ~16:30" con su franja de
-      confianza. Logica pura en el modelo (testeable) sobre los datos ya
-      registrados; sin backend nuevo.
-- [ ] **¿Por que llora?**: boton companion del Predictor que, con la
-      hora actual y el tiempo desde ultima toma / ultimo sueno / ultimo
-      panal, pinta un diagrama de probabilidad entre Sueno, Hambre e
-      Incomodidad (barras o tarta simple en SVG, como las graficas
-      existentes) con una linea de explicacion por hipotesis ("lleva
-      2 h 40 despierta: lo mas probable es sueno").
+      ordena bien los escenarios. (La FASE 2 — UI con Ñeñeñi — se hizo
+      el 2026-08-08, ver abajo.)
+- [x] FASE 2 — UI con **Ñeñeñi** (2026-08-08): la mascota (Mime experto
+      en bebes, public/nenei.png) vive en la cabecera entre la marca y el
+      usuario; al tocarla se abre su bocadillo (NeneniPanel.vue) que carga
+      los ultimos 8 dias, ejecuta `predecir()` y lo cuenta en primera
+      persona ("Yo creo que la proxima toma sera a las 16:30, entre las
+      16:05 y las 16:55"), con la siesta ("en unos 40 min le tocara
+      dormir") y, en franja nocturna (21-07h), el pronostico de la noche
+      (`pronosticoNoche()`: tomas que quedan hasta las 07:00 con la
+      cadencia nocturna, 2 tests nuevos). Nota de honestidad con el peso
+      del patron personal/reciente. Boton **¿Por que llora?** con el
+      diagrama de barras Sueno/Hambre/Incomodidad de `porQueLlora()` y
+      sus explicaciones. Cada calculo se persiste en `predicciones`
+      (fila viva) en segundo plano.
 
 ### Analisis y graficas
 

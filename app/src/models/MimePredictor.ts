@@ -442,6 +442,69 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
   }
 }
 
+/** ¿Es de noche (21:00-07:00) a esa hora? Para la UI de Ñeñeñi. */
+export function esHoraNocturna(fecha: Date): boolean {
+  return esDeNoche(fecha)
+}
+
+export interface PronosticoNoche {
+  /** Intervalo nocturno esperado entre tomas (minutos, mezcla 3 capas) */
+  intervaloMin: number
+  /** Tomas previstas entre ahora y las 07:00 (ISO) */
+  tomas: string[]
+  pesoPersonal: number
+  pesoReciente: number
+}
+
+/**
+ * Pronóstico de la noche: cuántas tomas quedan hasta las 07:00 y a qué
+ * horas, proyectando la cadencia NOCTURNA (mezcla base ← histórico ←
+ * reciente) desde la última toma. Solo tiene sentido en franja nocturna;
+ * devuelve null si no es de noche o no hay tomas.
+ */
+export function pronosticoNoche(
+  datos: DatosPredictor,
+  edadDias: number,
+  ahora: Date,
+): PronosticoNoche | null {
+  if (!esDeNoche(ahora)) return null
+  const ultimaToma = [...datos.tomas].sort(
+    (a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime(),
+  )[0]
+  if (!ultimaToma) return null
+
+  const etapa = etapaPrediccion(edadDias)
+  const patrones = intervalosToma(datos.tomas, ahora)
+  const { valor, pesoPersonal, pesoReciente } = mezclarTresCapas(
+    patrones.recienteNoche,
+    patrones.noche,
+    centro(etapa.intervaloTomaNoche),
+    AJUSTES.kToma,
+  )
+
+  // Fin de la noche: las 07:00 siguientes a `ahora`
+  const finNoche = new Date(ahora)
+  finNoche.setHours(AJUSTES.horaNocheHasta, 0, 0, 0)
+  if (finNoche.getTime() <= ahora.getTime()) finNoche.setDate(finNoche.getDate() + 1)
+
+  // Proyectar desde la última toma con la cadencia nocturna
+  const tomas: string[] = []
+  let t = new Date(ultimaToma.inicio).getTime() + valor * 60_000
+  // Si la prevista ya pasó, la siguiente cuenta desde ahora ("ya toca")
+  if (t < ahora.getTime()) t = ahora.getTime()
+  while (t < finNoche.getTime() && tomas.length < 8) {
+    tomas.push(new Date(t).toISOString())
+    t += valor * 60_000
+  }
+
+  return {
+    intervaloMin: Math.round(valor),
+    tomas,
+    pesoPersonal: Math.round(pesoPersonal * 100) / 100,
+    pesoReciente: Math.round(pesoReciente * 100) / 100,
+  }
+}
+
 /**
  * ¿Por qué llora? — reparto de probabilidad entre Sueño, Hambre e
  * Incomodidad según la "presión" de cada necesidad (tiempo transcurrido
