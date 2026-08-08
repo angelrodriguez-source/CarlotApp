@@ -398,3 +398,44 @@ export async function eliminarCita(id: string): Promise<void> {
   const { error } = await supabase.from('citas').delete().eq('id', id)
   lanzarSi(error)
 }
+
+// ------------------------------------------------------------
+// Mime Predictor (resultados del cálculo; el algoritmo es puro y
+// vive en models/MimePredictor.ts)
+// ------------------------------------------------------------
+
+export interface PrediccionGuardada {
+  id: string
+  bebe_id: string
+  calculado_en: string
+  edad_dias: number
+  proxima_toma: string | null
+  proxima_toma_desde: string | null
+  proxima_toma_hasta: string | null
+  proxima_siesta: string | null
+  proxima_siesta_desde: string | null
+  proxima_siesta_hasta: string | null
+  durmiendo: boolean
+  incomodidad_prob: number | null
+  parametros: Record<string, unknown>
+}
+
+/**
+ * Guarda (upsert por bebé: una única fila viva) el resultado de un
+ * cálculo del predictor, con sus parámetros para diagnóstico.
+ */
+export async function guardarPrediccion(fila: Omit<PrediccionGuardada, 'id'>): Promise<void> {
+  const { error } = await supabase.from('predicciones').upsert(fila, { onConflict: 'bebe_id' })
+  lanzarSi(error)
+}
+
+/** Última predicción guardada del bebé, o null si aún no hay ninguna */
+export async function getPrediccionGuardada(bebeId: string): Promise<PrediccionGuardada | null> {
+  const { data, error } = await supabase
+    .from('predicciones')
+    .select()
+    .eq('bebe_id', bebeId)
+    .maybeSingle()
+  lanzarSi(error)
+  return data as PrediccionGuardada | null
+}
