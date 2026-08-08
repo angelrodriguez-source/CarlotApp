@@ -40,6 +40,27 @@ describe('frasesNeneni', () => {
     expect(frases[1]).toContain('le tocará dormir')
   })
 
+  it('la cantidad de la última toma añade su matiz (corta/copiosa/neutra)', () => {
+    const corta = frasesNeneni(
+      predicciones({ proximaToma: prediccion({ factorCantidad: 0.82 }) }),
+      null,
+      'Carlota',
+    )
+    expect(corta[1]).toContain('más corta de lo habitual')
+    const copiosa = frasesNeneni(
+      predicciones({ proximaToma: prediccion({ factorCantidad: 1.15 }) }),
+      null,
+      'Carlota',
+    )
+    expect(copiosa[1]).toContain('aguante un poco más')
+    const neutra = frasesNeneni(
+      predicciones({ proximaToma: prediccion({ factorCantidad: 1 }) }),
+      null,
+      'Carlota',
+    )
+    expect(neutra.join(' ')).not.toContain('corta de lo habitual')
+  })
+
   it('"ya toca": minutos restantes <= 0 cambia la frase', () => {
     const frases = frasesNeneni(
       predicciones({

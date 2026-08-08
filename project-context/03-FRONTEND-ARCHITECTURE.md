@@ -102,6 +102,16 @@ Componentes):
   futura; los intervalos que cruzan franja (amanecer, tarde→noche) se
   excluyen tambien del historico; banda de confianza = 1.0·IQR
   (recalibrada por backtest tras esa exclusion, cobertura ~70-88%)
+- Capa de CANTIDAD: los ml de la ultima toma frente a su mediana
+  personal modulan el intervalo proyectado (toma corta → la siguiente se
+  adelanta), factor 1 + 0.35·(ml/tipico − 1) acotado [0.5, 1.4];
+  sensibilidad calibrada por barrido con bebes acoplados (α fuerte:
+  MAE 32→23; sin acople solo paga +1.4 min). Expuesto como
+  `factorCantidad` en la prediccion (Ñeñeñi lo comenta en su bocadillo)
+- MINI-DESPERTARES: tramos de sueño separados por <25 min se consolidan
+  en un mismo bloque antes de aprender ventanas de vigilia (despertarse
+  10-20 min y volver a dormir no es una ventana y contaminaria la
+  mediana); backtest con 50% de siestas fragmentadas mantiene el MAE
 - `models/frasesNeneni.ts` — las frases del bocadillo y la nota de
   aprendizaje como funciones puras (frasesNeneni, notaAprendizaje),
   testeadas en frasesNeneni.spec.ts

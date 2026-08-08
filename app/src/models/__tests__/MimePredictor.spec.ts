@@ -53,6 +53,13 @@ interface ConfigBebe {
   semilla: number
   /** Override del intervalo de toma SOLO para el último día (brote...) */
   hoyTomaMu?: number
+  /**
+   * Acoplar el intervalo REAL a los ml de la toma anterior:
+   * gap = normal(mu,sd) · (ml/mlMu)^alpha (toma corta → pide antes)
+   */
+  acoplarCantidad?: { alpha: number; mlMu: number; mlSd: number }
+  /** Probabilidad de que una siesta se parta en dos con un mini-despertar */
+  fragmentarSiestas?: number
 }
 
 interface BebeSimulado extends DatosPredictor {
@@ -77,21 +84,25 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
     const tomaMu =
       esUltimoDia && config.hoyTomaMu !== undefined ? config.hoyTomaMu : config.tomaDiaMu
 
-    // Tomas de día: desde ~7:30 cada tomaDiaMu±sd hasta las 21:00
+    // Tomas de día: desde ~7:30 cada tomaDiaMu±sd hasta las 21:00.
+    // Con acoplarCantidad, los ml varían y modulan el intervalo siguiente
     let t = 7.5 * 60 + rng.normal(0, 20)
     while (t < 21 * 60) {
       const inicio = new Date(base.getTime() + t * 60_000)
+      const acople = config.acoplarCantidad
+      const ml = acople ? Math.max(30, Math.round(rng.normal(acople.mlMu, acople.mlSd))) : 120
       tomas.push({
         id: nuevaId(),
         bebe_id: 'b',
         inicio: inicio.toISOString(),
         fin: null,
         tipo: 'biberon_formula',
-        cantidad_ml: 120,
+        cantidad_ml: ml,
         notas: null,
       })
       iniciosTomaDia.push(inicio)
-      t += Math.max(60, rng.normal(tomaMu, config.tomaDiaSd))
+      const factor = acople ? Math.pow(ml / acople.mlMu, acople.alpha) : 1
+      t += Math.max(60, rng.normal(tomaMu, config.tomaDiaSd) * factor)
     }
     // Toma nocturna (~3:30±40)
     const nocturna = new Date(base.getTime() + (3.5 * 60 + rng.normal(0, 40)) * 60_000)
@@ -105,7 +116,9 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
       notas: null,
     })
 
-    // Siestas: despierta ~7:00; vigilia±sd → siesta±sd, hasta las 20:00
+    // Siestas: despierta ~7:00; vigilia±sd → siesta±sd, hasta las 20:00.
+    // Con fragmentarSiestas, algunas se parten en dos tramos con un
+    // mini-despertar de 5-24 min entre medias (misma siesta real)
     let s = 7 * 60 + rng.normal(0, 15)
     while (true) {
       const vigilia = Math.max(20, rng.normal(config.vigiliaMu, config.vigiliaSd))
@@ -113,15 +126,40 @@ function generarBebe(config: ConfigBebe): BebeSimulado {
       if (inicioSiesta > 19.5 * 60) break
       const duracion = Math.max(20, rng.normal(config.siestaMu, config.siestaSd))
       const inicio = new Date(base.getTime() + inicioSiesta * 60_000)
-      suenos.push({
-        id: nuevaId(),
-        bebe_id: 'b',
-        inicio: inicio.toISOString(),
-        fin: new Date(base.getTime() + (inicioSiesta + duracion) * 60_000).toISOString(),
-        notas: null,
-      })
-      iniciosSiesta.push(inicio)
-      s = inicioSiesta + duracion
+      const fragmentar =
+        config.fragmentarSiestas !== undefined &&
+        duracion >= 40 &&
+        rng.uniforme() < config.fragmentarSiestas
+      if (fragmentar) {
+        const corte = duracion * (0.3 + rng.uniforme() * 0.3)
+        const hueco = 5 + rng.uniforme() * 19
+        suenos.push({
+          id: nuevaId(),
+          bebe_id: 'b',
+          inicio: inicio.toISOString(),
+          fin: new Date(base.getTime() + (inicioSiesta + corte) * 60_000).toISOString(),
+          notas: null,
+        })
+        suenos.push({
+          id: nuevaId(),
+          bebe_id: 'b',
+          inicio: new Date(base.getTime() + (inicioSiesta + corte + hueco) * 60_000).toISOString(),
+          fin: new Date(base.getTime() + (inicioSiesta + duracion + hueco) * 60_000).toISOString(),
+          notas: null,
+        })
+        iniciosSiesta.push(inicio)
+        s = inicioSiesta + duracion + hueco
+      } else {
+        suenos.push({
+          id: nuevaId(),
+          bebe_id: 'b',
+          inicio: inicio.toISOString(),
+          fin: new Date(base.getTime() + (inicioSiesta + duracion) * 60_000).toISOString(),
+          notas: null,
+        })
+        iniciosSiesta.push(inicio)
+        s = inicioSiesta + duracion
+      }
     }
     // Sueño nocturno 20:30 → 6:45 del día siguiente
     suenos.push({
@@ -316,6 +354,75 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
     const intervaloUsado = (new Date(prediccion.proximaToma!.prevista).getTime() - ancla) / 60_000
     expect(intervaloUsado).toBeGreaterThan(etapa.intervaloToma.min - 45)
     expect(intervaloUsado).toBeLessThan(etapa.intervaloToma.max + 45)
+  })
+
+  it('una toma corta adelanta la próxima; una copiosa la retrasa', () => {
+    const ahora = new Date(2026, 7, 7, 12, 0)
+    const conUltima = (ml: number): DatosPredictor => ({
+      ...regular,
+      tomas: [
+        ...regular.tomas.filter((t) => new Date(t.inicio).getTime() < ahora.getTime() - 3600_000),
+        {
+          id: 'ultima',
+          bebe_id: 'b',
+          inicio: new Date(2026, 7, 7, 11, 0).toISOString(),
+          fin: null,
+          tipo: 'biberon_formula',
+          cantidad_ml: ml,
+          notas: null,
+        },
+      ],
+    })
+    const corta = predecir(conUltima(60), 63, ahora).proximaToma!
+    const normal = predecir(conUltima(120), 63, ahora).proximaToma!
+    const copiosa = predecir(conUltima(200), 63, ahora).proximaToma!
+    expect(corta.factorCantidad!).toBeLessThan(1)
+    expect(copiosa.factorCantidad!).toBeGreaterThan(1)
+    const msCorta = new Date(corta.prevista).getTime()
+    const msNormal = new Date(normal.prevista).getTime()
+    const msCopiosa = new Date(copiosa.prevista).getTime()
+    // 60 ml frente a los ~120 típicos: la prevista se adelanta >15 min
+    expect(msNormal - msCorta).toBeGreaterThan(15 * 60_000)
+    expect(msCopiosa).toBeGreaterThan(msNormal)
+  })
+
+  it('bebé acoplado a cantidad: la capa de ml mantiene el MAE acotado', () => {
+    // El intervalo real depende de los ml (gap·(ml/120)^0.6): sin capa de
+    // cantidad el MAE sería ~27 min (medido en la calibración); con ella < 22
+    const acoplado = generarBebe({
+      dias: 14,
+      tomaDiaMu: 180,
+      tomaDiaSd: 12,
+      vigiliaMu: 80,
+      vigiliaSd: 12,
+      siestaMu: 50,
+      siestaSd: 12,
+      semilla: 7,
+      acoplarCantidad: { alpha: 0.6, mlMu: 120, mlSd: 30 },
+    })
+    expect(maeTomas(acoplado, 63, 4)).toBeLessThan(22)
+  })
+
+  it('siestas fragmentadas: los mini-despertares no rompen el estudio', () => {
+    // La mitad de las siestas se parten con despertares de 5-24 min; la
+    // consolidación evita que esos huecos contaminen la mediana de vigilia
+    const fragmentado = generarBebe({
+      dias: 14,
+      tomaDiaMu: 180,
+      tomaDiaSd: 15,
+      vigiliaMu: 80,
+      vigiliaSd: 12,
+      siestaMu: 55,
+      siestaSd: 12,
+      semilla: 42,
+      fragmentarSiestas: 0.5,
+    })
+    // El patrón aprendido sigue recuperando la vigilia real (±15 min)
+    const patron = ventanasVigilia(fragmentado.suenos, new Date(2026, 7, 7, 12, 0)).historico
+    expect(patron.n).toBeGreaterThan(5)
+    expect(Math.abs(patron.medianaMin! - 80)).toBeLessThan(15)
+    // Y el MAE de siestas queda dentro del contrato del bebé regular
+    expect(maeSiestas(fragmentado, 63, 4)).toBeLessThan(24)
   })
 
   it('una toma con hora futura no ancla la predicción', () => {

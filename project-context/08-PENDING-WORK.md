@@ -161,6 +161,16 @@ de HojaEdicionRegistro.
 
 ### Mime Predictor (la super idea ⭐)
 
+- [x] FASE 1c — Cantidad y mini-despertares (2026-08-08, idea de Angel):
+      (1) los ml de la ultima toma frente a su mediana personal modulan
+      la proxima prevista (toma corta → pedira antes), sensibilidad 0.35
+      calibrada por barrido con bebes simulados acoplados a los ml
+      (acople fuerte: MAE 32→23; bebe sin acople solo paga +1.4 min);
+      Ñeñeñi lo comenta ("como la ultima toma ha sido mas corta...").
+      (2) los tramos de sueño separados por <25 min se consolidan en un
+      bloque (mini-despertar ≠ ventana de vigilia); backtest con 50% de
+      siestas fragmentadas: la mediana se recupera ±15 y el MAE aguanta.
+      +4 tests (78 en total).
 - [x] FASE 1b — Capa de comportamiento ACTUAL (2026-08-08): tercera capa
       en la mezcla — los ultimos intervalos de HOY (mediana de hasta 5,
       misma franja horaria, sin los que cruzan el amanecer) corrigen al
