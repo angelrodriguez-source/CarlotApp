@@ -4,29 +4,24 @@
  * Se carga una vez tras el login. bebe === null con cargado === true
  * significa "sin acceso": el usuario no está en usuarios_autorizados.
  */
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getBebe } from '../services/carlotaService'
-import { edadTexto } from '../models/CarlotaModel'
 import type { Bebe } from '../types'
 
 export const useBebeStore = defineStore('bebe', () => {
   const bebe = ref<Bebe | null>(null)
   const cargado = ref(false)
-  const error = ref('')
 
-  const edad = computed(() => (bebe.value ? edadTexto(bebe.value.fecha_nacimiento) : ''))
-
-  /** Carga el bebé si aún no está cargado. Devuelve el bebé (o null sin acceso). */
+  /**
+   * Carga el bebé si aún no está cargado. Devuelve el bebé (o null sin
+   * acceso). Un fallo de red se relanza para que la vista lo muestre con su
+   * patrón try/catch — null queda reservado para "no está en la lista blanca".
+   */
   async function cargar(): Promise<Bebe | null> {
     if (cargado.value) return bebe.value
-    error.value = ''
-    try {
-      bebe.value = await getBebe()
-      cargado.value = true
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
-    }
+    bebe.value = await getBebe()
+    cargado.value = true
     return bebe.value
   }
 
@@ -34,8 +29,7 @@ export const useBebeStore = defineStore('bebe', () => {
   function reset() {
     bebe.value = null
     cargado.value = false
-    error.value = ''
   }
 
-  return { bebe, cargado, error, edad, cargar, reset }
+  return { bebe, cargado, cargar, reset }
 })

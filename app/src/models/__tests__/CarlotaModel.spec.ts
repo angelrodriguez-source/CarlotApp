@@ -19,6 +19,13 @@ import {
   textoSueno,
   textoToma,
   tramoEnDia,
+  fechaCortaDia,
+  horaCorta,
+  mensajeError,
+  minutosEnDia,
+  mlEnDia,
+  rangoDesde,
+  recortarVaciosIniciales,
   ultimosDias,
   ultimoValor,
   valorPercentilOMS,
@@ -380,5 +387,55 @@ describe('serieGrafica', () => {
       { etiqueta: '2026-07-01', valor: 4400 },
       { etiqueta: '2026-08-01', valor: 5200 },
     ])
+  })
+})
+
+describe('helpers compartidos', () => {
+  it('mensajeError extrae el mensaje de cualquier cosa lanzada', () => {
+    expect(mensajeError(new Error('boom'))).toBe('boom')
+    expect(mensajeError('texto plano')).toBe('texto plano')
+    expect(mensajeError(42)).toBe('42')
+  })
+
+  it('fechaCortaDia y horaCorta formatean para las gráficas', () => {
+    expect(fechaCortaDia('2026-08-07')).toBe('07/08')
+    expect(horaCorta('2026-08-07T09:05:00')).toBe('09:05')
+  })
+
+  it('rangoDesde da el inicio del rango y un día antes para sueños', () => {
+    const ahora = new Date('2026-08-07T15:30:00')
+    const { desdeIso, desdeSuenosIso } = rangoDesde(7, ahora)
+    expect(new Date(desdeIso).getDate()).toBe(1) // 7 días incluyendo hoy
+    expect(new Date(desdeIso).getHours()).toBe(0)
+    expect(new Date(desdeSuenosIso).getDate()).toBe(31) // víspera (julio)
+  })
+
+  it('mlEnDia suma solo los biberones del día', () => {
+    const tomas = [
+      { inicio: '2026-08-07T09:00:00', cantidad_ml: 120 },
+      { inicio: '2026-08-07T13:00:00', cantidad_ml: 90 },
+      { inicio: '2026-08-07T16:00:00', cantidad_ml: null }, // pecho
+      { inicio: '2026-08-06T22:00:00', cantidad_ml: 150 }, // otro día
+    ] as Toma[]
+    expect(mlEnDia(tomas, '2026-08-07')).toBe(210)
+    expect(mlEnDia(tomas, '2026-08-05')).toBe(0)
+  })
+
+  it('recortarVaciosIniciales quita la cola de ceros del principio', () => {
+    const puntos = [
+      { etiqueta: '2026-08-01', valor: 0 },
+      { etiqueta: '2026-08-02', valor: 0 },
+      { etiqueta: '2026-08-03', valor: 5 },
+      { etiqueta: '2026-08-04', valor: 0 },
+    ]
+    expect(recortarVaciosIniciales(puntos).map((p) => p.etiqueta)).toEqual([
+      '2026-08-03',
+      '2026-08-04',
+    ])
+    expect(recortarVaciosIniciales([{ etiqueta: 'x', valor: 0 }])).toEqual([])
+  })
+
+  it('minutosEnDia devuelve la duración real del día', () => {
+    expect(minutosEnDia('2026-08-07')).toBe(1440)
   })
 })

@@ -5,7 +5,14 @@
  * del día emerger semana a semana.
  */
 import { computed } from 'vue'
-import { minutoDelDia, tramoEnDia, claveDia, type TramoRitmo } from '../models/CarlotaModel'
+import {
+  claveDia,
+  fechaCortaDia,
+  minutoDelDia,
+  minutosEnDia,
+  tramoEnDia,
+  type TramoRitmo,
+} from '../models/CarlotaModel'
 import type { Sueno, Toma } from '../types'
 
 const props = defineProps<{
@@ -28,12 +35,15 @@ const ABAJO = 14
 const anchoUtil = ANCHO - IZQ - DER
 const alto = computed(() => ARRIBA + props.dias.length * (ALTO_FILA + HUECO) + ABAJO)
 
-const x = (minuto: number) => IZQ + (minuto / 1440) * anchoUtil
+// Cada fila se escala con la duración real de su día (23/25 h en los
+// cambios de hora): así un día completo llega justo al borde derecho
+const x = (minuto: number, minutosDia = 1440) => IZQ + (minuto / minutosDia) * anchoUtil
 const yFila = (i: number) => ARRIBA + i * (ALTO_FILA + HUECO)
 
 interface Fila {
   dia: string
   y: number
+  minutosDia: number
   tramos: TramoRitmo[]
   tomasMin: { minuto: number; hora: string }[]
 }
@@ -42,6 +52,7 @@ const filas = computed<Fila[]>(() =>
   props.dias.map((dia, i) => ({
     dia,
     y: yFila(i),
+    minutosDia: minutosEnDia(dia),
     tramos: props.suenos
       .map((s) => tramoEnDia(s.inicio, s.fin, dia))
       .filter((t): t is TramoRitmo => t !== null),
@@ -58,11 +69,6 @@ const filas = computed<Fila[]>(() =>
 )
 
 const HORAS_EJE = [0, 6, 12, 18, 24]
-
-function etiquetaDia(dia: string): string {
-  const [, mes, d] = dia.split('-')
-  return `${d}/${mes}`
-}
 </script>
 
 <template>
@@ -95,11 +101,14 @@ function etiquetaDia(dia: string): string {
         :key="fila.dia"
         class="fila-ritmo"
         role="button"
+        tabindex="0"
         :aria-label="`Abrir el día ${fila.dia}`"
         @click="emit('seleccionarDia', fila.dia)"
+        @keydown.enter.prevent="emit('seleccionarDia', fila.dia)"
+        @keydown.space.prevent="emit('seleccionarDia', fila.dia)"
       >
         <text :x="IZQ - 6" :y="fila.y + ALTO_FILA - 3" text-anchor="end" class="eje">
-          {{ etiquetaDia(fila.dia) }}
+          {{ fechaCortaDia(fila.dia) }}
         </text>
         <!-- Pista del día -->
         <rect :x="IZQ" :y="fila.y" :width="anchoUtil" :height="ALTO_FILA" rx="3" class="pista" />
@@ -107,9 +116,11 @@ function etiquetaDia(dia: string): string {
         <rect
           v-for="(tramo, i) in fila.tramos"
           :key="i"
-          :x="x(tramo.desdeMin)"
+          :x="x(tramo.desdeMin, fila.minutosDia)"
           :y="fila.y"
-          :width="Math.max(1.5, x(tramo.hastaMin) - x(tramo.desdeMin))"
+          :width="
+            Math.max(1.5, x(tramo.hastaMin, fila.minutosDia) - x(tramo.desdeMin, fila.minutosDia))
+          "
           :height="ALTO_FILA"
           rx="3"
           class="bloque-sueno"
@@ -127,7 +138,7 @@ function etiquetaDia(dia: string): string {
         <circle
           v-for="(toma, i) in fila.tomasMin"
           :key="i"
-          :cx="x(toma.minuto)"
+          :cx="x(toma.minuto, fila.minutosDia)"
           :cy="fila.y + ALTO_FILA / 2"
           r="2.6"
           class="punto-toma"
@@ -147,6 +158,11 @@ function etiquetaDia(dia: string): string {
 
 .fila-ritmo {
   cursor: pointer;
+}
+
+.fila-ritmo:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 1px;
 }
 
 .leyenda {

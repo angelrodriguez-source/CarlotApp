@@ -6,7 +6,7 @@
  * (ver serieGrafica en CarlotaModel) y la dibuja con eje Y autoajustado.
  */
 import { computed } from 'vue'
-import type { BandaOMS, PuntoGrafica } from '../models/CarlotaModel'
+import { fechaCortaDia, type BandaOMS, type PuntoGrafica } from '../models/CarlotaModel'
 
 const props = defineProps<{
   titulo: string
@@ -29,8 +29,8 @@ const bandaValida = computed(() =>
   props.banda &&
   props.banda.length === props.puntos.length &&
   props.puntos.length > 1 &&
-  props.banda.every((b) => b !== null)
-    ? (props.banda as BandaOMS[])
+  props.banda.every((b): b is BandaOMS => b !== null)
+    ? props.banda
     : null,
 )
 
@@ -38,8 +38,8 @@ const recomendadoValido = computed(() =>
   props.recomendado &&
   props.recomendado.length === props.puntos.length &&
   props.puntos.length > 1 &&
-  props.recomendado.every((r) => r !== null)
-    ? (props.recomendado as { min: number; max: number }[])
+  props.recomendado.every((r): r is { min: number; max: number } => r !== null)
+    ? props.recomendado
     : null,
 )
 
@@ -118,11 +118,6 @@ const poligonoRecomendado = computed(() => {
   })
   return [...ida, ...vuelta].join(' ')
 })
-
-function fechaCorta(iso: string): string {
-  const [, mes, dia] = iso.split('-')
-  return `${dia}/${mes}`
-}
 </script>
 
 <template>
@@ -161,7 +156,7 @@ function fechaCorta(iso: string): string {
 
       <polyline :points="polilinea" class="linea-serie" />
 
-      <g v-for="c in coords" :key="c.punto.etiqueta">
+      <g v-for="(c, i) in coords" :key="`${c.punto.etiqueta}-${i}`">
         <circle :cx="c.x" :cy="c.y" r="3.5" class="punto">
           <title>{{ c.punto.etiqueta }}: {{ c.punto.valor }} {{ unidad }}</title>
         </circle>
@@ -175,7 +170,7 @@ function fechaCorta(iso: string): string {
         text-anchor="start"
         class="eje"
       >
-        {{ fechaCorta(puntos[0]!.etiqueta) }}
+        {{ fechaCortaDia(puntos[0]!.etiqueta) }}
       </text>
       <text
         v-if="coords.length > 1"
@@ -184,7 +179,7 @@ function fechaCorta(iso: string): string {
         text-anchor="end"
         class="eje"
       >
-        {{ fechaCorta(puntos[puntos.length - 1]!.etiqueta) }}
+        {{ fechaCortaDia(puntos[puntos.length - 1]!.etiqueta) }}
       </text>
     </svg>
     <p v-if="puntos.length > 0" class="suave ultimo">

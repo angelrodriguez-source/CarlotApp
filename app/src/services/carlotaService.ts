@@ -143,11 +143,15 @@ export async function finalizarSueno(id: string, finIso: string): Promise<void> 
 
 /** El sueño abierto (sin fin) más reciente, si lo hay */
 export async function getSuenoAbierto(bebeId: string): Promise<Sueno | null> {
+  // Solo cuenta como "en curso" un sueño empezado en las ultimas 24 h: uno
+  // olvidado sin terminar no debe dejar la card en "durmiendo" para siempre
+  const hace24h = new Date(Date.now() - 24 * 3600_000).toISOString()
   const { data, error } = await supabase
     .from('suenos')
     .select()
     .eq('bebe_id', bebeId)
     .is('fin', null)
+    .gte('inicio', hace24h)
     .order('inicio', { ascending: false })
     .limit(1)
     .maybeSingle()

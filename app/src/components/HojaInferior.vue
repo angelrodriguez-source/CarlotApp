@@ -74,5 +74,7 @@ const emit = defineEmits<{ cerrar: [] }>()
   color: var(--color-texto-suave);
   font-size: 1rem;
   padding: 0.35rem 0.5rem;
+  min-width: 40px;
+  min-height: 40px;
 }
 </style>

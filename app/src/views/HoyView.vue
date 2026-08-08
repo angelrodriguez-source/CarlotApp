@@ -27,11 +27,13 @@ import {
   edadDias,
   formatoDuracion,
   formatoPeso,
+  horaCorta,
   hoyLocal,
+  mensajeError,
   minutosSuenoEnDia,
   objetivoLecheMl,
   objetivoSuenoMinutos,
-  percentilOMS,
+  percentilRedondeado,
   resumenDia,
   textoEvento,
   textoPanal,
@@ -100,24 +102,16 @@ function inicioDiaIso(diasAtras = 0): string {
   return dia.toISOString()
 }
 
+// Token de carga: si mientras respondia el servidor se lanzo otra carga,
+// la respuesta vieja se descarta (evita pisar datos recientes)
+let versionCarga = 0
+
 async function cargarDia() {
   const bebe = await bebeStore.cargar()
   if (!bebe) return
+  const version = ++versionCarga
   const desde = inicioDiaIso()
-  ;[
-    tomas.value,
-    suenosDesdeAyer.value,
-    panales.value,
-    eventos.value,
-    medidas.value,
-    suenoAbierto.value,
-    tomaAbierta.value,
-    ultimaToma.value,
-    ultimoPanal.value,
-    ultimoSuenoTerminado.value,
-    citas.value,
-    ultimosEventos.value,
-  ] = await Promise.all([
+  const datos = await Promise.all([
     servicio.listarTomas(bebe.id, desde),
     servicio.listarSuenos(bebe.id, inicioDiaIso(1)),
     servicio.listarPanales(bebe.id, desde),
@@ -131,6 +125,23 @@ async function cargarDia() {
     servicio.listarCitas(bebe.id),
     servicio.getUltimosEventosPorTipo(bebe.id),
   ])
+  if (version !== versionCarga) return
+  diaCargado = hoyLocal()
+  filaDeslizada.value = null
+  ;[
+    tomas.value,
+    suenosDesdeAyer.value,
+    panales.value,
+    eventos.value,
+    medidas.value,
+    suenoAbierto.value,
+    tomaAbierta.value,
+    ultimaToma.value,
+    ultimoPanal.value,
+    ultimoSuenoTerminado.value,
+    citas.value,
+    ultimosEventos.value,
+  ] = datos
 }
 
 // El FAB "+" de la nav (y el CTA de Momentos del Historial) llegan con
@@ -148,15 +159,31 @@ function atenderQueries() {
 
 watch(() => [route.query.registrar, route.query.config], atenderQueries)
 
+// Dia con el que se cargaron los datos: si el reloj cruza la medianoche
+// (o la app vuelve del segundo plano en otro dia), se recarga todo
+let diaCargado = hoyLocal()
+
+function recargarSiCambioElDia() {
+  if (hoyLocal() !== diaCargado) cargarDia().catch((e) => (error.value = mensajeError(e)))
+}
+
+function alVolverVisible() {
+  if (document.visibilityState === 'visible') recargarSiCambioElDia()
+}
+
 onMounted(async () => {
-  temporizador = window.setInterval(() => (ahora.value = new Date()), 60_000)
+  temporizador = window.setInterval(() => {
+    ahora.value = new Date()
+    recargarSiCambioElDia()
+  }, 60_000)
+  document.addEventListener('visibilitychange', alVolverVisible)
   atenderQueries()
   cargarConfigHitos()
   cargarConfigAccesos()
   try {
     await cargarDia()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   } finally {
     cargando.value = false
   }
@@ -165,6 +192,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.clearInterval(temporizador)
   window.clearTimeout(temporizadorDeshacer)
+  document.removeEventListener('visibilitychange', alVolverVisible)
 })
 
 async function ejecutar(accion: () => Promise<unknown>) {
@@ -173,7 +201,7 @@ async function ejecutar(accion: () => Promise<unknown>) {
     await accion()
     await cargarDia()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
 }
 
@@ -206,7 +234,7 @@ async function registrarYOfrecer<T>(
     ofrecerDeshacer(texto, deshacerDe(resultado))
     await cargarDia()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
 }
 
@@ -426,10 +454,8 @@ const horaActual = computed(() =>
 
 // ---- Percentiles OMS para los tiles de peso/altura ----
 function percentilTile(tipo: 'peso' | 'altura', dato: { valor: number; fecha: string } | null) {
-  const nacimiento = bebeStore.bebe?.fecha_nacimiento
-  if (!dato || !nacimiento) return null
-  const p = percentilOMS(tipo, dato.valor, edadDias(nacimiento, dato.fecha))
-  return p === null ? null : Math.round(p)
+  if (!dato) return null
+  return percentilRedondeado(tipo, dato.valor, bebeStore.bebe?.fecha_nacimiento, dato.fecha)
 }
 
 const percentilPeso = computed(() => percentilTile('peso', ultimoPeso.value))
@@ -478,7 +504,9 @@ function guardarToma() {
   if (!bebe) return
   const inicio = new Date(nuevaToma.value.inicio)
   const minutos = nuevaToma.value.duracionMin
-  const fin = !esBiberon.value && minutos ? new Date(inicio.getTime() + minutos * 60_000) : null
+  // Pecho sin duración: se cierra con fin = inicio para que no quede como
+  // "toma en curso" fantasma (solo el cronómetro crea tomas abiertas)
+  const fin = esBiberon.value ? null : new Date(inicio.getTime() + (minutos ?? 0) * 60_000)
   registrarYOfrecer(
     'Toma registrada',
     () =>
@@ -595,6 +623,11 @@ const nuevoSueno = ref({ inicio: aInputLocal(new Date()), fin: aInputLocal(new D
 function guardarSueno() {
   const bebe = bebeStore.bebe
   if (!bebe) return
+  if (new Date(nuevoSueno.value.fin) <= new Date(nuevoSueno.value.inicio)) {
+    error.value = 'El fin del sueño debe ser posterior al inicio (revisa la fecha)'
+    return
+  }
+  error.value = ''
   registrarYOfrecer(
     'Sueño registrado',
     () =>
@@ -777,6 +810,61 @@ function guardarEvento() {
   nuevoEvento.value.descripcion = ''
 }
 
+/** Recrea un registro borrado (deshacer): mismos campos, id nuevo */
+function recrear(registro: RegistroEditable): Promise<unknown> {
+  const bebe = bebeStore.bebe
+  if (!bebe) return Promise.resolve()
+  if (registro.kind === 'toma') {
+    const t = registro.toma
+    return servicio.registrarToma({
+      bebe_id: bebe.id,
+      inicio: t.inicio,
+      fin: t.fin,
+      tipo: t.tipo,
+      cantidad_ml: t.cantidad_ml,
+      notas: t.notas,
+    })
+  }
+  if (registro.kind === 'sueno') {
+    const su = registro.sueno
+    return servicio.registrarSueno({
+      bebe_id: bebe.id,
+      inicio: su.inicio,
+      fin: su.fin,
+      notas: su.notas,
+    })
+  }
+  if (registro.kind === 'panal') {
+    const pa = registro.panal
+    return servicio.registrarPanal({
+      bebe_id: bebe.id,
+      fecha: pa.fecha,
+      tipo: pa.tipo,
+      cantidad: pa.cantidad,
+      notas: pa.notas,
+    })
+  }
+  const ev = registro.evento
+  return servicio.registrarEvento({
+    bebe_id: bebe.id,
+    fecha: ev.fecha,
+    tipo: ev.tipo,
+    descripcion: ev.descripcion,
+  })
+}
+
+/** Borra una fila del día y ofrece deshacerlo (recreándola) unos segundos */
+async function borrarFila(registro: Registro) {
+  error.value = ''
+  try {
+    await registro.borrar()
+    await cargarDia()
+    ofrecerDeshacer('Registro borrado', () => recrear(registro.editable))
+  } catch (e) {
+    error.value = mensajeError(e)
+  }
+}
+
 // ---- Línea de tiempo del día ----
 interface Registro {
   id: string
@@ -786,16 +874,12 @@ interface Registro {
   editable: RegistroEditable
 }
 
-// Tocar una fila abre su edición (misma hoja que en el Historial)
+// El lápiz ✎ de una fila abre su edición (misma hoja que en el Historial)
 const registroEnEdicion = ref<RegistroEditable | null>(null)
 
 function alGuardarEdicion() {
   registroEnEdicion.value = null
   cargarDia()
-}
-
-function horaCorta(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 }
 
 // Swipe hacia la izquierda para revelar el borrar (en escritorio, con hover)
@@ -814,33 +898,33 @@ function finToqueFila(evento: TouchEvent, id: string) {
 
 const lineaDeTiempo = computed<Registro[]>(() => {
   const registros: Registro[] = [
-    ...tomas.value.map((t) => ({
+    ...tomas.value.map((t): Registro => ({
       id: t.id,
       hora: t.inicio,
       texto: textoToma(t),
       borrar: () => servicio.eliminarToma(t.id),
-      editable: { kind: 'toma', toma: t } as RegistroEditable,
+      editable: { kind: 'toma', toma: t },
     })),
-    ...suenos.value.map((s) => ({
+    ...suenos.value.map((s): Registro => ({
       id: s.id,
       hora: s.inicio,
       texto: textoSueno(s),
       borrar: () => servicio.eliminarSueno(s.id),
-      editable: { kind: 'sueno', sueno: s } as RegistroEditable,
+      editable: { kind: 'sueno', sueno: s },
     })),
-    ...panales.value.map((p) => ({
+    ...panales.value.map((p): Registro => ({
       id: p.id,
       hora: p.fecha,
       texto: textoPanal(p),
       borrar: () => servicio.eliminarPanal(p.id),
-      editable: { kind: 'panal', panal: p } as RegistroEditable,
+      editable: { kind: 'panal', panal: p },
     })),
-    ...eventos.value.map((e) => ({
+    ...eventos.value.map((e): Registro => ({
       id: e.id,
       hora: e.fecha,
       texto: textoEvento(e),
       borrar: () => servicio.eliminarEvento(e.id),
-      editable: { kind: 'evento', evento: e } as RegistroEditable,
+      editable: { kind: 'evento', evento: e },
     })),
   ]
   return registros.sort((a, b) => b.hora.localeCompare(a.hora))
@@ -1049,7 +1133,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <button
               class="boton peligro borrar-fila"
               aria-label="Borrar registro"
-              @click="ejecutar(registro.borrar)"
+              @click="borrarFila(registro)"
             >
               ✕
             </button>
@@ -1135,7 +1219,13 @@ const lineaDeTiempo = computed<Registro[]>(() => {
           </div>
           <div v-else class="campo">
             <label for="toma-min">Duración (min)</label>
-            <input id="toma-min" v-model.number="nuevaToma.duracionMin" type="number" min="1" />
+            <input
+              id="toma-min"
+              v-model.number="nuevaToma.duracionMin"
+              type="number"
+              min="1"
+              required
+            />
           </div>
           <div class="campo">
             <label for="toma-notas">Notas</label>
@@ -1570,14 +1660,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   color: #fff;
 }
 
-.acciones {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
 /* Selector de cantidad de caca */
 .cantidades {
   display: grid;
@@ -1594,12 +1676,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 .rejilla-registro .acceso {
   font-size: 0.8rem;
   padding: 0.6rem 0.3rem;
-}
-
-.bloque-mas {
-  border-top: 1px solid var(--color-borde);
-  padding-top: 0.75rem;
-  margin-top: 0.75rem;
 }
 
 .sin-peso {
@@ -1682,8 +1758,8 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   bottom: calc(72px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-texto);
-  color: #fff;
+  background: var(--color-toast-fondo);
+  color: var(--color-toast-texto);
   padding: 0.5rem 0.9rem;
   border-radius: 10px;
   display: flex;

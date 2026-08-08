@@ -320,8 +320,8 @@ function abrirRegistro() {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-texto);
-  color: #fff;
+  background: var(--color-toast-fondo);
+  color: var(--color-toast-texto);
   padding: 0.6rem 1rem;
   border-radius: 10px;
   display: flex;

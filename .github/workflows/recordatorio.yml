@@ -28,7 +28,12 @@ jobs:
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          FILA=$(psql "$DB_URL" -t -A -F'|' -c "
+          # Sin secret o con la consulta caída, el recordatorio sale igual con "?"
+          set +e
+          if [ -z "$DB_URL" ]; then
+            FILA=""
+          else
+            FILA=$(psql "$DB_URL" -t -A -F'|' -c "
             SELECT
               (SELECT count(*) FROM tomas
                  WHERE (inicio AT TIME ZONE 'Europe/Madrid')::date
@@ -50,10 +55,15 @@ jobs:
                    AND coalesce(fin, now()) AT TIME ZONE 'Europe/Madrid'
                        > date_trunc('day', now() AT TIME ZONE 'Europe/Madrid'))
           ")
-          TOMAS=$(echo "$FILA" | cut -d'|' -f1)
-          PANALES=$(echo "$FILA" | cut -d'|' -f2)
-          MIN_SUENO=$(echo "$FILA" | cut -d'|' -f3)
-          SUENO="$((MIN_SUENO / 60)) h $((MIN_SUENO % 60)) min"
+          fi
+          if [ -n "$FILA" ]; then
+            TOMAS=$(echo "$FILA" | cut -d'|' -f1)
+            PANALES=$(echo "$FILA" | cut -d'|' -f2)
+            MIN_SUENO=$(echo "$FILA" | cut -d'|' -f3)
+            SUENO="$((MIN_SUENO / 60)) h $((MIN_SUENO % 60)) min"
+          else
+            TOMAS="?"; PANALES="?"; SUENO="?"
+          fi
           echo "tomas=$TOMAS" >> "$GITHUB_OUTPUT"
           echo "panales=$PANALES" >> "$GITHUB_OUTPUT"
           echo "sueno=$SUENO" >> "$GITHUB_OUTPUT"
@@ -77,7 +87,8 @@ jobs:
             😴 Sueño: ${{ steps.resumen.outputs.sueno }}
 
             ¿Falta alguna toma, siesta o pañal por apuntar? Se puede añadir
-            a posteriori desde "Más" o corregir en el Historial:
+            con el ＋ de abajo (Registrar / Sueño a posteriori) o corregir
+            tocando el ✎ de cualquier registro:
 
             https://angelrodriguez-source.github.io/CarlotApp/
 

@@ -6,7 +6,7 @@
 
 **Push a `main` = deploy.** `.github/workflows/deploy.yml`:
 
-1. `npm ci` + `npm run test` + `npm run build` en `app/` (si algo falla, NO se publica)
+1. `npm ci` + `npm run lint-check` + `npm run test` + `npm run build` en `app/` (si algo falla, NO se publica)
 2. Publica `app/dist/` en la rama `gh-pages` (peaceiris/actions-gh-pages)
 
 En PRs solo testea y buildea (sin publicar). Tras el PRIMER deploy hay que
@@ -67,10 +67,13 @@ con la URL y anon key del proyecto Supabase.
 
 ## PWA
 
-- `public/manifest.webmanifest` — nombre, colores, standalone, icono SVG
-- `public/icon.svg` — icono (carita de bebe con lacito)
+- `public/manifest.webmanifest` — nombre, colores, standalone; iconos:
+  icon.svg + PNG 192/512 (any) + PNG maskable 192/512
+- `public/icon.svg` — icono (carita de bebe con lacito); los PNG del
+  manifest se generaron desde el con cairosvg
 - `public/sw.js` — red-primero para HTML, cache-primero para `/assets/`
-  (inmutables por hash de Vite), no intercepta Supabase
+  (inmutables por hash de Vite), no intercepta Supabase; precachea los
+  estaticos de public/ (iconos de la nav, carlota.jpg) para el modo offline
 - Registro solo en produccion (main.ts); toast "Actualizar" en App.vue
   cuando hay version nueva (`SKIP_WAITING`)
 

@@ -11,7 +11,10 @@ import {
   agruparPorDia,
   claveDia,
   formatoDuracion,
+  horaCorta,
+  mensajeError,
   minutosSuenoEnDia,
+  rangoDesde,
   resumenDia,
   textoEvento,
   textoPanal,
@@ -39,33 +42,32 @@ const momentos = ref<Evento[]>([])
 
 const diaAbierto = ref<string | null>(null)
 
+// Token de carga: al cambiar el selector de días dos veces rápido, la
+// respuesta vieja no debe pisar a la nueva
+let versionCarga = 0
+
 async function cargar() {
   error.value = ''
   cargando.value = true
+  const version = ++versionCarga
   try {
     const bebe = await bebeStore.cargar()
     if (!bebe) return
-    hoy.value = claveDia(new Date().toISOString())
-    // "Últimos N días" = hoy + los N-1 anteriores (igual que ultimosDias)
-    const desde = new Date()
-    desde.setDate(desde.getDate() - (dias.value - 1))
-    desde.setHours(0, 0, 0, 0)
-    const desdeIso = desde.toISOString()
-    // Sueños desde un día antes del rango: el nocturno que empezó la
-    // víspera aporta sus horas de madrugada al primer día visible
-    const desdeSuenos = new Date(desde)
-    desdeSuenos.setDate(desdeSuenos.getDate() - 1)
-    ;[tomas.value, suenos.value, panales.value, eventos.value, momentos.value] = await Promise.all([
+    const { desdeIso, desdeSuenosIso } = rangoDesde(dias.value)
+    const datos = await Promise.all([
       servicio.listarTomas(bebe.id, desdeIso),
-      servicio.listarSuenos(bebe.id, desdeSuenos.toISOString()),
+      servicio.listarSuenos(bebe.id, desdeSuenosIso),
       servicio.listarPanales(bebe.id, desdeIso),
       servicio.listarEventos(bebe.id, desdeIso),
       servicio.listarMomentos(bebe.id),
     ])
+    if (version !== versionCarga) return
+    hoy.value = claveDia(new Date().toISOString())
+    ;[tomas.value, suenos.value, panales.value, eventos.value, momentos.value] = datos
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    if (version === versionCarga) error.value = mensajeError(e)
   } finally {
-    cargando.value = false
+    if (version === versionCarga) cargando.value = false
   }
 }
 
@@ -82,10 +84,6 @@ interface DiaHistorial {
   dia: string
   resumen: ReturnType<typeof resumenDia>
   registros: RegistroDia[]
-}
-
-function horaCorta(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 }
 
 function fechaLegible(dia: string): string {
@@ -106,65 +104,53 @@ const historial = computed<DiaHistorial[]>(() => {
   const panalesPorDia = agruparPorDia(panales.value, (p) => p.fecha)
   const eventosPorDia = agruparPorDia(eventos.value, (e) => e.fecha)
 
-  const todosLosDias = new Set<string>([
-    ...tomasPorDia.keys(),
-    ...suenosPorDia.keys(),
-    ...panalesPorDia.keys(),
-    ...eventosPorDia.keys(),
-  ])
+  // Todos los días del rango (recientes primero), aunque estén a cero:
+  // así "Hoy" existe desde por la mañana y el tap del ritmo siempre aterriza
+  return [...diasRitmo.value].map((dia) => {
+    const tomasDia = tomasPorDia.get(dia) ?? []
+    const suenosDia = suenosPorDia.get(dia) ?? []
+    const panalesDia = panalesPorDia.get(dia) ?? []
+    const eventosDia = eventosPorDia.get(dia) ?? []
 
-  // Los sueños se piden desde un día antes del rango (para repartir el
-  // nocturno); ese día extra no se lista
-  const primerDia = diasRitmo.value[diasRitmo.value.length - 1]!
+    const registros: RegistroDia[] = [
+      ...tomasDia.map((t): RegistroDia => ({
+        kind: 'toma',
+        id: t.id,
+        hora: t.inicio,
+        texto: textoToma(t),
+        toma: t,
+      })),
+      ...suenosDia.map((s): RegistroDia => ({
+        kind: 'sueno',
+        id: s.id,
+        hora: s.inicio,
+        texto: textoSueno(s),
+        sueno: s,
+      })),
+      ...panalesDia.map((p): RegistroDia => ({
+        kind: 'panal',
+        id: p.id,
+        hora: p.fecha,
+        texto: textoPanal(p),
+        panal: p,
+      })),
+      ...eventosDia.map((e): RegistroDia => ({
+        kind: 'evento',
+        id: e.id,
+        hora: e.fecha,
+        texto: textoEvento(e),
+        evento: e,
+      })),
+    ].sort((a, b) => a.hora.localeCompare(b.hora))
 
-  return [...todosLosDias]
-    .filter((dia) => dia >= primerDia)
-    .sort((a, b) => b.localeCompare(a))
-    .map((dia) => {
-      const tomasDia = tomasPorDia.get(dia) ?? []
-      const suenosDia = suenosPorDia.get(dia) ?? []
-      const panalesDia = panalesPorDia.get(dia) ?? []
-      const eventosDia = eventosPorDia.get(dia) ?? []
-
-      const registros: RegistroDia[] = [
-        ...tomasDia.map((t): RegistroDia => ({
-          kind: 'toma',
-          id: t.id,
-          hora: t.inicio,
-          texto: textoToma(t),
-          toma: t,
-        })),
-        ...suenosDia.map((s): RegistroDia => ({
-          kind: 'sueno',
-          id: s.id,
-          hora: s.inicio,
-          texto: textoSueno(s),
-          sueno: s,
-        })),
-        ...panalesDia.map((p): RegistroDia => ({
-          kind: 'panal',
-          id: p.id,
-          hora: p.fecha,
-          texto: textoPanal(p),
-          panal: p,
-        })),
-        ...eventosDia.map((e): RegistroDia => ({
-          kind: 'evento',
-          id: e.id,
-          hora: e.fecha,
-          texto: textoEvento(e),
-          evento: e,
-        })),
-      ].sort((a, b) => a.hora.localeCompare(b.hora))
-
-      // El sueño del resumen se reparte por día real (los nocturnos que
-      // cruzan medianoche aportan su parte a cada día), no por día de inicio
-      const resumen = {
-        ...resumenDia(tomasDia, suenosDia, panalesDia),
-        minutosSueno: minutosSuenoEnDia(suenos.value, dia),
-      }
-      return { dia, resumen, registros }
-    })
+    // El sueño del resumen se reparte por día real (los nocturnos que
+    // cruzan medianoche aportan su parte a cada día), no por día de inicio
+    const resumen = {
+      ...resumenDia(tomasDia, suenosDia, panalesDia),
+      minutosSueno: minutosSuenoEnDia(suenos.value, dia),
+    }
+    return { dia, resumen, registros }
+  })
 })
 
 // Se refresca en cada cargar() para no quedarse obsoleto pasada la medianoche
@@ -196,13 +182,14 @@ function alGuardar() {
   cargar()
 }
 
-async function borrarMomento(id: string) {
+async function borrarMomento(momento: Evento) {
+  if (!window.confirm(`¿Borrar el momento "${momento.descripcion ?? 'hito'}"?`)) return
   error.value = ''
   try {
-    await servicio.eliminarEvento(id)
+    await servicio.eliminarEvento(momento.id)
     await cargar()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = mensajeError(e)
   }
 }
 </script>
@@ -249,7 +236,7 @@ async function borrarMomento(id: string) {
         <button
           class="boton peligro"
           :aria-label="`Borrar momento: ${momento.descripcion ?? 'hito'}`"
-          @click="borrarMomento(momento.id)"
+          @click="borrarMomento(momento)"
         >
           ✕
         </button>
