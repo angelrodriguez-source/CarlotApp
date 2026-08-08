@@ -234,6 +234,19 @@ textarea {
   align-items: center;
 }
 
+/* Título de vista (primera card) con el icono de su pestaña delante */
+.titulo-vista {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.titulo-vista img {
+  width: 26px;
+  height: 26px;
+}
+
 /* Icono propio delante del texto de una fila (hitos, líneas de tiempo) */
 .icono-linea {
   width: 18px;
