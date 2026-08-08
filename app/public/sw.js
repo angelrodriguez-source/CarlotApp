@@ -6,7 +6,7 @@
  *  - Assets con hash de Vite (/assets/): cache primero (son inmutables)
  *  - Resto: red con fallback a cache
  */
-const CACHE = 'carlotapp-v9'
+const CACHE = 'carlotapp-v10'
 
 // Estaticos de public/ (sin hash): precacheados para que el avatar y los
 // iconos de la navegacion funcionen offline desde el primer arranque
@@ -33,7 +33,7 @@ const PRECACHE = [
   './icono-bano.png',
   './icono-vitamina.png',
   './icono-medicacion.png',
-  './nenei.png',
+  './nenei.png?v=2',
 ]
 
 self.addEventListener('install', (event) => {
@@ -41,8 +41,14 @@ self.addEventListener('install', (event) => {
   // icono renombrado con la lista sin actualizar) abortaria TODAS las
   // instalaciones futuras del SW sin sintoma visible. Con allSettled el
   // recurso que falte solo pierde su copia offline.
+  // cache: 'reload' salta la cache HTTP del navegador: sin ello, un
+  // precache nuevo puede rellenarse con bytes viejos (max-age de Pages)
   event.waitUntil(
-    caches.open(CACHE).then((cache) => Promise.allSettled(PRECACHE.map((url) => cache.add(url)))),
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        Promise.allSettled(PRECACHE.map((url) => cache.add(new Request(url, { cache: 'reload' })))),
+      ),
   )
 })
 
