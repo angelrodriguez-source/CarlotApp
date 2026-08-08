@@ -105,6 +105,15 @@ Componentes):
 - `models/frasesNeneni.ts` — las frases del bocadillo y la nota de
   aprendizaje como funciones puras (frasesNeneni, notaAprendizaje),
   testeadas en frasesNeneni.spec.ts
+- `models/validacion.ts` — controles de rango de TODAS las entradas
+  (testeados): `LIMITES_ENTRADA` es el unico punto de ajuste (ml de
+  biberon 5-500, pecho 1-120 min, sueno <= 16 h, peso 1.5-25 kg, altura
+  40-120 cm, PC 28-60 cm, tolerancia de futuro 5 min);
+  `validarRango`, `validarFechaRegistro` (dentro de [nacimiento,
+  ahora+tolerancia]), `validarFechaDia` (medidas), `validarTramoSueno` y
+  `primerError`. Los formularios (HoyView, HojaEdicionRegistro,
+  EvolucionView) validan ANTES de llamar al servicio y ademas llevan
+  min/max nativos en los inputs (fechas acotadas a la vida de la bebe)
 - Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
   (upsert de una fila viva por bebe en `predicciones`) +
   `aFilaPrediccion()` para serializar

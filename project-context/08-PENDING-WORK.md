@@ -143,6 +143,16 @@ de HojaEdicionRegistro.
       "Acerca de") y la deuda "Solo hay tests de CarlotaModel" (ya se
       testean 3 modulos de models/).
 
+## Validacion de entradas (2026-08-08)
+
+- [x] Controles de rango en todos los formularios (models/validacion.ts,
+      testeado): fechas dentro de [nacimiento, ahora+5 min] (con
+      min/max nativos en los inputs), biberon 5-500 ml, pecho 1-120 min,
+      sueno <= 16 h, peso 1.5-25 kg, altura 40-120 cm, PC 28-60 cm.
+      LIMITES_ENTRADA es el unico punto de ajuste. Aplica en alta
+      (HoyView, EvolucionView) y edicion (HojaEdicionRegistro, hoja de
+      medidas), siempre ANTES de llamar al servicio.
+
 ## Proximas features (brainstorming 2026-08-07)
 
 ### Registro mas rapido / util
