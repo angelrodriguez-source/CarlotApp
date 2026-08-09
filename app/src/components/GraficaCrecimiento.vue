@@ -13,6 +13,8 @@ export interface PuntoCrecimiento {
   dia: number // edad en días
   valor: number
   etiqueta: string // fecha 'YYYY-MM-DD' (solo la serie medida)
+  /** Interpolado en el borde de la ventana: dibuja la línea, sin círculo */
+  virtual?: boolean
 }
 
 export interface CurvaPercentil {
@@ -88,8 +90,12 @@ const curvasDibujadas = computed(() =>
 )
 
 const coordsMedidos = computed(() =>
-  props.puntos.map((p) => ({ x: aX(p.dia), y: aY(p.valor), punto: p })),
+  // Los virtuales (bordes de ventana) solo participan en la polilínea
+  props.puntos.filter((p) => !p.virtual).map((p) => ({ x: aX(p.dia), y: aY(p.valor), punto: p })),
 )
+
+/** Medidas reales (sin los puntos virtuales de borde) */
+const reales = computed(() => props.puntos.filter((p) => !p.virtual))
 
 /** X de la marca de "hoy", o null si cae fuera de la ventana */
 const xHoy = computed(() => {
@@ -99,15 +105,15 @@ const xHoy = computed(() => {
   return aX(props.diaHoy)
 })
 
-const lineaMedida = computed(() => coordsMedidos.value.map((c) => `${c.x},${c.y}`).join(' '))
+const lineaMedida = computed(() => props.puntos.map((p) => `${aX(p.dia)},${aY(p.valor)}`).join(' '))
 
-/** Etiquetas del eje X: primera y última medida (si las hay) */
+/** Etiquetas del eje X: primera y última medida REAL (si las hay) */
 const etiquetasX = computed(() => {
-  if (props.puntos.length === 0) return null
+  const r = reales.value
+  if (r.length === 0) return null
   return {
-    inicio: fechaCortaDia(props.puntos[0]!.etiqueta),
-    fin:
-      props.puntos.length > 1 ? fechaCortaDia(props.puntos[props.puntos.length - 1]!.etiqueta) : '',
+    inicio: fechaCortaDia(r[0]!.etiqueta),
+    fin: r.length > 1 ? fechaCortaDia(r[r.length - 1]!.etiqueta) : '',
   }
 })
 </script>
@@ -186,10 +192,10 @@ const etiquetasX = computed(() => {
         </text>
       </template>
     </svg>
-    <p v-if="puntos.length === 0" class="suave">Sin medidas en esta ventana.</p>
+    <p v-if="reales.length === 0" class="suave">Sin medidas en esta ventana.</p>
     <p v-else class="suave ultimo">
-      Último: {{ puntos[puntos.length - 1]!.valor }} {{ unidad }} ({{
-        puntos[puntos.length - 1]!.etiqueta
+      Último: {{ reales[reales.length - 1]!.valor }} {{ unidad }} ({{
+        reales[reales.length - 1]!.etiqueta
       }})
     </p>
     <p class="suave leyenda-banda">

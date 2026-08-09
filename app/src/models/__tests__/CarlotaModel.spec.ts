@@ -28,6 +28,7 @@ import {
   mlEnDia,
   numeroONull,
   rangoDesde,
+  recortarSerieAVentana,
   recortarVaciosIniciales,
   sinEmojiInicial,
   ultimosDias,
@@ -256,6 +257,42 @@ describe('objetivos diarios', () => {
     expect(objetivoLecheMl(60, 9000)!.max).toBe(1000)
     // Sin peso no hay objetivo
     expect(objetivoLecheMl(60, null)).toBeNull()
+  })
+})
+
+describe('recortarSerieAVentana — la línea entra por el borde', () => {
+  const p = (dia: number, valor: number): { dia: number; valor: number; etiqueta: string } => ({
+    dia,
+    valor,
+    etiqueta: `d${dia}`,
+  })
+
+  it('una medida anterior a la ventana genera un punto virtual en el borde', () => {
+    // Medidas en los días 10 y 50; ventana [30, 90]: la línea debe entrar
+    // por el día 30 con el valor interpolado (10→50 lineal)
+    const serie = recortarSerieAVentana([p(10, 4000), p(50, 6000)], 30, 90)
+    expect(serie).toHaveLength(2)
+    expect(serie[0]).toMatchObject({ dia: 30, valor: 5000, virtual: true })
+    expect(serie[1]).toMatchObject({ dia: 50, valor: 6000 })
+    expect(serie[1]!.virtual).toBeUndefined()
+  })
+
+  it('sin medidas fuera no añade nada; también recorta por la derecha', () => {
+    expect(recortarSerieAVentana([p(35, 5000), p(50, 6000)], 30, 90)).toHaveLength(2)
+    const conFutura = recortarSerieAVentana([p(80, 7000), p(100, 8000)], 30, 90)
+    expect(conFutura).toHaveLength(2)
+    expect(conFutura[1]).toMatchObject({ dia: 90, valor: 7500, virtual: true })
+  })
+
+  it('un solo segmento que cruza toda la ventana entra y sale', () => {
+    const serie = recortarSerieAVentana([p(10, 4000), p(110, 9000)], 30, 90)
+    expect(serie).toHaveLength(2)
+    expect(serie[0]).toMatchObject({ dia: 30, valor: 5000, virtual: true })
+    expect(serie[1]).toMatchObject({ dia: 90, valor: 8000, virtual: true })
+  })
+
+  it('todo fuera y sin cruce: serie vacía', () => {
+    expect(recortarSerieAVentana([p(10, 4000), p(20, 4500)], 30, 90)).toEqual([])
   })
 })
 
