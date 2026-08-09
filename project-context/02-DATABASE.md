@@ -27,7 +27,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | `tomas` | inicio, fin, tipo, cantidad_ml, notas | tipo: pecho_izq/pecho_der/biberon_formula/biberon_materna. Pecho→duracion, biberon→ml |
 | `suenos` | inicio, fin, notas | `fin NULL` = sueno en curso |
 | `panales` | fecha, tipo, cantidad | tipo: pis/caca/mixto. cantidad (poco/medio/mucho, opcional) para caca/mixto |
-| `eventos` | fecha, tipo, descripcion | tipo: bano/vitamina_d/medicacion/unas/hito/otro |
+| `eventos` | fecha, tipo, descripcion, subtipo, duracion_min | tipo: bano/vitamina_d/medicacion/unas/hito/otro/ejercicio; subtipo (tummy_time/estimulacion/otros) y duracion_min solo los usa el ejercicio |
 | `citas` | fecha, titulo, tipo, lugar, notas, completada | tipo: medica/tramite/otro |
 | `usuarios_autorizados` | email, nota | Lista blanca (ver arriba) |
 | `predicciones` | calculado_en, proxima_toma(+franja), proxima_siesta(+franja), durmiendo, incomodidad_prob, parametros | Mime Predictor: UNA fila viva por bebe (upsert), con los parametros del calculo en JSONB. La linea base poblacional vive en el codigo (prediccionBase.ts) |
@@ -61,6 +61,9 @@ Migraciones existentes:
    ('casa' por defecto / 'oficial' — pediatra o farmacia).
 6. `202608081700_predicciones.sql` — tabla `predicciones` del Mime
    Predictor (una fila viva por bebe, RLS con la lista blanca).
+7. `202608091300_ejercicio.sql` — tipo de evento 'ejercicio' (Tummy
+   Time/estimulacion/otros) + columnas `subtipo` y `duracion_min` en
+   `eventos` con sus CHECK.
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

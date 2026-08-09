@@ -20,10 +20,12 @@ import {
 import { ICONOS_REGISTRO } from '../assets/branding'
 import {
   ETIQUETAS_CANTIDAD_PANAL,
+  ETIQUETAS_EJERCICIO,
   ETIQUETAS_EVENTO,
   ETIQUETAS_PANAL,
   ETIQUETAS_TOMA,
   type CantidadPanal,
+  type TipoEjercicio,
   type TipoEvento,
   type TipoPanal,
   type TipoToma,
@@ -47,6 +49,8 @@ interface Edicion {
   tipoPanal: TipoPanal
   cantidadPanal: CantidadPanal | ''
   tipoEvento: TipoEvento
+  subtipoEjercicio: TipoEjercicio
+  duracionEjercicio: number | null
   descripcion: string
   notas: string
 }
@@ -74,6 +78,8 @@ function construir(registro: RegistroEditable): Edicion {
     tipoPanal: 'pis',
     cantidadPanal: '',
     tipoEvento: 'otro',
+    subtipoEjercicio: 'tummy_time',
+    duracionEjercicio: null,
     descripcion: '',
     notas: '',
   }
@@ -97,6 +103,8 @@ function construir(registro: RegistroEditable): Edicion {
     base.id = registro.evento.id
     base.inicio = aInputLocal(new Date(registro.evento.fecha))
     base.tipoEvento = registro.evento.tipo
+    base.subtipoEjercicio = registro.evento.subtipo ?? 'tummy_time'
+    base.duracionEjercicio = registro.evento.duracion_min
     base.descripcion = registro.evento.descripcion ?? ''
   }
   return base
@@ -204,11 +212,21 @@ function guardar() {
       }),
     )
   } else {
+    const esEjercicio = e.tipoEvento === 'ejercicio'
+    if (esEjercicio) {
+      const problema = validarRango(numeroONull(e.duracionEjercicio), LIMITES_ENTRADA.ejercicioMin)
+      if (problema) {
+        error.value = problema
+        return
+      }
+    }
     ejecutar(() =>
       servicio.actualizarEvento(e.id, {
         fecha: inicioIso,
         tipo: e.tipoEvento,
         descripcion: e.descripcion || null,
+        subtipo: esEjercicio ? e.subtipoEjercicio : null,
+        duracion_min: esEjercicio ? numeroONull(e.duracionEjercicio) : null,
       }),
     )
   }
@@ -343,7 +361,28 @@ function borrar() {
             </option>
           </select>
         </div>
-        <div class="campo">
+        <template v-if="edicion.tipoEvento === 'ejercicio'">
+          <div class="campo">
+            <label for="ed-subtipo-ejercicio">Ejercicio</label>
+            <select id="ed-subtipo-ejercicio" v-model="edicion.subtipoEjercicio">
+              <option v-for="(etiqueta, valor) in ETIQUETAS_EJERCICIO" :key="valor" :value="valor">
+                {{ etiqueta }}
+              </option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="ed-ejercicio-min">Tiempo (min)</label>
+            <input
+              id="ed-ejercicio-min"
+              v-model.number="edicion.duracionEjercicio"
+              type="number"
+              :min="LIMITES_ENTRADA.ejercicioMin.min"
+              :max="LIMITES_ENTRADA.ejercicioMin.max"
+              required
+            />
+          </div>
+        </template>
+        <div v-else class="campo">
           <label for="ed-desc">Descripción</label>
           <input id="ed-desc" v-model="edicion.descripcion" type="text" />
         </div>

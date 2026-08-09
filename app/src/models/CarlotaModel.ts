@@ -7,6 +7,7 @@
  */
 import {
   ETIQUETAS_CANTIDAD_PANAL,
+  ETIQUETAS_EJERCICIO,
   ETIQUETAS_EVENTO,
   ETIQUETAS_PANAL,
   ETIQUETAS_TOMA,
@@ -237,6 +238,11 @@ export function textoPanal(p: Panal): string {
 }
 
 export function textoEvento(e: Evento): string {
+  if (e.tipo === 'ejercicio') {
+    const subtipo = ETIQUETAS_EJERCICIO[e.subtipo ?? 'tummy_time']
+    const duracion = e.duracion_min !== null ? ` — ${formatoDuracion(e.duracion_min)}` : ''
+    return `🤸 Ejercicio (${subtipo})${duracion}${e.descripcion ? ` · ${e.descripcion}` : ''}`
+  }
   return `⭐ ${ETIQUETAS_EVENTO[e.tipo]}${e.descripcion ? ` — ${e.descripcion}` : ''}`
 }
 
