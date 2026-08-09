@@ -38,7 +38,12 @@ import {
   type Sueno,
   type Toma,
 } from '../types'
-import { iconoEvolucionUrl } from '../assets/branding'
+import {
+  ICONOS_REGISTRO,
+  iconoAlturaUrl,
+  iconoEvolucionUrl,
+  iconoPesoUrl,
+} from '../assets/branding'
 import GraficaLinea from '../components/GraficaLinea.vue'
 import GraficaCrecimiento, {
   type CurvaPercentil,
@@ -506,14 +511,16 @@ const franjaLeche = computed(() => {
 
     <template v-if="modo === 'valor'">
       <GraficaCrecimiento
-        titulo="⚖️ Peso"
+        titulo="Peso"
+        :icono="iconoPesoUrl"
         unidad="g"
         :puntos="medidosPeso"
         :curvas="curvasPeso"
         :dia-hoy="edadHoy ?? undefined"
       />
       <GraficaCrecimiento
-        titulo="📏 Altura"
+        titulo="Altura"
+        :icono="iconoAlturaUrl"
         unidad="cm"
         :puntos="medidosAltura"
         :curvas="curvasAltura"
@@ -527,8 +534,18 @@ const franjaLeche = computed(() => {
       />
     </template>
     <template v-else>
-      <GraficaLinea titulo="⚖️ Percentil de peso" :puntos="seriePercentilPeso" unidad="P" />
-      <GraficaLinea titulo="📏 Percentil de altura" :puntos="seriePercentilAltura" unidad="P" />
+      <GraficaLinea
+        titulo="Percentil de peso"
+        :icono="iconoPesoUrl"
+        :puntos="seriePercentilPeso"
+        unidad="P"
+      />
+      <GraficaLinea
+        titulo="Percentil de altura"
+        :icono="iconoAlturaUrl"
+        :puntos="seriePercentilAltura"
+        unidad="P"
+      />
       <GraficaLinea titulo="👶 Percentil de PC" :puntos="seriePercentilPerimetro" unidad="P" />
     </template>
 
@@ -575,7 +592,8 @@ const franjaLeche = computed(() => {
     </div>
     <div v-if="!cargando" id="grafica-tomas">
       <GraficaLinea
-        titulo="🍼 Leche al día"
+        titulo="Leche al día"
+        :icono="ICONOS_REGISTRO.toma"
         :puntos="serieLeche"
         unidad="ml"
         :recomendado="franjaLeche"
@@ -583,7 +601,8 @@ const franjaLeche = computed(() => {
     </div>
     <div v-if="!cargando" id="grafica-sueno">
       <GraficaLinea
-        titulo="😴 Sueño al día"
+        titulo="Sueño al día"
+        :icono="ICONOS_REGISTRO.sueno"
         :puntos="serieSueno"
         unidad="h"
         :recomendado="franjaSueno"

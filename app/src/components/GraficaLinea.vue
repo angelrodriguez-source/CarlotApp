@@ -23,6 +23,8 @@ const props = defineProps<{
    * color para poder comparar. Mismas reglas que `banda`.
    */
   recomendado?: ({ min: number; max: number } | null)[]
+  /** Icono propio del título (sustituye al emoji) */
+  icono?: string
 }>()
 
 const bandaValida = computed(() =>
@@ -122,7 +124,10 @@ const poligonoRecomendado = computed(() => {
 
 <template>
   <div class="tarjeta">
-    <h3>{{ titulo }}</h3>
+    <h3 class="titulo-grafica">
+      <img v-if="icono" :src="icono" alt="" class="icono-titulo" />
+      {{ titulo }}
+    </h3>
     <p v-if="puntos.length === 0" class="suave">Sin datos todavía.</p>
     <svg v-else :viewBox="`0 0 ${ANCHO} ${ALTO}`" class="grafica" role="img" :aria-label="titulo">
       <!-- Eje Y: min y max -->
@@ -197,6 +202,17 @@ const poligonoRecomendado = computed(() => {
 </template>
 
 <style scoped>
+.titulo-grafica {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.titulo-grafica .icono-titulo {
+  width: 24px;
+  height: 24px;
+}
+
 .grafica {
   width: 100%;
   height: auto;

@@ -33,6 +33,12 @@ export const iconoHistorialUrl = import.meta.env.BASE_URL + 'icono-historial.png
 /** Icono del Ritmo de 24 h (reloj con sol y luna) */
 export const iconoRitmoUrl = import.meta.env.BASE_URL + 'icono-ritmo.png'
 
+/** Icono de Peso en Evolución (báscula) */
+export const iconoPesoUrl = import.meta.env.BASE_URL + 'icono-peso.png'
+
+/** Icono de Altura en Evolución (regla) */
+export const iconoAlturaUrl = import.meta.env.BASE_URL + 'icono-altura.png'
+
 /**
  * Ñeñeñi, el Mime experto en cuidado de bebés (public/nenei.png): la cara
  * del Mime Predictor. Vive en la cabecera y habla en su bocadillo.
