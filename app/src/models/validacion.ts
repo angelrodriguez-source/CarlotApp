@@ -33,6 +33,8 @@ export const LIMITES_ENTRADA = {
   tomaPechoMin: { min: 1, max: 120, unidad: 'min', etiqueta: 'La duración de la toma' },
   /** Un sueño de más de 16 h seguidas es un registro olvidado o un error */
   suenoMin: { min: 1, max: 16 * 60, unidad: 'min', etiqueta: 'La duración del sueño' },
+  /** Ejercicio (Tummy Time...): de 1 min a 3 h */
+  ejercicioMin: { min: 1, max: 180, unidad: 'min', etiqueta: 'La duración del ejercicio' },
   /** Peso: de prematura a más que percentil 100 con 2 años */
   pesoGramos: { min: 1500, max: 25000, unidad: 'g', etiqueta: 'El peso' },
   alturaCm: { min: 40, max: 120, unidad: 'cm', etiqueta: 'La altura' },

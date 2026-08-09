@@ -12,6 +12,17 @@
 - [ ] Secrets `MAIL_USERNAME` y `MAIL_PASSWORD` (contrasena de aplicacion
       Gmail) para el recordatorio nocturno por email (ver 07-DEPLOYMENT)
 
+## Registro de Ejercicio (2026-08-09)
+
+- [x] Nuevo tipo de registro **Ejercicio** (idea de Angel): subtipo
+      Tummy Time (por defecto) / Estimulacion / Otros + tiempo en
+      minutos. Es un evento (tipo 'ejercicio', migracion 7) con
+      `subtipo` y `duracion_min`; en las lineas de tiempo se muestra
+      "Ejercicio (Tummy Time) — 15 min". Hoja de alta propia (accion en
+      el catalogo del + y de accesos directos), hito "Ultimo ejercicio"
+      en el catalogo, edicion completa en HojaEdicionRegistro y rango de
+      validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
+
 ## Super analisis 2026-08-08 (revision multi-agente — EJECUTADO ese mismo dia)
 
 Revision de 6 dimensiones (correccion, UX, accesibilidad, rendimiento,

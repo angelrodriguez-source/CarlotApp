@@ -20,6 +20,7 @@ import {
   textoPanal,
   textoSueno,
   textoToma,
+  textoEvento,
   tramoEnDia,
   fechaCortaDia,
   horaCorta,
@@ -225,6 +226,26 @@ describe('texto de registros', () => {
     }
     expect(textoSueno(sueno)).toBe('😴 Sueño — 1 h 30 min')
     expect(textoSueno({ ...sueno, fin: null })).toBe('😴 Sueño (en curso)')
+  })
+
+  it('describe el ejercicio con su subtipo y tiempo', () => {
+    const ejercicio = {
+      id: 'e',
+      bebe_id: 'b',
+      fecha: '2026-08-09T10:00:00Z',
+      tipo: 'ejercicio' as const,
+      descripcion: null,
+      subtipo: 'tummy_time' as const,
+      duracion_min: 15,
+    }
+    expect(textoEvento(ejercicio)).toBe('🤸 Ejercicio (Tummy Time) — 15 min')
+    expect(textoEvento({ ...ejercicio, subtipo: 'estimulacion' as const, duracion_min: 70 })).toBe(
+      '🤸 Ejercicio (Estimulación) — 1 h 10 min',
+    )
+    // Sin subtipo guardado cae al por defecto (Tummy Time)
+    expect(textoEvento({ ...ejercicio, subtipo: null, duracion_min: null })).toBe(
+      '🤸 Ejercicio (Tummy Time)',
+    )
   })
 
   it('describe panales con y sin cantidad', () => {

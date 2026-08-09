@@ -273,7 +273,8 @@ export async function eliminarPanal(id: string): Promise<void> {
 // ------------------------------------------------------------
 
 export async function registrarEvento(
-  evento: Pick<Evento, 'bebe_id' | 'fecha' | 'tipo' | 'descripcion'>,
+  evento: Pick<Evento, 'bebe_id' | 'fecha' | 'tipo' | 'descripcion'> &
+    Partial<Pick<Evento, 'subtipo' | 'duracion_min'>>,
 ): Promise<Evento> {
   const { data, error } = await supabase.from('eventos').insert(evento).select().single()
   lanzarSi(error)
@@ -339,7 +340,7 @@ export async function listarMomentos(bebeId: string): Promise<Evento[]> {
 
 export async function actualizarEvento(
   id: string,
-  cambios: Partial<Pick<Evento, 'fecha' | 'tipo' | 'descripcion'>>,
+  cambios: Partial<Pick<Evento, 'fecha' | 'tipo' | 'descripcion' | 'subtipo' | 'duracion_min'>>,
 ): Promise<void> {
   const { error } = await supabase.from('eventos').update(cambios).eq('id', id)
   lanzarSi(error)

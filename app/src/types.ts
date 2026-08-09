@@ -45,7 +45,11 @@ export interface Panal {
   notas: string | null
 }
 
-export type TipoEvento = 'bano' | 'vitamina_d' | 'medicacion' | 'unas' | 'hito' | 'otro'
+export type TipoEvento =
+  'bano' | 'vitamina_d' | 'medicacion' | 'unas' | 'hito' | 'otro' | 'ejercicio'
+
+/** Subtipo del evento 'ejercicio' */
+export type TipoEjercicio = 'tummy_time' | 'estimulacion' | 'otros'
 
 export interface Evento {
   id: string
@@ -53,6 +57,10 @@ export interface Evento {
   fecha: string
   tipo: TipoEvento
   descripcion: string | null
+  /** Solo en tipo 'ejercicio' */
+  subtipo: TipoEjercicio | null
+  /** Duración en minutos (solo la usa el ejercicio) */
+  duracion_min: number | null
 }
 
 /** 'casa' = medición nuestra; 'oficial' = validada (pediatra o farmacia) */
@@ -108,6 +116,13 @@ export const ETIQUETAS_EVENTO: Record<TipoEvento, string> = {
   unas: 'Uñas cortadas',
   hito: 'Momento',
   otro: 'Otro',
+  ejercicio: 'Ejercicio',
+}
+
+export const ETIQUETAS_EJERCICIO: Record<TipoEjercicio, string> = {
+  tummy_time: 'Tummy Time',
+  estimulacion: 'Estimulación',
+  otros: 'Otros',
 }
 
 export const ETIQUETAS_ORIGEN_MEDIDA: Record<OrigenMedida, string> = {

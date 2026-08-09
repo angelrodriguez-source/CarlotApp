@@ -52,6 +52,7 @@ import {
   ultimoValor,
 } from '../models/CarlotaModel'
 import {
+  ETIQUETAS_EJERCICIO,
   ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
   ETIQUETAS_TOMA,
@@ -61,6 +62,7 @@ import {
   type Medida,
   type Panal,
   type Sueno,
+  type TipoEjercicio,
   type TipoEvento,
   type TipoPanal,
   type TipoToma,
@@ -97,7 +99,7 @@ const ultimosEventos = ref<Partial<Record<TipoEvento, Evento | null>>>({})
 
 // Qué hoja está abierta: 'registro' es la del + (todos los tipos)
 const formulario = ref<
-  'toma' | 'fin-toma' | 'registro' | 'momento' | 'sueno-post' | 'evento' | null
+  'toma' | 'fin-toma' | 'registro' | 'momento' | 'sueno-post' | 'evento' | 'ejercicio' | null
 >(null)
 
 // Reloj para que la edad y el sueño en curso se actualicen solos
@@ -382,6 +384,7 @@ const CATALOGO_HITOS = [
   { id: 'medicacion', etiqueta: 'Medicación', img: ICONOS_REGISTRO.medicacion },
   { id: 'unas', etiqueta: 'Uñas cortadas', img: ICONOS_REGISTRO.unas },
   { id: 'hito', etiqueta: 'Último momento', img: ICONOS_REGISTRO.hito },
+  { id: 'ejercicio', etiqueta: 'Último ejercicio', img: ICONOS_REGISTRO.ejercicio },
   { id: 'otro', etiqueta: 'Otro', img: ICONOS_REGISTRO.otro },
 ] as const
 
@@ -810,6 +813,45 @@ function abrirEvento(tipo: TipoEvento) {
   formulario.value = 'evento'
 }
 
+// ---- Ejercicio (Tummy Time, estimulación...) ----
+const nuevoEjercicio = ref({
+  subtipo: 'tummy_time' as TipoEjercicio,
+  duracionMin: null as number | null,
+  hora: '',
+})
+
+function abrirEjercicio() {
+  nuevoEjercicio.value = { subtipo: 'tummy_time', duracionMin: null, hora: aInputLocal(new Date()) }
+  formulario.value = 'ejercicio'
+}
+
+async function guardarEjercicio() {
+  const bebe = bebeStore.bebe
+  if (!bebe) return
+  const problema = primerError(
+    validarFechaRegistro(new Date(nuevoEjercicio.value.hora), bebe.fecha_nacimiento),
+    validarRango(numeroONull(nuevoEjercicio.value.duracionMin), LIMITES_ENTRADA.ejercicioMin),
+  )
+  if (problema) {
+    error.value = problema
+    return
+  }
+  const guardado = await registrarYOfrecer(
+    'Ejercicio registrado 🤸',
+    () =>
+      servicio.registrarEvento({
+        bebe_id: bebe.id,
+        fecha: new Date(nuevoEjercicio.value.hora).toISOString(),
+        tipo: 'ejercicio',
+        descripcion: null,
+        subtipo: nuevoEjercicio.value.subtipo,
+        duracion_min: numeroONull(nuevoEjercicio.value.duracionMin),
+      }),
+    (evento) => () => servicio.eliminarEvento(evento.id),
+  )
+  if (guardado) formulario.value = null
+}
+
 // ---- Catálogo de acciones de registro ----
 // El + de la nav las despliega todas; la card "Accesos directos" muestra
 // solo las que configure cada usuario (⚙, guardada por usuario).
@@ -860,6 +902,7 @@ const accionesRegistro = computed<AccionRegistro[]>(() => [
     etiqueta: 'Medicación',
   },
   { id: 'unas', icono: '✂️', img: ICONOS_REGISTRO.unas, etiqueta: 'Uñas' },
+  { id: 'ejercicio', icono: '🤸', img: ICONOS_REGISTRO.ejercicio, etiqueta: 'Ejercicio' },
   { id: 'otro', icono: '⭐', img: ICONOS_REGISTRO.otro, etiqueta: 'Otro' },
 ])
 
@@ -881,6 +924,9 @@ function ejecutarAccion(id: string) {
       break
     case 'momento':
       abrirMomento()
+      break
+    case 'ejercicio':
+      abrirEjercicio()
       break
     case 'bano':
     case 'vitamina_d':
@@ -968,6 +1014,8 @@ function recrear(registro: RegistroEditable): Promise<unknown> {
     fecha: ev.fecha,
     tipo: ev.tipo,
     descripcion: ev.descripcion,
+    subtipo: ev.subtipo,
+    duracion_min: ev.duracion_min,
   })
 }
 
@@ -1520,6 +1568,48 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <input
               id="evento-hora"
               v-model="nuevoEvento.hora"
+              type="datetime-local"
+              :min="sueloHora()"
+              :max="topeHora()"
+              required
+            />
+          </div>
+          <button class="boton" type="submit" :disabled="registrando">Guardar</button>
+        </form>
+      </HojaInferior>
+
+      <!-- Ejercicio: subtipo + duración -->
+      <HojaInferior
+        :abierta="formulario === 'ejercicio'"
+        :titulo="ICONOS_REGISTRO.ejercicio ? 'Ejercicio' : '🤸 Ejercicio'"
+        :icono="ICONOS_REGISTRO.ejercicio"
+        @cerrar="formulario = null"
+      >
+        <form @submit.prevent="guardarEjercicio">
+          <div class="campo">
+            <label for="ejercicio-tipo">Tipo</label>
+            <select id="ejercicio-tipo" v-model="nuevoEjercicio.subtipo">
+              <option v-for="(etiqueta, valor) in ETIQUETAS_EJERCICIO" :key="valor" :value="valor">
+                {{ etiqueta }}
+              </option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="ejercicio-min">Tiempo (min)</label>
+            <input
+              id="ejercicio-min"
+              v-model.number="nuevoEjercicio.duracionMin"
+              type="number"
+              :min="LIMITES_ENTRADA.ejercicioMin.min"
+              :max="LIMITES_ENTRADA.ejercicioMin.max"
+              required
+            />
+          </div>
+          <div class="campo">
+            <label for="ejercicio-hora">Hora (por si no es ahora mismo)</label>
+            <input
+              id="ejercicio-hora"
+              v-model="nuevoEjercicio.hora"
               type="datetime-local"
               :min="sueloHora()"
               :max="topeHora()"
