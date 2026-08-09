@@ -39,6 +39,9 @@ export const iconoPesoUrl = import.meta.env.BASE_URL + 'icono-peso.png'
 /** Icono de Altura en Evolución (regla) */
 export const iconoAlturaUrl = import.meta.env.BASE_URL + 'icono-altura.png'
 
+/** Icono del Perímetro craneal (sombrero con cinta métrica) */
+export const iconoPerimetroUrl = import.meta.env.BASE_URL + 'icono-perimetro.png'
+
 /**
  * Ñeñeñi, el Mime experto en cuidado de bebés (public/nenei.png): la cara
  * del Mime Predictor. Vive en la cabecera y habla en su bocadillo.

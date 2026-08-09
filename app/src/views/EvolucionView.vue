@@ -42,6 +42,7 @@ import {
   ICONOS_REGISTRO,
   iconoAlturaUrl,
   iconoEvolucionUrl,
+  iconoPerimetroUrl,
   iconoPesoUrl,
 } from '../assets/branding'
 import GraficaLinea from '../components/GraficaLinea.vue'
@@ -527,7 +528,8 @@ const franjaLeche = computed(() => {
         :dia-hoy="edadHoy ?? undefined"
       />
       <GraficaLinea
-        titulo="👶 Perímetro craneal"
+        titulo="Perímetro craneal"
+        :icono="iconoPerimetroUrl"
         :puntos="seriePerimetro"
         unidad="cm"
         :banda="bandaPerimetro"
@@ -546,7 +548,12 @@ const franjaLeche = computed(() => {
         :puntos="seriePercentilAltura"
         unidad="P"
       />
-      <GraficaLinea titulo="👶 Percentil de PC" :puntos="seriePercentilPerimetro" unidad="P" />
+      <GraficaLinea
+        titulo="Percentil de PC"
+        :icono="iconoPerimetroUrl"
+        :puntos="seriePercentilPerimetro"
+        unidad="P"
+      />
     </template>
 
     <div v-if="!cargando" class="tarjeta">
@@ -602,7 +609,7 @@ const franjaLeche = computed(() => {
     <div v-if="!cargando" id="grafica-sueno">
       <GraficaLinea
         titulo="Sueño al día"
-        :icono="ICONOS_REGISTRO.sueno"
+        :icono="ICONOS_REGISTRO.objetivo_sueno"
         :puntos="serieSueno"
         unidad="h"
         :recomendado="franjaSueno"
