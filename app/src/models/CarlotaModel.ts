@@ -559,6 +559,52 @@ export interface PuntoGrafica {
   valor: number
 }
 
+/** Punto de una serie por edad en días (gráficas de crecimiento) */
+export interface PuntoSerieDia {
+  dia: number
+  valor: number
+  etiqueta: string
+  /** true = interpolado en el borde de la ventana (sin círculo ni tooltip) */
+  virtual?: boolean
+}
+
+/**
+ * Recorta una serie a la ventana [desde, hasta] de días SIN perder la
+ * continuidad: si hay una medida anterior al borde (o posterior), se añade
+ * un punto VIRTUAL interpolado en el borde para que la línea entre/salga
+ * de la gráfica a la altura correcta en vez de aparecer flotando.
+ */
+export function recortarSerieAVentana(
+  puntos: PuntoSerieDia[],
+  desde: number,
+  hasta: number,
+): PuntoSerieDia[] {
+  const orden = [...puntos].sort((a, b) => a.dia - b.dia)
+  const dentro = orden.filter((p) => p.dia >= desde && p.dia <= hasta)
+  const virtual = (a: PuntoSerieDia, b: PuntoSerieDia, dia: number): PuntoSerieDia => ({
+    dia,
+    valor: a.valor + ((b.valor - a.valor) * (dia - a.dia)) / (b.dia - a.dia),
+    etiqueta: '',
+    virtual: true,
+  })
+  const anterior = orden.filter((p) => p.dia < desde).pop()
+  const posterior = orden.find((p) => p.dia > hasta)
+  // Un único segmento que cruza la ventana entera: entra y sale
+  if (dentro.length === 0) {
+    return anterior && posterior
+      ? [virtual(anterior, posterior, desde), virtual(anterior, posterior, hasta)]
+      : []
+  }
+  const resultado = [...dentro]
+  if (anterior && resultado[0]!.dia > desde) {
+    resultado.unshift(virtual(anterior, resultado[0]!, desde))
+  }
+  if (posterior && resultado[resultado.length - 1]!.dia < hasta) {
+    resultado.push(virtual(resultado[resultado.length - 1]!, posterior, hasta))
+  }
+  return resultado
+}
+
 /** Quita los puntos iniciales sin valor (antes del primer registro real) */
 export function recortarVaciosIniciales(puntos: PuntoGrafica[]): PuntoGrafica[] {
   const primero = puntos.findIndex((p) => p.valor > 0)

@@ -21,6 +21,7 @@ import {
   objetivoSuenoMinutos,
   percentilRedondeado,
   rangoDesde,
+  recortarSerieAVentana,
   recortarVaciosIniciales,
   serieGrafica,
   ultimosDias,
@@ -296,10 +297,12 @@ function medidosEnVentana(valorDe: (m: Medida) => number | null): PuntoCrecimien
   const nacimiento = bebeStore.bebe?.fecha_nacimiento
   const v = ventana.value
   if (!nacimiento || !v) return []
-  return medidas.value
+  const todos = medidas.value
     .map((m) => ({ dia: edadDias(nacimiento, m.fecha), valor: valorDe(m), etiqueta: m.fecha }))
-    .filter((p): p is PuntoCrecimiento => p.valor !== null && p.dia >= v.desde && p.dia <= v.hasta)
-    .sort((a, b) => a.dia - b.dia)
+    .filter((p): p is PuntoCrecimiento => p.valor !== null)
+  // El recorte añade puntos virtuales en los bordes: una medida anterior
+  // a la ventana hace que la línea "entre" por la izquierda
+  return recortarSerieAVentana(todos, v.desde, v.hasta)
 }
 
 const medidosPeso = computed(() => medidosEnVentana((m) => m.peso_gramos))
