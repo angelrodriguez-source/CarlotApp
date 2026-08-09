@@ -29,6 +29,8 @@ const props = defineProps<{
   curvas: CurvaPercentil[]
   /** Edad de hoy en días: marca "hoy" con una línea vertical (lo de la derecha es proyección) */
   diaHoy?: number
+  /** Icono propio del título (sustituye al emoji) */
+  icono?: string
 }>()
 
 const ANCHO = 320
@@ -120,7 +122,10 @@ const etiquetasX = computed(() => {
 
 <template>
   <div class="tarjeta">
-    <h3>{{ titulo }}</h3>
+    <h3 class="titulo-grafica">
+      <img v-if="icono" :src="icono" alt="" class="icono-titulo" />
+      {{ titulo }}
+    </h3>
     <svg :viewBox="`0 0 ${ANCHO} ${ALTO}`" class="grafica" role="img" :aria-label="titulo">
       <!-- Eje Y: min y max -->
       <text :x="MARGEN.izquierda - 6" :y="MARGEN.arriba + 4" text-anchor="end" class="eje">
@@ -205,6 +210,17 @@ const etiquetasX = computed(() => {
 </template>
 
 <style scoped>
+.titulo-grafica {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.titulo-grafica .icono-titulo {
+  width: 24px;
+  height: 24px;
+}
+
 .grafica {
   width: 100%;
   height: auto;
