@@ -348,6 +348,55 @@ export function minutosSuenoEnDia(suenos: Sueno[], dia: string, ahora: Date = ne
   return minutos
 }
 
+/**
+ * Un sueño tal y como se MUESTRA en un día concreto: los nocturnos que
+ * cruzan la medianoche aparecen en los dos días (solo presentación — el
+ * registro vive en su día de inicio), cada uno con los minutos que le
+ * corresponden y su aviso.
+ */
+export interface SuenoDeDia {
+  sueno: Sueno
+  /** Minutos del sueño que caen dentro de este día */
+  minutosDelDia: number
+  /** Empezó un día anterior (fila "prestada" con aviso) */
+  empezoAntes: boolean
+  /** Sigue después de la medianoche (aporta parte al día siguiente) */
+  sigueDespues: boolean
+  /** Hora ISO para ordenar la línea de tiempo (00:00 si empezó antes) */
+  horaOrden: string
+}
+
+/** Sueños visibles en un día local, con su parte y avisos de cruce */
+export function suenosDeDia(suenos: Sueno[], dia: string, ahora: Date = new Date()): SuenoDeDia[] {
+  const resultado: SuenoDeDia[] = []
+  for (const s of suenos) {
+    const tramo = tramoEnDia(s.inicio, s.fin, dia, ahora)
+    if (!tramo) continue
+    const empezoAntes = claveDia(s.inicio) < dia
+    resultado.push({
+      sueno: s,
+      minutosDelDia: tramo.hastaMin - tramo.desdeMin,
+      empezoAntes,
+      sigueDespues: s.fin !== null && claveDia(s.fin) > dia,
+      horaOrden: empezoAntes ? new Date(dia + 'T00:00:00').toISOString() : s.inicio,
+    })
+  }
+  return resultado
+}
+
+/**
+ * Texto de la fila de un sueño mostrado en un día concreto: el de siempre
+ * y, si cruza la medianoche, el aviso con la parte de este día.
+ */
+export function textoSuenoEnDia(v: SuenoDeDia): string {
+  const base = textoSueno(v.sueno)
+  if (v.empezoAntes)
+    return `${base} · empezó el día anterior (${formatoDuracion(v.minutosDelDia)} de este día)`
+  if (v.sigueDespues)
+    return `${base} · sigue tras medianoche (${formatoDuracion(v.minutosDelDia)} de este día)`
+  return base
+}
+
 /** Minuto del día local (0-1439) de una fecha ISO */
 export function minutoDelDia(iso: string): number {
   const fecha = new Date(iso)

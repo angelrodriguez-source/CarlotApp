@@ -12,6 +12,8 @@ import {
   resumenDia,
   minutoDelDia,
   minutosSuenoEnDia,
+  suenosDeDia,
+  textoSuenoEnDia,
   objetivoLecheMl,
   objetivoSuenoMinutos,
   serieGrafica,
@@ -254,6 +256,64 @@ describe('objetivos diarios', () => {
     expect(objetivoLecheMl(60, 9000)!.max).toBe(1000)
     // Sin peso no hay objetivo
     expect(objetivoLecheMl(60, null)).toBeNull()
+  })
+})
+
+describe('suenosDeDia — el nocturno se muestra en ambos días', () => {
+  const nocturno: Sueno = {
+    id: 'noche',
+    bebe_id: 'b',
+    inicio: '2026-08-05T23:20:00',
+    fin: '2026-08-06T07:00:00',
+    notas: null,
+  }
+  const siesta: Sueno = {
+    id: 'siesta',
+    bebe_id: 'b',
+    inicio: '2026-08-06T11:00:00',
+    fin: '2026-08-06T13:00:00',
+    notas: null,
+  }
+
+  it('en su día de inicio: aviso de que sigue tras medianoche con su parte', () => {
+    const dia5 = suenosDeDia([nocturno, siesta], '2026-08-05')
+    expect(dia5).toHaveLength(1)
+    expect(dia5[0]!.sueno.id).toBe('noche')
+    expect(dia5[0]!.minutosDelDia).toBe(40)
+    expect(dia5[0]!.sigueDespues).toBe(true)
+    expect(dia5[0]!.empezoAntes).toBe(false)
+    expect(textoSuenoEnDia(dia5[0]!)).toContain('sigue tras medianoche (40 min de este día)')
+  })
+
+  it('en el día siguiente: fila prestada con aviso y su parte', () => {
+    const dia6 = suenosDeDia([nocturno, siesta], '2026-08-06')
+    expect(dia6).toHaveLength(2)
+    const prestada = dia6.find((v) => v.sueno.id === 'noche')!
+    expect(prestada.empezoAntes).toBe(true)
+    expect(prestada.minutosDelDia).toBe(7 * 60)
+    // Ordena a las 00:00 del día mostrado, no a su inicio real de ayer
+    expect(new Date(prestada.horaOrden).getTime()).toBe(new Date('2026-08-06T00:00:00').getTime())
+    expect(textoSuenoEnDia(prestada)).toContain('empezó el día anterior (7 h de este día)')
+    // La siesta normal ni aviso ni recorte
+    const normal = dia6.find((v) => v.sueno.id === 'siesta')!
+    expect(normal.empezoAntes).toBe(false)
+    expect(normal.sigueDespues).toBe(false)
+    expect(textoSuenoEnDia(normal)).not.toContain('este día')
+  })
+
+  it('un sueño abierto que cruza medianoche aparece hoy recortado en ahora', () => {
+    const abierto: Sueno = {
+      id: 'abierto',
+      bebe_id: 'b',
+      inicio: '2026-08-05T23:00:00',
+      fin: null,
+      notas: null,
+    }
+    const hoy = suenosDeDia([abierto], '2026-08-06', new Date('2026-08-06T06:30:00'))
+    expect(hoy).toHaveLength(1)
+    expect(hoy[0]!.empezoAntes).toBe(true)
+    expect(hoy[0]!.minutosDelDia).toBe(6.5 * 60)
+    expect(hoy[0]!.sigueDespues).toBe(false)
   })
 })
 

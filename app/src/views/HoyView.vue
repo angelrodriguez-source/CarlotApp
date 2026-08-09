@@ -46,7 +46,8 @@ import {
   sinEmojiInicial,
   textoEvento,
   textoPanal,
-  textoSueno,
+  suenosDeDia,
+  textoSuenoEnDia,
   textoToma,
   ultimoValor,
 } from '../models/CarlotaModel'
@@ -1029,13 +1030,21 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       borrar: () => servicio.eliminarToma(t.id),
       editable: { kind: 'toma', toma: t },
     })),
-    ...suenos.value.map((s): Registro => ({
-      id: s.id,
-      hora: s.inicio,
-      texto: textoConIcono(textoSueno(s), ICONOS_REGISTRO.sueno),
+    // Sueños VISIBLES hoy: también el nocturno que empezó ayer (fila
+    // "prestada" con aviso y su parte de hoy — el registro no se mueve)
+    ...suenosDeDia(
+      suenoAbierto.value && !suenosDesdeAyer.value.some((s) => s.id === suenoAbierto.value!.id)
+        ? [...suenosDesdeAyer.value, suenoAbierto.value]
+        : suenosDesdeAyer.value,
+      hoyLocal(ahora.value),
+      ahora.value,
+    ).map((v): Registro => ({
+      id: v.sueno.id,
+      hora: v.horaOrden,
+      texto: textoConIcono(textoSuenoEnDia(v), ICONOS_REGISTRO.sueno),
       img: ICONOS_REGISTRO.sueno,
-      borrar: () => servicio.eliminarSueno(s.id),
-      editable: { kind: 'sueno', sueno: s },
+      borrar: () => servicio.eliminarSueno(v.sueno.id),
+      editable: { kind: 'sueno', sueno: v.sueno },
     })),
     ...panales.value.map((p): Registro => ({
       id: p.id,
