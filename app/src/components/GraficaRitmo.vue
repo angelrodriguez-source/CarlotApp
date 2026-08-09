@@ -5,6 +5,7 @@
  * del día emerger semana a semana.
  */
 import { computed } from 'vue'
+import { iconoRitmoUrl } from '../assets/branding'
 import {
   claveDia,
   fechaCortaDia,
@@ -81,7 +82,9 @@ const HORAS_EJE = [0, 6, 12, 18, 24]
 
 <template>
   <div class="tarjeta">
-    <h3>🌗 Ritmo de 24 h</h3>
+    <h3 class="titulo-ritmo">
+      <img :src="iconoRitmoUrl" alt="" class="icono-titulo" /> Ritmo de 24 h
+    </h3>
     <div class="leyenda suave">
       <span><i class="muestra sueno" /> Sueño</span>
       <span><i class="muestra toma" /> Toma</span>
@@ -159,6 +162,17 @@ const HORAS_EJE = [0, 6, 12, 18, 24]
 </template>
 
 <style scoped>
+.titulo-ritmo {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.titulo-ritmo .icono-titulo {
+  width: 24px;
+  height: 24px;
+}
+
 .grafica {
   width: 100%;
   height: auto;
