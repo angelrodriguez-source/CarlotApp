@@ -24,7 +24,7 @@ import {
   textoToma,
   ultimosDias,
 } from '../models/CarlotaModel'
-import { ICONOS_REGISTRO, iconoHistorialUrl } from '../assets/branding'
+import { ICONOS_REGISTRO, iconoDiaUrl, iconoHistorialUrl } from '../assets/branding'
 import GraficaRitmo from '../components/GraficaRitmo.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import type { RegistroEditable } from '../components/registroEditable'
@@ -271,8 +271,9 @@ async function borrarMomento(momento: Evento) {
         class="dia-boton"
         @click="diaAbierto = diaAbierto === diaHistorial.dia ? null : diaHistorial.dia"
       >
-        <strong>
-          📅 {{ diaHistorial.dia === hoy ? 'Hoy' : fechaLegible(diaHistorial.dia) }}
+        <strong class="titulo-dia">
+          <img :src="iconoDiaUrl" alt="" class="icono-linea" />
+          {{ diaHistorial.dia === hoy ? 'Hoy' : fechaLegible(diaHistorial.dia) }}
         </strong>
         <span class="suave">{{ diaAbierto === diaHistorial.dia ? '▲' : '▼' }}</span>
       </button>
