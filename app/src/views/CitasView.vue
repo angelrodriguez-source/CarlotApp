@@ -4,7 +4,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
-import { iconoCitasUrl } from '../assets/branding'
+import { iconoCitasUrl, iconoProximasUrl, iconoHechasUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import { aInputLocal, mensajeError } from '../models/CarlotaModel'
 import { ETIQUETAS_CITA, type Cita, type TipoCita } from '../types'
@@ -168,7 +168,9 @@ function icono(tipo: TipoCita): string {
     </form>
 
     <div class="tarjeta">
-      <h3>🔜 Próximas</h3>
+      <h3 class="titulo-seccion-citas">
+        <img :src="iconoProximasUrl" alt="" class="icono-titulo" /> Próximas
+      </h3>
       <p v-if="pendientes.length === 0" class="suave">No hay citas pendientes 🎉</p>
       <div v-for="cita in pendientes" :key="cita.id" class="fila-registro">
         <input
@@ -198,7 +200,8 @@ function icono(tipo: TipoCita): string {
 
     <div class="tarjeta">
       <button class="boton secundario" @click="mostrarPasadas = !mostrarPasadas">
-        {{ mostrarPasadas ? '✅ Ocultar hechas' : `✅ Ver hechas (${pasadas.length})` }}
+        <img :src="iconoHechasUrl" alt="" class="icono-linea" />
+        {{ mostrarPasadas ? 'Ocultar hechas' : `Ver hechas (${pasadas.length})` }}
       </button>
       <template v-if="mostrarPasadas">
         <div v-for="cita in pasadas" :key="cita.id" class="fila-registro hecha">
@@ -226,6 +229,17 @@ function icono(tipo: TipoCita): string {
 </template>
 
 <style scoped>
+.titulo-seccion-citas {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.titulo-seccion-citas .icono-titulo {
+  width: 24px;
+  height: 24px;
+}
+
 .cabecera-citas {
   display: flex;
   justify-content: space-between;

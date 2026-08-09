@@ -54,6 +54,12 @@ export const iconoPerimetroUrl = import.meta.env.BASE_URL + 'icono-perimetro.png
  */
 export const neneniUrl = import.meta.env.BASE_URL + 'nenei.png?v=2'
 
+/** Icono de citas Próximas (flecha adelante) */
+export const iconoProximasUrl = import.meta.env.BASE_URL + 'icono-proximas.png'
+
+/** Icono de citas Hechas (check verde) */
+export const iconoHechasUrl = import.meta.env.BASE_URL + 'icono-hechas.png'
+
 /** URL de un estático de public/ respetando la base (/CarlotApp/ en Pages) */
 export function urlPublica(archivo: string): string {
   return import.meta.env.BASE_URL + archivo
