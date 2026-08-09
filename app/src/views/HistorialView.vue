@@ -19,7 +19,8 @@ import {
   sinEmojiInicial,
   textoEvento,
   textoPanal,
-  textoSueno,
+  suenosDeDia,
+  textoSuenoEnDia,
   textoToma,
   ultimosDias,
 } from '../models/CarlotaModel'
@@ -128,13 +129,15 @@ const historial = computed<DiaHistorial[]>(() => {
         img: ICONOS_REGISTRO.toma,
         toma: t,
       })),
-      ...suenosDia.map((s): RegistroDia => ({
+      // Sueños VISIBLES en el día: el nocturno que cruza medianoche
+      // aparece en ambos días con su parte (solo presentación)
+      ...suenosDeDia(suenos.value, dia).map((v): RegistroDia => ({
         kind: 'sueno',
-        id: s.id,
-        hora: s.inicio,
-        texto: textoConIcono(textoSueno(s), ICONOS_REGISTRO.sueno),
+        id: v.sueno.id,
+        hora: v.horaOrden,
+        texto: textoConIcono(textoSuenoEnDia(v), ICONOS_REGISTRO.sueno),
         img: ICONOS_REGISTRO.sueno,
-        sueno: s,
+        sueno: v.sueno,
       })),
       ...panalesDia.map((p): RegistroDia => ({
         kind: 'panal',
