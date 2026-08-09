@@ -83,6 +83,7 @@ export const ICONOS_REGISTRO: Partial<Record<string, string>> = {
   otro: urlPublica('icono-otro.png'),
   hito: urlPublica('icono-momento.png'),
   bano: urlPublica('icono-bano.png'),
+  ejercicio: urlPublica('icono-ejercicio.png'),
   vitamina_d: urlPublica('icono-vitamina.png'),
   medicacion: urlPublica('icono-medicacion.png'),
 }

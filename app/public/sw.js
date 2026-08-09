@@ -6,7 +6,7 @@
  *  - Assets con hash de Vite (/assets/): cache primero (son inmutables)
  *  - Resto: red con fallback a cache
  */
-const CACHE = 'carlotapp-v15'
+const CACHE = 'carlotapp-v16'
 
 // Estaticos de public/ (sin hash): precacheados para que el avatar y los
 // iconos de la navegacion funcionen offline desde el primer arranque
@@ -40,6 +40,7 @@ const PRECACHE = [
   './icono-mediciones.png',
   './icono-proximas.png',
   './icono-hechas.png',
+  './icono-ejercicio.png',
   './nenei.png?v=2',
 ]
 
