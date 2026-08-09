@@ -42,6 +42,7 @@ import {
   ICONOS_REGISTRO,
   iconoAlturaUrl,
   iconoEvolucionUrl,
+  iconoMedicionesUrl,
   iconoPerimetroUrl,
   iconoPesoUrl,
 } from '../assets/branding'
@@ -557,7 +558,9 @@ const franjaLeche = computed(() => {
     </template>
 
     <div v-if="!cargando" class="tarjeta">
-      <h3>📋 Mediciones</h3>
+      <h3 class="titulo-mediciones">
+        <img :src="iconoMedicionesUrl" alt="" class="icono-titulo" /> Mediciones
+      </h3>
       <p v-if="medidas.length === 0" class="suave">Todavía no hay mediciones.</p>
       <div v-for="medida in medidasRecientes" :key="medida.id" class="fila-registro">
         <span class="hora">{{ medida.fecha }}</span>
@@ -693,6 +696,17 @@ const franjaLeche = computed(() => {
 </template>
 
 <style scoped>
+.titulo-mediciones {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.titulo-mediciones .icono-titulo {
+  width: 24px;
+  height: 24px;
+}
+
 .cabecera-evolucion {
   display: flex;
   justify-content: space-between;

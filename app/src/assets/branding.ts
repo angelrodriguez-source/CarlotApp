@@ -39,6 +39,9 @@ export const iconoPesoUrl = import.meta.env.BASE_URL + 'icono-peso.png'
 /** Icono de Altura en Evolución (regla) */
 export const iconoAlturaUrl = import.meta.env.BASE_URL + 'icono-altura.png'
 
+/** Icono de la tabla de Mediciones (portapapeles con lápiz) */
+export const iconoMedicionesUrl = import.meta.env.BASE_URL + 'icono-mediciones.png'
+
 /** Icono del Perímetro craneal (sombrero con cinta métrica) */
 export const iconoPerimetroUrl = import.meta.env.BASE_URL + 'icono-perimetro.png'
 
