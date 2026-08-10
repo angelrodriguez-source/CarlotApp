@@ -50,10 +50,19 @@ const nuevaCita = ref({
   notas: '',
 })
 
+// Token anti-pisado: si dos cargas se solapan (autorrecarga + escritura),
+// la respuesta vieja no machaca a la nueva
+let versionCarga = 0
+
 async function cargar() {
+  const version = ++versionCarga
   const bebe = await bebeStore.cargar()
   if (!bebe) return
-  citas.value = await servicio.listarCitas(bebe.id)
+  const lista = await servicio.listarCitas(bebe.id)
+  if (version !== versionCarga) return
+  citas.value = lista
+  // Datos frescos en pantalla ⇒ fuera el banner de un fallo anterior
+  error.value = ''
 }
 
 onMounted(async () => {
@@ -68,9 +77,16 @@ onMounted(async () => {
 
 // Escrituras (propias o de la otra persona) y vuelta a primer plano.
 // El estado de los recordatorios lo refresca su store por su cuenta.
-usarAutorrecarga(() => cargar().catch((e) => (error.value = mensajeError(e))))
+const { recargarAhora } = usarAutorrecarga(() =>
+  cargar().catch((e) => (error.value = mensajeError(e))),
+)
 
-/** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
+/** Abre el alta con la fecha AL DÍA (la PWA puede llevar días viva) */
+function alternarFormularioCita() {
+  if (!mostrarFormulario.value) nuevaCita.value.fecha = aInputLocal(new Date())
+  mostrarFormulario.value = !mostrarFormulario.value
+}
+
 /** Marca/desmarca una cita; si la petición falla, repone el checkbox */
 async function alternarCita(evento: Event, cita: Cita, completada: boolean) {
   const ok = await ejecutar(() => servicio.marcarCita(cita.id, completada))
@@ -84,6 +100,7 @@ function borrarCita(cita: Cita) {
   ejecutar(() => servicio.eliminarCita(cita.id))
 }
 
+/** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
 async function ejecutar(accion: () => Promise<unknown>): Promise<boolean> {
   error.value = ''
   try {
@@ -92,11 +109,8 @@ async function ejecutar(accion: () => Promise<unknown>): Promise<boolean> {
     error.value = mensajeError(e)
     return false
   }
-  try {
-    await cargar()
-  } catch (e) {
-    error.value = mensajeError(e)
-  }
+  // recargarAhora cancela el debounce del evento de esta misma escritura
+  await recargarAhora()
   return true
 }
 
@@ -234,7 +248,7 @@ async function ejecutarRecordatorio(accion: () => Promise<unknown>): Promise<boo
   <main class="pantalla">
     <div class="tarjeta cabecera-citas">
       <h2 class="titulo-vista"><img :src="iconoCitasUrl" alt="" /> Citas &amp; Recordatorios</h2>
-      <button class="boton" @click="mostrarFormulario = !mostrarFormulario">+ Cita</button>
+      <button class="boton" @click="alternarFormularioCita">+ Cita</button>
     </div>
 
     <template v-if="cargando">

@@ -231,9 +231,12 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   vista pasa su funcion de recarga SILENCIOSA (sin esqueletos, con token
   anti-pisado) y se dispara con debounce (900 ms) al llegar
   `EVENTO_DATOS_CAMBIADOS` (escrituras propias y remotas via Realtime) y
-  al volver la pestana/PWA a primer plano. Lo usan Hoy (cargarDia),
-  Historial (cargar(silenciosa=true)), Evolucion y Citas. El debounce
-  funde la rafaga escritura propia + eco Realtime en una sola recarga.
+  al volver la pestana/PWA a primer plano. Devuelve `recargarAhora()`:
+  las vistas la usan tras sus PROPIAS escrituras — recarga inmediata que
+  cancela el debounce del evento de esa misma escritura (una sola tanda
+  de consultas por registro). Lo usan Hoy (cargarDia), Historial
+  (cargar(silenciosa=true)), Evolucion y Citas; las cuatro limpian el
+  banner de error al completar una carga con exito.
 - **modal.ts** (components/): el ciclo de vida modal compartido —
   `usarModal(abierta, panel, {alAbrir, alCerrar})` (scroll-lock con
   contador comun, captura/devolucion de foco, `immediate: true` para

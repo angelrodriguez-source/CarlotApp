@@ -15,7 +15,10 @@
 import { onMounted, onUnmounted } from 'vue'
 import { EVENTO_DATOS_CAMBIADOS } from '../services/carlotaService'
 
-export function usarAutorrecarga(recargar: () => unknown, esperaMs = 900): void {
+export function usarAutorrecarga(
+  recargar: () => unknown,
+  esperaMs = 900,
+): { recargarAhora: () => unknown } {
   let temporizador: number | undefined
 
   function programar() {
@@ -25,6 +28,19 @@ export function usarAutorrecarga(recargar: () => unknown, esperaMs = 900): void 
 
   function alCambiarVisibilidad() {
     if (document.visibilityState === 'visible') programar()
+  }
+
+  /**
+   * Recarga inmediata para después de una escritura propia. Cancela la
+   * recarga pendiente del debounce: el evento de la propia escritura ya
+   * queda cubierto por esta carga, más fresca — sin ello, cada registro
+   * lanzaba las consultas dos veces. Un evento que llegue DESPUÉS (p. ej.
+   * el eco Realtime tardío o un cambio de la otra persona) rearma el
+   * debounce con normalidad.
+   */
+  function recargarAhora(): unknown {
+    window.clearTimeout(temporizador)
+    return recargar()
   }
 
   onMounted(() => {
@@ -37,4 +53,6 @@ export function usarAutorrecarga(recargar: () => unknown, esperaMs = 900): void 
     window.removeEventListener(EVENTO_DATOS_CAMBIADOS, programar)
     document.removeEventListener('visibilitychange', alCambiarVisibilidad)
   })
+
+  return { recargarAhora }
 }

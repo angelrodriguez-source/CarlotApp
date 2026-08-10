@@ -36,7 +36,8 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 
 Todas las tablas de datos llevan ademas `registrado_por UUID DEFAULT auth.uid()`
 (quien lo anoto) y `created_at`. FKs a `bebes` con `ON DELETE CASCADE`.
-Indices `(bebe_id, fecha|inicio)` en todas las tablas de registros.
+Indices `(bebe_id, fecha|inicio)` en las tablas de registros;
+`recordatorios` y `predicciones` indexan solo `bebe_id` (tablas diminutas).
 
 ## Migraciones
 

@@ -163,6 +163,9 @@ async function cargarDia() {
     citas.value,
     ultimosEventos.value,
   ] = datos
+  // Datos frescos en pantalla ⇒ fuera el banner de un fallo anterior
+  // (p. ej. una autorrecarga que pilló la radio del móvil apagada)
+  error.value = ''
 }
 
 // El FAB "+" de la nav (y el CTA de Momentos del Historial) llegan con
@@ -182,19 +185,20 @@ watch(() => [route.query.registrar, route.query.config], atenderQueries)
 
 // Autorrecarga: escrituras (propias y de la otra persona, via Realtime)
 // y vuelta a primer plano. cargarDia es silenciosa y con token: segura
-// de repetir sin parpadeos ni pisar respuestas
-usarAutorrecarga(() => cargarDia().catch((e) => (error.value = mensajeError(e))))
+// de repetir sin parpadeos ni pisar respuestas. recargarAhora se usa
+// tras las escrituras propias para no cargar dos veces (evento + manual)
+const { recargarAhora } = usarAutorrecarga(() =>
+  cargarDia().catch((e) => (error.value = mensajeError(e))),
+)
 
 // Dia con el que se cargaron los datos: si el reloj cruza la medianoche
 // (o la app vuelve del segundo plano en otro dia), se recarga todo
 let diaCargado = hoyLocal()
 
+// (La vuelta desde segundo plano ya recarga siempre via usarAutorrecarga;
+// este chequeo queda solo para la medianoche con la pestaña visible)
 function recargarSiCambioElDia() {
   if (hoyLocal() !== diaCargado) cargarDia().catch((e) => (error.value = mensajeError(e)))
-}
-
-function alVolverVisible() {
-  if (document.visibilityState === 'visible') recargarSiCambioElDia()
 }
 
 onMounted(async () => {
@@ -202,7 +206,6 @@ onMounted(async () => {
     ahora.value = new Date()
     recargarSiCambioElDia()
   }, 60_000)
-  document.addEventListener('visibilitychange', alVolverVisible)
   atenderQueries()
   cargarConfigHitos()
   cargarConfigAccesos()
@@ -218,14 +221,15 @@ onMounted(async () => {
 onUnmounted(() => {
   window.clearInterval(temporizador)
   window.clearTimeout(temporizadorDeshacer)
-  document.removeEventListener('visibilitychange', alVolverVisible)
 })
 
 async function ejecutar(accion: () => Promise<unknown>) {
   error.value = ''
   try {
     await accion()
-    await cargarDia()
+    // Via recargarAhora: cancela el debounce del evento de esta misma
+    // escritura (una sola tanda de consultas, no dos)
+    await recargarAhora()
   } catch (e) {
     error.value = mensajeError(e)
   }
@@ -310,16 +314,23 @@ const ultimaAltura = computed(() =>
 )
 
 /**
+ * Sueños desde ayer + el abierto si no está ya en la lista (puede haber
+ * empezado antes del rango consultado). ÚNICA fuente para los cálculos
+ * y la línea de tiempo: el criterio de dedupe vive solo aquí.
+ */
+const suenosConAbierto = computed<Sueno[]>(() =>
+  suenoAbierto.value && !suenosDesdeAyer.value.some((s) => s.id === suenoAbierto.value!.id)
+    ? [...suenosDesdeAyer.value, suenoAbierto.value]
+    : suenosDesdeAyer.value,
+)
+
+/**
  * Minutos de sueño de hoy: cada sueño aporta solo su parte de hoy,
  * incluyendo el nocturno que empezó ayer y el que sigue en curso.
  */
-const minutosSuenoHoy = computed(() => {
-  const candidatos =
-    suenoAbierto.value && !suenosDesdeAyer.value.some((s) => s.id === suenoAbierto.value!.id)
-      ? [...suenosDesdeAyer.value, suenoAbierto.value]
-      : suenosDesdeAyer.value
-  return minutosSuenoEnDia(candidatos, hoyLocal(ahora.value), ahora.value)
-})
+const minutosSuenoHoy = computed(() =>
+  minutosSuenoEnDia(suenosConAbierto.value, hoyLocal(ahora.value), ahora.value),
+)
 
 function fechaCorta(fechaIso: string): string {
   return new Date(fechaIso + 'T00:00:00').toLocaleDateString('es-ES', {
@@ -1086,20 +1097,16 @@ const lineaDeTiempo = computed<Registro[]>(() => {
     })),
     // Sueños VISIBLES hoy: también el nocturno que empezó ayer (fila
     // "prestada" con aviso y su parte de hoy — el registro no se mueve)
-    ...suenosDeDia(
-      suenoAbierto.value && !suenosDesdeAyer.value.some((s) => s.id === suenoAbierto.value!.id)
-        ? [...suenosDesdeAyer.value, suenoAbierto.value]
-        : suenosDesdeAyer.value,
-      hoyLocal(ahora.value),
-      ahora.value,
-    ).map((v): Registro => ({
-      id: v.sueno.id,
-      hora: v.horaOrden,
-      texto: textoConIcono(textoSuenoEnDia(v), ICONOS_REGISTRO.sueno),
-      img: ICONOS_REGISTRO.sueno,
-      borrar: () => servicio.eliminarSueno(v.sueno.id),
-      editable: { kind: 'sueno', sueno: v.sueno },
-    })),
+    ...suenosDeDia(suenosConAbierto.value, hoyLocal(ahora.value), ahora.value).map(
+      (v): Registro => ({
+        id: v.sueno.id,
+        hora: v.horaOrden,
+        texto: textoConIcono(textoSuenoEnDia(v), ICONOS_REGISTRO.sueno),
+        img: ICONOS_REGISTRO.sueno,
+        borrar: () => servicio.eliminarSueno(v.sueno.id),
+        editable: { kind: 'sueno', sueno: v.sueno },
+      }),
+    ),
     ...panales.value.map((p): Registro => ({
       id: p.id,
       hora: p.fecha,

@@ -43,6 +43,9 @@ interface Edicion {
   id: string
   inicio: string // datetime-local: inicio (toma/sueño) o fecha (pañal/evento)
   fin: string // datetime-local o '' (solo sueño)
+  /** Toma con el cronómetro en marcha (fin y ml a null): editarla con
+   *  duración/ml vacíos corrige el inicio SIN cerrarla */
+  enCurso: boolean
   tipoToma: TipoToma
   duracionMin: number | null
   cantidadMl: number | null
@@ -72,6 +75,7 @@ function construir(registro: RegistroEditable): Edicion {
     id: '',
     inicio: '',
     fin: '',
+    enCurso: false,
     tipoToma: 'biberon_formula',
     duracionMin: null,
     cantidadMl: null,
@@ -90,6 +94,7 @@ function construir(registro: RegistroEditable): Edicion {
     base.duracionMin = duracionMinutos(registro.toma.inicio, registro.toma.fin)
     base.cantidadMl = registro.toma.cantidad_ml
     base.notas = registro.toma.notas ?? ''
+    base.enCurso = registro.toma.fin === null && registro.toma.cantidad_ml === null
   } else if (registro.kind === 'sueno') {
     base.id = registro.sueno.id
     base.inicio = aInputLocal(new Date(registro.sueno.inicio))
@@ -158,11 +163,14 @@ function guardar() {
     const esBiberonToma = e.tipoToma.startsWith('biberon')
     const cantidadMl = numeroONull(e.cantidadMl)
     const duracionMin = numeroONull(e.duracionMin)
-    if (!esBiberonToma && duracionMin === null) {
+    // Toma con el cronómetro en marcha y campos vacíos: corregir
+    // inicio/tipo/notas SIN cerrarla (sigue en curso)
+    const sigueEnCurso = e.enCurso && cantidadMl === null && duracionMin === null
+    if (!sigueEnCurso && !esBiberonToma && duracionMin === null) {
       error.value = 'Indica la duración de la toma de pecho'
       return
     }
-    if (esBiberonToma && cantidadMl === null && duracionMin === null) {
+    if (!sigueEnCurso && esBiberonToma && cantidadMl === null && duracionMin === null) {
       // Sin ml ni duración quedaría como "toma en curso" fantasma
       error.value = 'Indica la cantidad del biberón'
       return
@@ -274,25 +282,29 @@ function borrar() {
           />
         </div>
         <div v-if="esBiberon" class="campo">
-          <label for="ed-ml">Cantidad (ml)</label>
+          <label for="ed-ml">
+            Cantidad (ml){{ edicion.enCurso ? ' — vacío = sigue en curso' : '' }}
+          </label>
           <input
             id="ed-ml"
             v-model.number="edicion.cantidadMl"
             type="number"
             :min="LIMITES_ENTRADA.tomaMl.min"
             :max="LIMITES_ENTRADA.tomaMl.max"
-            required
+            :required="!edicion.enCurso"
           />
         </div>
         <div v-else class="campo">
-          <label for="ed-min">Duración (min)</label>
+          <label for="ed-min">
+            Duración (min){{ edicion.enCurso ? ' — vacío = sigue en curso' : '' }}
+          </label>
           <input
             id="ed-min"
             v-model.number="edicion.duracionMin"
             type="number"
             :min="LIMITES_ENTRADA.tomaPechoMin.min"
             :max="LIMITES_ENTRADA.tomaPechoMin.max"
-            required
+            :required="!edicion.enCurso"
           />
         </div>
         <div class="campo">

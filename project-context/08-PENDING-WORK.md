@@ -52,6 +52,56 @@
       segundo plano). Sin polling; los tokens anti-pisado de cada vista
       evitan que una respuesta vieja machaque datos recientes.
 
+## Introspeccion a fondo 2026-08-10 (revision total — APLICADA ese dia)
+
+Code-review del ultimo merge + 3 auditorias paralelas (modelos puros,
+vistas/stores, PWA/infra/docs). 20 hallazgos aplicados:
+
+- [x] Robustez de la autorrecarga: tokens anti-pisado en Citas y
+      Evolucion (medidas); `recargarAhora()` en el composable — la
+      recarga tras una escritura propia cancela el debounce de su propio
+      evento (antes cada registro lanzaba las consultas DOS veces);
+      banner de error se limpia al completar una carga con exito;
+      listener visibilitychange duplicado de Hoy eliminado; suscripcion
+      Realtime con callback de estado y reintento a 30 s (antes un fallo
+      al entrar dejaba la sesion sin refresco remoto en silencio);
+      refrescar() del recordatoriosStore repite al terminar si llego
+      otro cambio en pleno vuelo.
+- [x] Mutaciones de eventos/medidas/citas emiten avisarDatosCambiados()
+      (los recordatorios cuentan eventos: sin esto el badge no se
+      enteraba de la vitamina D con el socket dormido).
+- [x] Mime Predictor: ancla de acostarse construida con setHours (los
+      dias de cambio de hora la suma de ms la desplazaba 1 h);
+      CADUCIDAD del modo remate (caducidadRemateMin 75 o gap+banda
+      personales — antes "el remate ya toca" quedaba congelado horas);
+      suenosDeDia marca "sigue tras medianoche" tambien en el sueno
+      ABIERTO que cruza (fin efectivo = min(ahora, inicio+24h)).
+- [x] HojaEdicionRegistro: editar una toma con el cronometro en marcha
+      con duracion/ml vacios corrige inicio/tipo/notas SIN cerrarla
+      (etiqueta "vacio = sigue en curso", como el sueno).
+- [x] PWA: precache de icon-192/512 y maskable (icon/badge de las
+      notificaciones), fallback offline al index SOLO para navegaciones
+      (una imagen no debe resolver con HTML), CACHE v17; ruta comodin
+      del router (hash desconocido → Hoy, antes pantalla en blanco);
+      migrate.yml con concurrency y el INSERT en _migrations dentro de
+      la MISMA transaccion que la migracion; fecha de "+ Cita" fresca al
+      abrir el formulario; dedupe suenosConAbierto en Hoy; created_at en
+      el tipo Recordatorio; docs desalineados corregidos (01/02/CLAUDE).
+
+Diferido a proposito (bajo valor/alto riesgo hoy, candidatos a proxima
+sesion de orden):
+
+- [ ] Encadenar deploy.yml tras migrate.yml (hoy hay una ventana en la
+      que la UI nueva puede llegar antes que su tabla)
+- [ ] Purga de chunks huerfanos de /assets/ en el SW (se acumulan entre
+      bumps de CACHE)
+- [ ] Extraer el builder de filas del dia (Hoy/Historial lo duplican) a
+      CarlotaModel como funcion pura testeada
+- [ ] Trocear HoyView (~2000 lineas): extraer las 8 hojas inferiores a
+      componentes (empezar por toma/panal/configuracion)
+- [ ] Unificar formateadores de fecha repetidos entre vistas en
+      CarlotaModel
+
 ## Super analisis 2026-08-08 (revision multi-agente — EJECUTADO ese mismo dia)
 
 Revision de 6 dimensiones (correccion, UX, accesibilidad, rendimiento,

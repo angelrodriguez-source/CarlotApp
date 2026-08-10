@@ -379,11 +379,19 @@ export function suenosDeDia(suenos: Sueno[], dia: string, ahora: Date = new Date
     const tramo = tramoEnDia(s.inicio, s.fin, dia, ahora)
     if (!tramo) continue
     const empezoAntes = claveDia(s.inicio) < dia
+    // Fin efectivo: para un sueño ABIERTO, el mismo tope que usa
+    // tramoEnDia (ahora, acotado a 24 h). Sin él, el sueño en curso que
+    // cruza la medianoche no llevaba el aviso "sigue tras medianoche"
+    // aunque el resumen del día solo contase su parte
+    const finEfectivoMs =
+      s.fin !== null
+        ? new Date(s.fin).getTime()
+        : Math.min(ahora.getTime(), new Date(s.inicio).getTime() + 24 * 3_600_000)
     resultado.push({
       sueno: s,
       minutosDelDia: tramo.hastaMin - tramo.desdeMin,
       empezoAntes,
-      sigueDespues: s.fin !== null && claveDia(s.fin) > dia,
+      sigueDespues: claveDia(new Date(finEfectivoMs).toISOString()) > dia,
       horaOrden: empezoAntes ? new Date(dia + 'T00:00:00').toISOString() : s.inicio,
     })
   }

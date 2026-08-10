@@ -6,7 +6,7 @@
  *  - Assets con hash de Vite (/assets/): cache primero (son inmutables)
  *  - Resto: red con fallback a cache
  */
-const CACHE = 'carlotapp-v16'
+const CACHE = 'carlotapp-v17'
 
 // Estaticos de public/ (sin hash): precacheados para que el avatar y los
 // iconos de la navegacion funcionen offline desde el primer arranque
@@ -14,6 +14,11 @@ const PRECACHE = [
   './',
   './manifest.webmanifest',
   './icon.svg',
+  // Iconos de la PWA: tambien son el icon/badge de las notificaciones
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-192.png',
+  './icon-maskable-512.png',
   './carlota.jpg',
   './icono-inicio.png',
   './icono-historial.png',
@@ -114,7 +119,9 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Navegaciones y demas: red primero, cache si estamos offline
+  // Navegaciones y demas: red primero, cache si estamos offline.
+  // El fallback al index es SOLO para navegaciones: una imagen o un JSON
+  // sin copia cacheada no debe resolver con bytes de HTML.
   event.respondWith(
     fetch(request)
       .then((res) => {
@@ -124,6 +131,12 @@ self.addEventListener('fetch', (event) => {
         }
         return res
       })
-      .catch(() => caches.match(request).then((hit) => hit ?? caches.match('./'))),
+      .catch(() =>
+        caches
+          .match(request)
+          .then(
+            (hit) => hit ?? (request.mode === 'navigate' ? caches.match('./') : Response.error()),
+          ),
+      ),
   )
 })

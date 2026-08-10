@@ -44,7 +44,7 @@ app/                    # Codigo fuente Vue (la app real)
 project-context/        # Documentacion (leer al inicio)
 supabase/migrations/    # Migraciones SQL (se aplican solas al hacer push)
 scripts/                # apply-migrations.sh (motor de migraciones)
-.github/workflows/      # deploy.yml, migrate.yml, keepalive.yml
+.github/workflows/      # deploy.yml, migrate.yml, keepalive.yml, recordatorio.yml
 ```
 
 ## Al terminar una sesion
