@@ -18,6 +18,14 @@ import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
 import { useRecordatoriosStore } from './stores/recordatoriosStore'
+import { fraseRecordatorios } from './models/recordatorios'
+import { hoyLocal } from './models/CarlotaModel'
+import {
+  mostrarNotificacion,
+  pedirPermisoNotificaciones,
+  permisoNotificaciones,
+  soportaNotificaciones,
+} from './services/notificaciones'
 import HojaInferior from './components/HojaInferior.vue'
 
 // Async: el panel arrastra el MimePredictor y las tablas OMS — cargarlo
@@ -139,6 +147,43 @@ const avisosNenei = computed(() => {
   return recordatoriosStore.avisos(new Date())
 })
 
+// ---- Notificaciones (fase 1: locales, con la app abierta) ----
+const permisoNotis = ref(permisoNotificaciones())
+
+/** Menú: pide permiso la primera vez; después manda una de prueba */
+async function activarOProbarNotificaciones() {
+  menuAbierto.value = false
+  permisoNotis.value = await pedirPermisoNotificaciones()
+  if (permisoNotis.value !== 'granted') return
+  await mostrarNotificacion(
+    'Ñeñeñi 🍼',
+    'Las notificaciones funcionan. Por aquí te avisaré de los recordatorios.',
+    'carlotapp-prueba',
+  )
+}
+
+const etiquetaNotis = computed(() =>
+  permisoNotis.value === 'granted'
+    ? '🔔 Probar notificación'
+    : permisoNotis.value === 'denied'
+      ? '🔕 Notificaciones bloqueadas'
+      : '🔔 Activar notificaciones',
+)
+
+// Aviso del día: cuando el badge se enciende (desde las 19h con
+// pendientes), una única notificación al día con la frase de Ñeñeñi
+const CLAVE_AVISO_NOTIFICADO = 'carlotapp-aviso-recordatorios'
+
+watch(avisosNenei, (avisos) => {
+  if (avisos === 0 || permisoNotis.value !== 'granted') return
+  const hoy = hoyLocal()
+  if (localStorage.getItem(CLAVE_AVISO_NOTIFICADO) === hoy) return
+  const frase = fraseRecordatorios(recordatoriosStore.estados, new Date())
+  if (!frase) return
+  localStorage.setItem(CLAVE_AVISO_NOTIFICADO, hoy)
+  void mostrarNotificacion('Ñeñeñi 🍼', frase, 'carlotapp-recordatorios')
+})
+
 // ---- Actualización de la PWA (evento que dispara main.ts) ----
 const swEsperando = ref<ServiceWorker | null>(null)
 
@@ -213,6 +258,14 @@ function abrirRegistro() {
       </p>
       <button role="menuitem" @click="irConfiguracion">⚙ Configuración</button>
       <button role="menuitem" @click="alternarTema">{{ iconoTema }} Tema: {{ modoTema }}</button>
+      <button
+        v-if="soportaNotificaciones()"
+        role="menuitem"
+        :disabled="permisoNotis === 'denied'"
+        @click="activarOProbarNotificaciones"
+      >
+        {{ etiquetaNotis }}
+      </button>
       <button role="menuitem" @click="abrirAcercaDe">💚 Acerca de</button>
       <button role="menuitem" class="salir" @click="cerrarSesion">🚪 Salir</button>
     </div>
@@ -420,6 +473,12 @@ function abrirRegistro() {
 
 .menu-usuario button:hover {
   background: var(--color-fondo);
+}
+
+/* Notificaciones bloqueadas desde el navegador: se ve, pero no hace nada */
+.menu-usuario button:disabled {
+  color: var(--color-texto-suave);
+  cursor: default;
 }
 
 .menu-usuario .salir {

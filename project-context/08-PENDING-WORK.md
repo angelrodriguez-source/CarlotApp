@@ -275,6 +275,14 @@ de HojaEdicionRegistro.
       suscripciones en Supabase + claves VAPID + envio desde un cron de
       Actions o una Edge Function. Android funciona bien; iOS >= 16.4
       solo con la PWA anadida a pantalla de inicio y permiso concedido
+  - [x] Fase 1 (2026-08-10): notificaciones LOCALES para probar el flujo
+        — `services/notificaciones.ts` (permiso + showNotification via
+        SW), `notificationclick` en sw.js (enfoca/abre la app), boton
+        "Activar/Probar notificaciones" en el menu de usuario y aviso de
+        recordatorios de las 19h como notificacion del sistema (una vez
+        al dia, guard en localStorage). Limite conocido: solo suena con
+        la app abierta (pestana o PWA); con la app cerrada hace falta la
+        fase 2 (VAPID + suscripciones + emisor)
 
 ### Recuerdos
 

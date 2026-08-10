@@ -54,6 +54,17 @@ Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
   muestran el mensaje. Toda mutacion emite `EVENTO_DATOS_CAMBIADOS`
   (window event) para que los stores/paneles se refresquen solos.
 
+- **services/notificaciones.ts**: notificaciones locales (fase 1 de Web
+  Push, sin servidor) — `soportaNotificaciones()`,
+  `permisoNotificaciones()`, `pedirPermisoNotificaciones()` y
+  `mostrarNotificacion(titulo, cuerpo, tag)` via
+  `registration.showNotification` del SW. Lo usa App.vue: boton
+  "Activar/Probar notificaciones" en el menu de usuario y el aviso de
+  recordatorios de las 19h como notificacion del sistema (una vez al dia,
+  guard `carlotapp-aviso-recordatorios` en localStorage). El tap en la
+  notificacion enfoca/abre la app (`notificationclick` en sw.js). Solo
+  funciona con la app abierta; el push real con app cerrada es fase 2.
+
 **Los componentes/vistas jamas importan `supabase` directamente.**
 
 ## Logica pura (`models/CarlotaModel.ts`)
