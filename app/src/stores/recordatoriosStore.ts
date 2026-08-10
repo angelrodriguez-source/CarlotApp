@@ -34,6 +34,10 @@ export const useRecordatoriosStore = defineStore('recordatorios', () => {
   let escuchando = false
   let temporizadorDebounce: number | undefined
   let cargando: Promise<void> | null = null
+  // Un refresco pedido MIENTRAS otro está en vuelo no puede descartarse:
+  // el cambio que lo motivó quizá llegó después de que el primero
+  // consultara. Se apunta y se repite al terminar.
+  let repetirAlTerminar = false
 
   /** Nº del badge rojo sobre Ñeñeñi; el llamador aporta la hora reactiva */
   function avisos(ahora: Date): number {
@@ -43,8 +47,12 @@ export const useRecordatoriosStore = defineStore('recordatorios', () => {
   const hayRecordatorios = computed(() => recordatorios.value.some((r) => r.activo))
 
   async function refrescar(): Promise<void> {
-    // Un solo refresco en vuelo: las ráfagas (alta + recarga) se funden
-    if (cargando) return cargando
+    // Un solo refresco en vuelo: las ráfagas (alta + recarga) se funden,
+    // pero dejando apuntado que hay que repetir al terminar
+    if (cargando) {
+      repetirAlTerminar = true
+      return cargando
+    }
     cargando = (async () => {
       const bebe = await useBebeStore().cargar()
       if (!bebe) return
@@ -65,6 +73,10 @@ export const useRecordatoriosStore = defineStore('recordatorios', () => {
       cargado.value = true
     })().finally(() => {
       cargando = null
+      if (repetirAlTerminar) {
+        repetirAlTerminar = false
+        void refrescar().catch(() => undefined)
+      }
     })
     return cargando
   }

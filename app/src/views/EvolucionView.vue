@@ -75,14 +75,25 @@ const nuevaMedida = ref({
   notas: '',
 })
 
+// Token anti-pisado: si dos cargas se solapan (autorrecarga + escritura),
+// la respuesta vieja no machaca a la nueva
+let versionCarga = 0
+
 async function cargar() {
+  const version = ++versionCarga
   const bebe = await bebeStore.cargar()
   if (!bebe) return
-  ;[medidas.value] = await Promise.all([servicio.listarMedidas(bebe.id), cargarDiarios()])
+  const [lista] = await Promise.all([servicio.listarMedidas(bebe.id), cargarDiarios()])
+  if (version !== versionCarga) return
+  medidas.value = lista
+  // Datos frescos en pantalla ⇒ fuera el banner de un fallo anterior
+  error.value = ''
 }
 
 // Escrituras (propias o de la otra persona) y vuelta a primer plano
-usarAutorrecarga(() => cargar().catch((e) => (error.value = mensajeError(e))))
+const { recargarAhora } = usarAutorrecarga(() =>
+  cargar().catch((e) => (error.value = mensajeError(e))),
+)
 
 onMounted(async () => {
   // El enlace "registra el peso" de Hoy llega con ?nueva=1: formulario abierto
@@ -159,7 +170,8 @@ async function guardarMedida() {
       origen: 'casa',
       notas: '',
     }
-    await cargar()
+    // recargarAhora cancela el debounce del evento de esta misma escritura
+    await recargarAhora()
   } catch (e) {
     error.value = mensajeError(e)
   }
@@ -198,7 +210,7 @@ async function ejecutarEdicion(accion: () => Promise<unknown>) {
   try {
     await accion()
     edicionMedida.value = null
-    await cargar()
+    await recargarAhora()
   } catch (e) {
     errorEdicion.value = mensajeError(e)
   }

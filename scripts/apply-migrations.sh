@@ -82,9 +82,13 @@ for file in $(ls "$MIGRATIONS_DIR"/*.sql 2>/dev/null | sort); do
   fi
 
   echo ">> Aplicando $name ..."
-  psql "$SUPABASE_DB_URL" -q -v ON_ERROR_STOP=1 -1 -f "$file"
-  psql "$SUPABASE_DB_URL" -q -v ON_ERROR_STOP=1 -c \
-    "INSERT INTO public._migrations (name) VALUES ('$name');"
+  # Migracion + registro en _migrations en LA MISMA transaccion (-1 con
+  # dos -f/-c encadenados no existe: se concatena la sentencia al vuelo).
+  # Si el runner muere a mitad, o se aplica y registra todo, o nada —
+  # nunca queda aplicada sin registrar (que la reaplicaria en el
+  # siguiente run).
+  { cat "$file"; printf "\nINSERT INTO public._migrations (name) VALUES ('%s');\n" "$name"; } |
+    psql "$SUPABASE_DB_URL" -q -v ON_ERROR_STOP=1 -1 -f -
   echo "   OK"
   applied=$((applied + 1))
 done

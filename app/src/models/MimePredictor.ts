@@ -116,6 +116,15 @@ export const AJUSTES = {
    */
   minRematesObservados: 2,
   /**
+   * Caducidad del modo remate: pasados estos minutos desde la toma corta
+   * (o gap+banda personales si son mayores), la predicción vuelve a la
+   * cadencia normal con factorCantidad — un "remate pendiente" de hace
+   * horas ya no es un remate (lo detectó la introspección: la predicción
+   * quedaba congelada en "el remate ya toca" indefinidamente). 75 min
+   * cubre el reofrecer dentro de ~1 h de las guías con algo de margen.
+   */
+  caducidadRemateMin: 75,
+  /**
    * Un despertar de menos de estos minutos entre dos tramos de sueño es
    * un MINI-DESPERTAR: ambos tramos se consolidan en un mismo bloque y el
    * hueco no cuenta como ventana de vigilia (contaminaría la mediana).
@@ -622,6 +631,20 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
     const ultimaComida = comidas[comidas.length - 1]
     const tipico = mlTipicoComidas(comidas)
     const remate = patronRemate(datos.tomas, ahora)
+    // Gap y banda del remate, calculados ANTES del if: también deciden
+    // su caducidad
+    const gapRemate = mezclar(
+      remate.medianaMin,
+      AJUSTES.gapRematePriorMin,
+      remate.n,
+      AJUSTES.kRemate,
+    )
+    const bandaRemate = mezclar(
+      remate.iqrMin,
+      AJUSTES.bandaRematePriorMin,
+      remate.n,
+      AJUSTES.kRemate,
+    ).valor
 
     if (
       ultimaComida !== undefined &&
@@ -629,25 +652,25 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
       tipico !== null &&
       ultimaComida.mlTotal < AJUSTES.umbralTomaCorta * tipico &&
       // Según COMPORTAMIENTO: solo si la bebé ha demostrado que remata
-      remate.n >= AJUSTES.minRematesObservados
+      remate.n >= AJUSTES.minRematesObservados &&
+      // CADUCIDAD: el remate es una toma CERCANA. Pasada su ventana
+      // (gap + banda personales, con el mínimo de AJUSTES), lo esperable
+      // ya no es un remate anclado horas atrás sino la cadencia normal
+      // adelantada por factorCantidad
+      ahora.getTime() <=
+        new Date(ultimaToma.inicio).getTime() +
+          Math.max(gapRemate.valor + bandaRemate, AJUSTES.caducidadRemateMin) * 60_000
     ) {
       // Modo REMATE: la comida quedó corta → lo esperable no es la
       // cadencia normal adelantada, sino otra toma CERCANA que la
       // complete; después la cadencia se retoma desde el remate
-      const gap = mezclar(remate.medianaMin, AJUSTES.gapRematePriorMin, remate.n, AJUSTES.kRemate)
-      const banda = mezclar(
-        remate.iqrMin,
-        AJUSTES.bandaRematePriorMin,
-        remate.n,
-        AJUSTES.kRemate,
-      ).valor
       const resto = tipico - ultimaComida.mlTotal
       proximaToma = {
         ...construirPrediccion(
           new Date(ultimaToma.inicio).getTime(),
-          gap.valor,
-          banda,
-          gap.peso,
+          gapRemate.valor,
+          bandaRemate,
+          gapRemate.peso,
           0,
           remate.n,
           ahora,
@@ -737,9 +760,18 @@ export function predecir(datos: DatosPredictor, edadDias: number, ahora: Date): 
         acostar.n,
         AJUSTES.kAcostar,
       )
+      // Con la API de calendario, no sumando ms a la medianoche: la
+      // mezcla son minutos DE RELOJ (1230 = "las 20:30") y en los días
+      // de cambio de hora (23/25 h) la suma directa desplazaría el
+      // ancla nocturna una hora
       const acostarHoy = new Date(ahora)
-      acostarHoy.setHours(0, 0, 0, 0)
-      const acostarHoyMs = acostarHoy.getTime() + acostarMezcla.valor * 60_000
+      acostarHoy.setHours(
+        Math.floor(acostarMezcla.valor / 60),
+        Math.round(acostarMezcla.valor % 60),
+        0,
+        0,
+      )
+      const acostarHoyMs = acostarHoy.getTime()
       // En zona de acostarse por proyección O por hora actual: la última
       // ventana del día es la más larga (una siesta proyectada "pendiente"
       // al caer la tarde suele ser, en realidad, el sueño nocturno)

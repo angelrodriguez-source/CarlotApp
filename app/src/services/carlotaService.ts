@@ -26,9 +26,10 @@ function lanzarSi(error: { message: string } | null): void {
 }
 
 /**
- * Evento global que emite este servicio tras CUALQUIER escritura de
- * tomas/sueños/pañales. Quien cachee derivados de esos datos (p. ej. la
- * memoización del bocadillo de Ñeñeñi) lo escucha para invalidarse.
+ * Evento global que emite este servicio tras CUALQUIER escritura (tomas,
+ * sueños, pañales, eventos, medidas, citas y recordatorios). Quien cachee
+ * derivados de esos datos (memoización de Ñeñeñi, recordatoriosStore,
+ * autorrecarga de las vistas) lo escucha para refrescarse.
  * Con la escucha remota activa, también lo disparan las escrituras de la
  * OTRA persona (Realtime): mismo evento, mismo refresco.
  */
@@ -55,15 +56,21 @@ const TABLAS_EN_ESCUCHA = [
 ] as const
 
 let canalCambios: RealtimeChannel | null = null
+let reintentoEscucha: number | undefined
+const REINTENTO_ESCUCHA_MS = 30_000
 
 /**
  * Se conecta al Realtime de Supabase y reemite EVENTO_DATOS_CAMBIADOS
  * cuando cualquiera escribe en las tablas de datos (también uno mismo
  * desde otro dispositivo). RLS filtra: solo llegan filas legibles.
- * Idempotente; la reconexión tras cortes la gestiona el cliente.
+ * Idempotente. La reconexión tras cortes de red la gestiona el cliente;
+ * si la SUSCRIPCIÓN falla (canal con error o timeout al unirse), se
+ * desmonta y se reintenta a los 30 s — sin esto, un fallo al entrar
+ * dejaba la sesión entera sin refresco remoto y sin síntoma.
  */
 export function iniciarEscuchaRemota(): void {
   if (canalCambios) return
+  window.clearTimeout(reintentoEscucha)
   let canal = supabase.channel('cambios-en-datos')
   for (const tabla of TABLAS_EN_ESCUCHA) {
     canal = canal.on(
@@ -72,11 +79,17 @@ export function iniciarEscuchaRemota(): void {
       avisarDatosCambiados,
     )
   }
-  canalCambios = canal.subscribe()
+  canalCambios = canal.subscribe((estado) => {
+    if (estado === 'CHANNEL_ERROR' || estado === 'TIMED_OUT') {
+      pararEscuchaRemota()
+      reintentoEscucha = window.setTimeout(iniciarEscuchaRemota, REINTENTO_ESCUCHA_MS)
+    }
+  })
 }
 
-/** Al hacer logout: cerrar el canal (no escuchar sin sesión) */
+/** Al hacer logout: cerrar el canal y cancelar reintentos pendientes */
 export function pararEscuchaRemota(): void {
+  window.clearTimeout(reintentoEscucha)
   if (!canalCambios) return
   void supabase.removeChannel(canalCambios)
   canalCambios = null
@@ -326,6 +339,7 @@ export async function registrarEvento(
 ): Promise<Evento> {
   const { data, error } = await supabase.from('eventos').insert(evento).select().single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Evento
 }
 
@@ -392,11 +406,13 @@ export async function actualizarEvento(
 ): Promise<void> {
   const { error } = await supabase.from('eventos').update(cambios).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 export async function eliminarEvento(id: string): Promise<void> {
   const { error } = await supabase.from('eventos').delete().eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------
@@ -411,6 +427,7 @@ export async function registrarMedida(
 ): Promise<Medida> {
   const { data, error } = await supabase.from('medidas').insert(medida).select().single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Medida
 }
 
@@ -435,11 +452,13 @@ export async function actualizarMedida(
 ): Promise<void> {
   const { error } = await supabase.from('medidas').update(cambios).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 export async function eliminarMedida(id: string): Promise<void> {
   const { error } = await supabase.from('medidas').delete().eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------
@@ -451,6 +470,7 @@ export async function crearCita(
 ): Promise<Cita> {
   const { data, error } = await supabase.from('citas').insert(cita).select().single()
   lanzarSi(error)
+  avisarDatosCambiados()
   return data as Cita
 }
 
@@ -463,11 +483,13 @@ export async function listarCitas(bebeId: string): Promise<Cita[]> {
 export async function marcarCita(id: string, completada: boolean): Promise<void> {
   const { error } = await supabase.from('citas').update({ completada }).eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 export async function eliminarCita(id: string): Promise<void> {
   const { error } = await supabase.from('citas').delete().eq('id', id)
   lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------

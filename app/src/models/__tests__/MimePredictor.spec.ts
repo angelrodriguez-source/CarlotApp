@@ -448,6 +448,12 @@ describe('MimePredictor — backtesting con bebés simulados', () => {
     expect(gapCorta).toBeLessThan(60 * 60_000)
     expect(corta.mlPrevisto).toBeGreaterThanOrEqual(50)
     expect(corta.mlPrevisto).toBeLessThanOrEqual(70)
+    // CADUCIDAD: horas después de la toma corta, el remate ya expiró —
+    // vuelve la cadencia normal adelantada (nada de "el remate ya toca"
+    // anclado a media mañana)
+    const horasDespues = predecir(conCorta, 63, new Date(2026, 7, 7, 15, 0)).proximaToma!
+    expect(horasDespues.esRemate).toBe(false)
+    expect(horasDespues.factorCantidad!).toBeLessThan(0.9)
     // 100 ml (moderadamente corta): cadencia normal algo adelantada
     const moderada = predecir(conUltima(100), 63, ahora).proximaToma!
     expect(moderada.esRemate).toBe(false)

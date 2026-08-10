@@ -80,8 +80,10 @@ async function cargar(silenciosa = false) {
 onMounted(() => cargar())
 watch(dias, () => cargar())
 
-// Escrituras (propias o de la otra persona) y vuelta a primer plano
-usarAutorrecarga(() => cargar(true))
+// Escrituras (propias o de la otra persona) y vuelta a primer plano.
+// recargarAhora se usa tras las propias: cancela el debounce del evento
+// de esa misma escritura (una sola tanda de consultas)
+const { recargarAhora } = usarAutorrecarga(() => cargar(true))
 
 type RegistroDia =
   | { kind: 'toma'; id: string; hora: string; texto: string; img?: string; toma: Toma }
@@ -206,7 +208,7 @@ const registroEnEdicion = ref<RegistroEditable | null>(null)
 
 function alGuardar() {
   registroEnEdicion.value = null
-  cargar()
+  void recargarAhora()
 }
 
 async function borrarMomento(momento: Evento) {
@@ -214,7 +216,7 @@ async function borrarMomento(momento: Evento) {
   error.value = ''
   try {
     await servicio.eliminarEvento(momento.id)
-    await cargar()
+    await recargarAhora()
   } catch (e) {
     error.value = mensajeError(e)
   }

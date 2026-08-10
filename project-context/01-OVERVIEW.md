@@ -30,7 +30,8 @@ Que registra:
 
 Es el mismo montaje que `angelrodriguez-source/Mimes-Care-Corp` (ver su
 `PLANTILLA-NUEVA-APP.md`), simplificado para una app personal de 2 usuarios:
-sin registro publico, sin RPCs de economia, sin realtime.
+sin registro publico, sin RPCs de economia; Realtime SOLO para la
+autorrecarga (migracion 9 + iniciarEscuchaRemota en carlotaService).
 
 ## URLs
 

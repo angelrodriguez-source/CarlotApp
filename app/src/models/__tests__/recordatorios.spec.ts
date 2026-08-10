@@ -31,6 +31,7 @@ function recordatorio(parcial: Partial<Recordatorio>): Recordatorio {
     intervalo: 'dia',
     repeticiones: 1,
     activo: true,
+    created_at: iso('08:00', '2026-08-01'),
     ...parcial,
   }
 }

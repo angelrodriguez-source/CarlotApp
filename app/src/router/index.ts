@@ -31,6 +31,12 @@ const router = createRouter({
       name: 'citas',
       component: () => import('../views/CitasView.vue'),
     },
+    // Comodín: un hash desconocido (marcador viejo, typo) no debe dejar
+    // el <router-view> en blanco — a Hoy (o a login via el guard)
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: { name: 'hoy' },
+    },
   ],
 })
 

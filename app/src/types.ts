@@ -134,6 +134,8 @@ export interface Recordatorio {
   intervalo: IntervaloRecordatorio
   repeticiones: number
   activo: boolean
+  /** Orden estable del listado (el servicio ordena por esta columna) */
+  created_at: string
 }
 
 export const ETIQUETAS_EJERCICIO: Record<TipoEjercicio, string> = {
