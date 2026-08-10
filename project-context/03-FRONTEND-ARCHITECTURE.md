@@ -20,7 +20,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion); (2) "Cómo va el día" (icono icono-dia.png) con fecha y hora actual en la cabecera y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar, tocar una fila abre su edicion; el sueño nocturno que cruza la medianoche aparece en ambos dias via suenosDeDia — solo presentacion, con aviso "empezo el dia anterior / sigue tras medianoche" y su parte del dia); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); panales, eventos y momentos se registran en una hoja con hora editable (precargada con ahora); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
 | `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior (HojaEdicionRegistro) |
 | `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil: peso y altura con las curvas estandar OMS de fondo (deciles P0-P100, ventana de 60 dias con hoy en el dia 45, GraficaCrecimiento) y PC con banda P3-P97 + tabla con percentiles + graficas de dia a dia (leche ml/dia y sueno h/dia, rango 7/14/30, con franja naranja del rango recomendado por edad; ?grafica=tomas\|sueno hace scroll hasta ellas — enlazan los objetivos de Hoy); ✎ en cada medicion abre su edicion/borrado en hoja inferior |
-| `/citas` | CitasView | Proximas y hechas, alta, check de completada |
+| `/citas` | CitasView | "Citas & Recordatorios": proximas y hechas, alta, check de completada; y la card de Recordatorios (item + intervalo dia/semana + repeticiones, alta/pausa/borrado, estado "Hoy: 1 de 3 · quedan 2" via recordatoriosStore) |
 
 Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
 (login ↔ hoy). Todas las rutas salvo `/` requieren sesion.
@@ -33,6 +33,12 @@ Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
 - **bebeStore**: `bebe` (Carlota), `edad` (texto legible), `cargar()`
   (una vez, cacheado), `reset()` al logout. `bebe === null` con
   `cargado === true` ⇒ usuario sin acceso (no esta en la lista blanca)
+- **recordatoriosStore**: `recordatorios`, `estados` (hechas/pendientes,
+  de models/recordatorios.ts), `avisos(ahora)` (numerito del badge de
+  Neneni), `refrescar()` (recordatorios + registros de 7 dias en paralelo,
+  con guard de un solo refresco en vuelo), `iniciar()` (al login: primera
+  carga + escucha de `EVENTO_DATOS_CAMBIADOS` con debounce de 800 ms),
+  `reset()` al logout. Sin polling: se refresca al escribir datos.
 
 ## Servicios
 
@@ -42,10 +48,11 @@ Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
   produccion (la anon key es publica).
 - **services/carlotaService.ts**: TODO el acceso a datos. Funciones por
   entidad (registrar/listar/actualizar/eliminar tomas, suenos, panales,
-  eventos, medidas, citas; iniciar/finalizar sueno; registrar sueno a
-  posteriori; marcar cita). Convencion:
+  eventos, medidas, citas, recordatorios; iniciar/finalizar sueno;
+  registrar sueno a posteriori; marcar cita). Convencion:
   lanzan `Error` si Supabase devuelve error; las vistas capturan y
-  muestran el mensaje.
+  muestran el mensaje. Toda mutacion emite `EVENTO_DATOS_CAMBIADOS`
+  (window event) para que los stores/paneles se refresquen solos.
 
 **Los componentes/vistas jamas importan `supabase` directamente.**
 
@@ -144,6 +151,16 @@ Componentes):
 - Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
   (upsert de una fila viva por bebe en `predicciones`) +
   `aFilaPrediccion()` para serializar
+- `models/recordatorios.ts` — logica pura de los Recordatorios
+  (testeada en recordatorios.spec.ts): `AJUSTES_RECORDATORIOS` (hora de
+  aviso 19h, ventana semanal 7 dias, repeticiones 1-24) como unico punto
+  de ajuste; `ITEMS_RECORDATORIO` (catalogo con etiqueta e icono);
+  `estadoRecordatorios()` cuenta los registros reales dentro de la
+  ventana (dia local u ultimos 7 dias rodantes; el ejercicio filtra por
+  subtipo si el recordatorio lo fija); `avisosRecordatorios()` (badge:
+  solo desde la hora de aviso); `fraseRecordatorios()` (la frase del
+  bocadillo: enumeracion de dia, aviso al caer el dia, celebracion si
+  todo esta hecho) y `etiquetaRecordatorio()`
 
 Ademas, `models/referenciaOMS.ts` (GENERADO, no editar a mano): estandares
 OMS de ninas semanas 0-100 (P3/P15/P50/P85/P97 + parametros LMS de peso,
@@ -183,7 +200,13 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   "¿Por que llora?" con barras Sueno/Hambre/Incomodidad + explicaciones,
   y despues la seccion plegable "Semana N" (semanasDesarrollo.ts, voz de
   experto: cambios + ajustes de sueno/tomas de la semana — vivia en la
-  card de la bebe de Hoy y se movio aqui).
+  card de la bebe de Hoy y se movio aqui). Tras las frases de prediccion,
+  la frase de recordatorios (models/recordatorios.ts via
+  recordatoriosStore): que queda pendiente hoy, con tono de aviso desde
+  las 19h. El icono de la cabecera lleva el badge rojo con el numero de
+  recordatorios pendientes (App.vue, `avisos()` del store, visible solo
+  desde la hora de aviso; la reactividad horaria la da el ref horaActual
+  que ya se refresca cada minuto).
   Es un modal completo (mismo patron que HojaInferior: foco, trampa de
   Tab, Escape, scroll-lock via components/modal.ts, Teleport). Persiste
   el calculo en `predicciones` en segundo plano con boton de reintento

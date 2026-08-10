@@ -23,6 +23,24 @@
       en el catalogo, edicion completa en HojaEdicionRegistro y rango de
       validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
 
+## Recordatorios (2026-08-10)
+
+- [x] Seccion **Recordatorios** (idea de Angel): sobre un item de
+      registro, "deberia hacerse N veces al dia/semana" (vitamina D 1
+      vez al dia, Tummy Time 3 veces al dia...). Tabla `recordatorios`
+      (migracion 8: item + subtipo de ejercicio opcional + intervalo
+      dia/semana + repeticiones 1-24 + activo, RLS lista blanca). El
+      estado NO se persiste: `models/recordatorios.ts` (testeado) cuenta
+      los registros reales en la ventana (dia local / 7 dias rodantes).
+      `recordatoriosStore` carga recordatorios + registros de la semana
+      y se refresca con EVENTO_DATOS_CAMBIADOS (debounce 800 ms, sin
+      polling). UI: la vista Citas pasa a "Citas & Recordatorios" con
+      card propia (alta, pausa, borrado, "Hoy: 1 de 3 · quedan 2");
+      Ñeñeñi enumera lo pendiente en el bocadillo y desde las 19h avisa
+      con "el dia se acaba" + badge rojo con numerito sobre su icono de
+      la cabecera. Ajustes en AJUSTES_RECORDATORIOS (hora de aviso,
+      ventana semanal, rango de repeticiones).
+
 ## Super analisis 2026-08-08 (revision multi-agente — EJECUTADO ese mismo dia)
 
 Revision de 6 dimensiones (correccion, UX, accesibilidad, rendimiento,

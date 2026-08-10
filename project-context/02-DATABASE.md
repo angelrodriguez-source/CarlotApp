@@ -31,6 +31,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | `citas` | fecha, titulo, tipo, lugar, notas, completada | tipo: medica/tramite/otro |
 | `usuarios_autorizados` | email, nota | Lista blanca (ver arriba) |
 | `predicciones` | calculado_en, proxima_toma(+franja), proxima_siesta(+franja), durmiendo, incomodidad_prob, parametros | Mime Predictor: UNA fila viva por bebe (upsert), con los parametros del calculo en JSONB. La linea base poblacional vive en el codigo (prediccionBase.ts) |
+| `recordatorios` | item, subtipo, intervalo, repeticiones, activo | "Esto deberia hacerse N veces al dia/semana". item: toma/sueno/panal/bano/vitamina_d/medicacion/unas/ejercicio; subtipo solo para ejercicio (NULL = cualquiera); intervalo dia/semana; repeticiones 1-24. El estado (hechas/pendientes) NO se guarda: se calcula en el cliente contando registros reales (models/recordatorios.ts) |
 | `_migrations` | name, applied_at | Control del runner de migraciones. RLS sin policies |
 
 Todas las tablas de datos llevan ademas `registrado_por UUID DEFAULT auth.uid()`
@@ -64,6 +65,8 @@ Migraciones existentes:
 7. `202608091300_ejercicio.sql` — tipo de evento 'ejercicio' (Tummy
    Time/estimulacion/otros) + columnas `subtipo` y `duracion_min` en
    `eventos` con sus CHECK.
+8. `202608101000_recordatorios.sql` — tabla `recordatorios` (item +
+   intervalo + repeticiones + activo, CHECKs y RLS con la lista blanca).
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

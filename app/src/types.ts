@@ -119,6 +119,23 @@ export const ETIQUETAS_EVENTO: Record<TipoEvento, string> = {
   ejercicio: 'Ejercicio',
 }
 
+/** Ítems sobre los que se puede poner un recordatorio (registros contables) */
+export type ItemRecordatorio =
+  'toma' | 'sueno' | 'panal' | 'bano' | 'vitamina_d' | 'medicacion' | 'unas' | 'ejercicio'
+
+export type IntervaloRecordatorio = 'dia' | 'semana'
+
+export interface Recordatorio {
+  id: string
+  bebe_id: string
+  item: ItemRecordatorio
+  /** Solo para item 'ejercicio': null = cualquier ejercicio */
+  subtipo: TipoEjercicio | null
+  intervalo: IntervaloRecordatorio
+  repeticiones: number
+  activo: boolean
+}
+
 export const ETIQUETAS_EJERCICIO: Record<TipoEjercicio, string> = {
   tummy_time: 'Tummy Time',
   estimulacion: 'Estimulación',
