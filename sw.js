@@ -66,6 +66,17 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()
 })
 
+// Tocar una notificacion: enfocar la app si ya esta abierta, o abrirla
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      const abierta = ventanas.find((v) => 'focus' in v)
+      return abierta ? abierta.focus() : self.clients.openWindow('./')
+    }),
+  )
+})
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
