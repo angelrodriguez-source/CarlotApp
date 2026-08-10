@@ -15,6 +15,7 @@ import {
   type Evento,
   type Medida,
   type Panal,
+  type Recordatorio,
   type Sueno,
   type Toma,
 } from '../types'
@@ -420,6 +421,49 @@ export async function marcarCita(id: string, completada: boolean): Promise<void>
 export async function eliminarCita(id: string): Promise<void> {
   const { error } = await supabase.from('citas').delete().eq('id', id)
   lanzarSi(error)
+}
+
+// ------------------------------------------------------------
+// Recordatorios (ítem + intervalo + repeticiones; el estado se
+// calcula en models/recordatorios.ts contando los registros reales)
+// ------------------------------------------------------------
+
+export async function listarRecordatorios(bebeId: string): Promise<Recordatorio[]> {
+  const { data, error } = await supabase
+    .from('recordatorios')
+    .select()
+    .eq('bebe_id', bebeId)
+    .order('created_at')
+  lanzarSi(error)
+  return (data ?? []) as Recordatorio[]
+}
+
+export async function crearRecordatorio(
+  recordatorio: Pick<Recordatorio, 'bebe_id' | 'item' | 'subtipo' | 'intervalo' | 'repeticiones'>,
+): Promise<Recordatorio> {
+  const { data, error } = await supabase
+    .from('recordatorios')
+    .insert(recordatorio)
+    .select()
+    .single()
+  lanzarSi(error)
+  avisarDatosCambiados()
+  return data as Recordatorio
+}
+
+export async function actualizarRecordatorio(
+  id: string,
+  cambios: Partial<Pick<Recordatorio, 'subtipo' | 'intervalo' | 'repeticiones' | 'activo'>>,
+): Promise<void> {
+  const { error } = await supabase.from('recordatorios').update(cambios).eq('id', id)
+  lanzarSi(error)
+  avisarDatosCambiados()
+}
+
+export async function eliminarRecordatorio(id: string): Promise<void> {
+  const { error } = await supabase.from('recordatorios').delete().eq('id', id)
+  lanzarSi(error)
+  avisarDatosCambiados()
 }
 
 // ------------------------------------------------------------

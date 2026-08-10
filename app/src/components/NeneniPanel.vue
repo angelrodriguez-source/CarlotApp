@@ -38,6 +38,8 @@ import {
   type PronosticoNoche,
 } from '../models/MimePredictor'
 import { frasesNeneni, notaAprendizaje } from '../models/frasesNeneni'
+import { fraseRecordatorios } from '../models/recordatorios'
+import { useRecordatoriosStore } from '../stores/recordatoriosStore'
 import { desarrolloSemana } from '../models/semanasDesarrollo'
 import { edadDias, hoyLocal, mensajeError } from '../models/CarlotaModel'
 import { ICONOS_REGISTRO, neneniUrl } from '../assets/branding'
@@ -131,6 +133,14 @@ const frases = computed<string[]>(() =>
 
 const nota = computed(() => notaAprendizaje(prediccion.value, nombreBebe.value))
 
+// Recordatorios: qué queda pendiente hoy (con tono de aviso al caer el día).
+// Depende de `abierta` para reevaluarse con hora fresca en cada apertura.
+const recordatoriosStore = useRecordatoriosStore()
+const fraseRecs = computed(() => {
+  if (!props.abierta) return null
+  return fraseRecordatorios(recordatoriosStore.estados, new Date())
+})
+
 const barrasLlanto = computed(() => {
   const r = llanto.value
   if (!r) return []
@@ -186,6 +196,7 @@ const etapaSemana = computed(() =>
           </div>
           <template v-else>
             <p v-for="(frase, i) in frases" :key="i" class="nenei-bocadillo">{{ frase }}</p>
+            <p v-if="fraseRecs" class="nenei-bocadillo nenei-recordatorios">🔔 {{ fraseRecs }}</p>
             <p class="nenei-nota suave">{{ nota }}</p>
 
             <button
@@ -347,6 +358,11 @@ const etapaSemana = computed(() =>
 
 .nenei-error {
   background: color-mix(in srgb, var(--color-peligro) 12%, var(--color-tarjeta));
+}
+
+/* La frase de recordatorios se distingue un pelín del resto */
+.nenei-recordatorios {
+  background: color-mix(in srgb, var(--color-accion) 12%, var(--color-tarjeta));
 }
 
 .nenei-reintentar {

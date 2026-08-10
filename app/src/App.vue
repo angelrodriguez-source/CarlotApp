@@ -17,6 +17,7 @@ import {
 import { RouterView, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
+import { useRecordatoriosStore } from './stores/recordatoriosStore'
 import HojaInferior from './components/HojaInferior.vue'
 
 // Async: el panel arrastra el MimePredictor y las tablas OMS — cargarlo
@@ -33,12 +34,23 @@ import {
 
 const userStore = useUserStore()
 const bebeStore = useBebeStore()
+const recordatoriosStore = useRecordatoriosStore()
 const router = useRouter()
+
+// Los recordatorios arrancan con la sesión: primera carga + escucha de escrituras
+watch(
+  () => userStore.isLoggedIn,
+  (dentro) => {
+    if (dentro) recordatoriosStore.iniciar()
+  },
+  { immediate: true },
+)
 
 async function cerrarSesion() {
   menuAbierto.value = false
   await userStore.logout()
   bebeStore.reset()
+  recordatoriosStore.reset()
   router.push({ name: 'login' })
 }
 
@@ -119,6 +131,14 @@ const iconoTema = computed(() =>
   modoTema.value === 'auto' ? '🌓' : modoTema.value === 'oscuro' ? '🌙' : '☀️',
 )
 
+// Badge rojo sobre Ñeñeñi: recordatorios pendientes al caer el día.
+// horaActual (se refresca cada minuto) hace que aparezca solo a su hora.
+const avisosNenei = computed(() => {
+  void horaActual.value
+  void recordatoriosStore.estados
+  return recordatoriosStore.avisos(new Date())
+})
+
 // ---- Actualización de la PWA (evento que dispara main.ts) ----
 const swEsperando = ref<ServiceWorker | null>(null)
 
@@ -159,6 +179,9 @@ function abrirRegistro() {
         @click="neneniAbierto = !neneniAbierto"
       >
         <img :src="neneniUrl" alt="" />
+        <span v-if="avisosNenei > 0" class="badge-nenei" aria-label="Recordatorios pendientes">
+          {{ avisosNenei }}
+        </span>
       </button>
       <button
         ref="bolita"
@@ -317,6 +340,24 @@ function abrirRegistro() {
 
 .boton-nenei:hover {
   filter: brightness(1.08);
+}
+
+/* Numerito rojo de recordatorios pendientes, encima de Ñeñeñi */
+.badge-nenei {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-peligro);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-fondo);
 }
 
 /* Bolita del menú de usuario */
