@@ -41,6 +41,17 @@
       la cabecera. Ajustes en AJUSTES_RECORDATORIOS (hora de aviso,
       ventana semanal, rango de repeticiones).
 
+## Autorrecarga con Realtime (2026-08-10)
+
+- [x] La app abierta se refresca sola cuando la OTRA persona registra
+      algo: Supabase Realtime (migracion 9: tablas de datos en la
+      publicacion supabase_realtime) → `iniciarEscuchaRemota()` en el
+      servicio reemite EVENTO_DATOS_CAMBIADOS → las 4 vistas lo escuchan
+      con `usarAutorrecarga()` (recarga silenciosa con debounce 900 ms,
+      tambien al volver a primer plano, que cubre sockets dormidos en
+      segundo plano). Sin polling; los tokens anti-pisado de cada vista
+      evitan que una respuesta vieja machaque datos recientes.
+
 ## Super analisis 2026-08-08 (revision multi-agente — EJECUTADO ese mismo dia)
 
 Revision de 6 dimensiones (correccion, UX, accesibilidad, rendimiento,

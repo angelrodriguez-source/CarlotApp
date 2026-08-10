@@ -18,6 +18,7 @@ import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
+import { usarAutorrecarga } from '../components/autorrecarga'
 import type { RegistroEditable } from '../components/registroEditable'
 import {
   LIMITES_ENTRADA,
@@ -178,6 +179,11 @@ function atenderQueries() {
 }
 
 watch(() => [route.query.registrar, route.query.config], atenderQueries)
+
+// Autorrecarga: escrituras (propias y de la otra persona, via Realtime)
+// y vuelta a primer plano. cargarDia es silenciosa y con token: segura
+// de repetir sin parpadeos ni pisar respuestas
+usarAutorrecarga(() => cargarDia().catch((e) => (error.value = mensajeError(e))))
 
 // Dia con el que se cargaron los datos: si el reloj cruza la medianoche
 // (o la app vuelve del segundo plano en otro dia), se recarga todo

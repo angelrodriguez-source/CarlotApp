@@ -7,6 +7,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useBebeStore } from '../stores/bebeStore'
 import { useRecordatoriosStore } from '../stores/recordatoriosStore'
+import { usarAutorrecarga } from '../components/autorrecarga'
 import {
   ICONOS_REGISTRO,
   iconoCitasUrl,
@@ -64,6 +65,10 @@ onMounted(async () => {
     cargando.value = false
   }
 })
+
+// Escrituras (propias o de la otra persona) y vuelta a primer plano.
+// El estado de los recordatorios lo refresca su store por su cuenta.
+usarAutorrecarga(() => cargar().catch((e) => (error.value = mensajeError(e))))
 
 /** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
 /** Marca/desmarca una cita; si la petición falla, repone el checkbox */

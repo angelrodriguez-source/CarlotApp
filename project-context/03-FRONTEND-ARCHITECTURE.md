@@ -53,6 +53,11 @@ Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
   lanzan `Error` si Supabase devuelve error; las vistas capturan y
   muestran el mensaje. Toda mutacion emite `EVENTO_DATOS_CAMBIADOS`
   (window event) para que los stores/paneles se refresquen solos.
+  `iniciarEscuchaRemota()`/`pararEscuchaRemota()` (las llama App.vue con
+  el login/logout): canal de Supabase Realtime sobre las tablas de datos
+  (migracion 9) que reemite el MISMO evento cuando escribe la otra
+  persona — asi todo lo que ya escucha el evento se refresca tambien con
+  los cambios remotos, sin polling.
 
 - **services/notificaciones.ts**: notificaciones locales (fase 1 de Web
   Push, sin servidor) — `soportaNotificaciones()`,
@@ -222,6 +227,13 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   Tab, Escape, scroll-lock via components/modal.ts, Teleport). Persiste
   el calculo en `predicciones` en segundo plano con boton de reintento
   si falla la carga.
+- **autorrecarga.ts** (components/): `usarAutorrecarga(recargar)` — la
+  vista pasa su funcion de recarga SILENCIOSA (sin esqueletos, con token
+  anti-pisado) y se dispara con debounce (900 ms) al llegar
+  `EVENTO_DATOS_CAMBIADOS` (escrituras propias y remotas via Realtime) y
+  al volver la pestana/PWA a primer plano. Lo usan Hoy (cargarDia),
+  Historial (cargar(silenciosa=true)), Evolucion y Citas. El debounce
+  funde la rafaga escritura propia + eco Realtime en una sola recarga.
 - **modal.ts** (components/): el ciclo de vida modal compartido —
   `usarModal(abierta, panel, {alAbrir, alCerrar})` (scroll-lock con
   contador comun, captura/devolucion de foco, `immediate: true` para

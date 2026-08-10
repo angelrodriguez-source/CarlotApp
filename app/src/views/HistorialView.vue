@@ -27,6 +27,7 @@ import {
 import { ICONOS_REGISTRO, iconoDiaUrl, iconoHistorialUrl } from '../assets/branding'
 import GraficaRitmo from '../components/GraficaRitmo.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
+import { usarAutorrecarga } from '../components/autorrecarga'
 import type { RegistroEditable } from '../components/registroEditable'
 import type { Evento, Panal, Sueno, Toma } from '../types'
 
@@ -49,9 +50,11 @@ const diaAbierto = ref<string | null>(null)
 // respuesta vieja no debe pisar a la nueva
 let versionCarga = 0
 
-async function cargar() {
+async function cargar(silenciosa = false) {
   error.value = ''
-  cargando.value = true
+  // La autorrecarga no enciende los esqueletos: los datos visibles se
+  // quedan hasta que llegan los frescos
+  if (!silenciosa) cargando.value = true
   const version = ++versionCarga
   try {
     const bebe = await bebeStore.cargar()
@@ -74,8 +77,11 @@ async function cargar() {
   }
 }
 
-onMounted(cargar)
-watch(dias, cargar)
+onMounted(() => cargar())
+watch(dias, () => cargar())
+
+// Escrituras (propias o de la otra persona) y vuelta a primer plano
+usarAutorrecarga(() => cargar(true))
 
 type RegistroDia =
   | { kind: 'toma'; id: string; hora: string; texto: string; img?: string; toma: Toma }
