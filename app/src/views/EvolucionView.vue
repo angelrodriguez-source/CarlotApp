@@ -52,6 +52,7 @@ import GraficaCrecimiento, {
   type PuntoCrecimiento,
 } from '../components/GraficaCrecimiento.vue'
 import HojaInferior from '../components/HojaInferior.vue'
+import { usarAutorrecarga } from '../components/autorrecarga'
 
 const bebeStore = useBebeStore()
 const route = useRoute()
@@ -79,6 +80,9 @@ async function cargar() {
   if (!bebe) return
   ;[medidas.value] = await Promise.all([servicio.listarMedidas(bebe.id), cargarDiarios()])
 }
+
+// Escrituras (propias o de la otra persona) y vuelta a primer plano
+usarAutorrecarga(() => cargar().catch((e) => (error.value = mensajeError(e))))
 
 onMounted(async () => {
   // El enlace "registra el peso" de Hoy llega con ?nueva=1: formulario abierto

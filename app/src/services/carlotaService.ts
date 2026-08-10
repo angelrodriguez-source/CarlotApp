@@ -7,6 +7,7 @@
  * Convención de errores: cada función lanza (throw) si Supabase devuelve
  * error; las vistas capturan y muestran el mensaje.
  */
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import {
   ETIQUETAS_EVENTO,
@@ -28,11 +29,57 @@ function lanzarSi(error: { message: string } | null): void {
  * Evento global que emite este servicio tras CUALQUIER escritura de
  * tomas/sueños/pañales. Quien cachee derivados de esos datos (p. ej. la
  * memoización del bocadillo de Ñeñeñi) lo escucha para invalidarse.
+ * Con la escucha remota activa, también lo disparan las escrituras de la
+ * OTRA persona (Realtime): mismo evento, mismo refresco.
  */
 export const EVENTO_DATOS_CAMBIADOS = 'carlotapp-datos-cambiados'
 
 function avisarDatosCambiados(): void {
   window.dispatchEvent(new Event(EVENTO_DATOS_CAMBIADOS))
+}
+
+// ------------------------------------------------------------
+// Escucha remota (Supabase Realtime)
+// ------------------------------------------------------------
+
+/** Tablas cuyos cambios remotos refrescan la app (en la publicación
+ *  supabase_realtime — migración 9) */
+const TABLAS_EN_ESCUCHA = [
+  'tomas',
+  'suenos',
+  'panales',
+  'eventos',
+  'medidas',
+  'citas',
+  'recordatorios',
+] as const
+
+let canalCambios: RealtimeChannel | null = null
+
+/**
+ * Se conecta al Realtime de Supabase y reemite EVENTO_DATOS_CAMBIADOS
+ * cuando cualquiera escribe en las tablas de datos (también uno mismo
+ * desde otro dispositivo). RLS filtra: solo llegan filas legibles.
+ * Idempotente; la reconexión tras cortes la gestiona el cliente.
+ */
+export function iniciarEscuchaRemota(): void {
+  if (canalCambios) return
+  let canal = supabase.channel('cambios-en-datos')
+  for (const tabla of TABLAS_EN_ESCUCHA) {
+    canal = canal.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: tabla },
+      avisarDatosCambiados,
+    )
+  }
+  canalCambios = canal.subscribe()
+}
+
+/** Al hacer logout: cerrar el canal (no escuchar sin sesión) */
+export function pararEscuchaRemota(): void {
+  if (!canalCambios) return
+  void supabase.removeChannel(canalCambios)
+  canalCambios = null
 }
 
 // ------------------------------------------------------------

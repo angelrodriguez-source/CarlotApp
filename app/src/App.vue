@@ -20,6 +20,7 @@ import { useBebeStore } from './stores/bebeStore'
 import { useRecordatoriosStore } from './stores/recordatoriosStore'
 import { fraseRecordatorios } from './models/recordatorios'
 import { hoyLocal } from './models/CarlotaModel'
+import { iniciarEscuchaRemota, pararEscuchaRemota } from './services/carlotaService'
 import {
   mostrarNotificacion,
   pedirPermisoNotificaciones,
@@ -45,11 +46,18 @@ const bebeStore = useBebeStore()
 const recordatoriosStore = useRecordatoriosStore()
 const router = useRouter()
 
-// Los recordatorios arrancan con la sesión: primera carga + escucha de escrituras
+// Con la sesión arrancan los recordatorios (primera carga + escucha de
+// escrituras) y la escucha remota: los cambios que registre la otra
+// persona llegan por Realtime y refrescan la app sola
 watch(
   () => userStore.isLoggedIn,
   (dentro) => {
-    if (dentro) recordatoriosStore.iniciar()
+    if (dentro) {
+      recordatoriosStore.iniciar()
+      iniciarEscuchaRemota()
+    } else {
+      pararEscuchaRemota()
+    }
   },
   { immediate: true },
 )

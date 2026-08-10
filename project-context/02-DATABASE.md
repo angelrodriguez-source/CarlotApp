@@ -67,6 +67,10 @@ Migraciones existentes:
    `eventos` con sus CHECK.
 8. `202608101000_recordatorios.sql` — tabla `recordatorios` (item +
    intervalo + repeticiones + activo, CHECKs y RLS con la lista blanca).
+9. `202608101900_realtime.sql` — anade las tablas de datos (tomas,
+   suenos, panales, eventos, medidas, citas, recordatorios) a la
+   publicacion `supabase_realtime` para que la app escuche los cambios
+   (autorrecarga). RLS sigue filtrando lo que recibe cada suscriptor.
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 
