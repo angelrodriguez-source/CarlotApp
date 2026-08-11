@@ -15,7 +15,7 @@ import {
   iconoHechasUrl,
 } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
-import { aInputLocal, mensajeError } from '../models/CarlotaModel'
+import { aInputLocal, fechaHoraCita, mensajeError } from '../models/CarlotaModel'
 import {
   AJUSTES_RECORDATORIOS,
   ITEMS_RECORDATORIO,
@@ -100,8 +100,16 @@ function borrarCita(cita: Cita) {
   ejecutar(() => servicio.eliminarCita(cita.id))
 }
 
-/** Ejecuta y recarga; devuelve true solo si la acción principal fue bien */
-async function ejecutar(accion: () => Promise<unknown>): Promise<boolean> {
+/**
+ * Ejecuta y recarga; devuelve true solo si la acción principal fue bien.
+ * Las acciones de citas recargan la lista (recargarAhora cancela el
+ * debounce del evento de esa misma escritura); las de recordatorios
+ * refrescan su store al momento.
+ */
+async function ejecutar(
+  accion: () => Promise<unknown>,
+  recarga: 'citas' | 'recordatorios' = 'citas',
+): Promise<boolean> {
   error.value = ''
   try {
     await accion()
@@ -109,8 +117,11 @@ async function ejecutar(accion: () => Promise<unknown>): Promise<boolean> {
     error.value = mensajeError(e)
     return false
   }
-  // recargarAhora cancela el debounce del evento de esta misma escritura
-  await recargarAhora()
+  if (recarga === 'citas') {
+    await recargarAhora()
+  } else {
+    await recordatoriosStore.refrescar().catch((e) => (error.value = mensajeError(e)))
+  }
   return true
 }
 
@@ -146,16 +157,6 @@ const pendientes = computed(() =>
 const pasadas = computed(() =>
   citas.value.filter((c) => c.completada).sort((a, b) => b.fecha.localeCompare(a.fecha)),
 )
-
-function fechaLegible(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function icono(tipo: TipoCita): string {
   return tipo === 'medica' ? '🩺' : tipo === 'tramite' ? '📋' : '📌'
@@ -202,14 +203,16 @@ async function guardarRecordatorio() {
   const bebe = bebeStore.bebe
   if (!bebe) return
   const datos = nuevoRecordatorio.value
-  const guardado = await ejecutarRecordatorio(() =>
-    servicio.crearRecordatorio({
-      bebe_id: bebe.id,
-      item: datos.item,
-      subtipo: datos.item === 'ejercicio' && datos.subtipo ? datos.subtipo : null,
-      intervalo: datos.intervalo,
-      repeticiones: datos.repeticiones,
-    }),
+  const guardado = await ejecutar(
+    () =>
+      servicio.crearRecordatorio({
+        bebe_id: bebe.id,
+        item: datos.item,
+        subtipo: datos.item === 'ejercicio' && datos.subtipo ? datos.subtipo : null,
+        intervalo: datos.intervalo,
+        repeticiones: datos.repeticiones,
+      }),
+    'recordatorios',
   )
   if (!guardado) return
   mostrarFormularioRecordatorio.value = false
@@ -222,25 +225,12 @@ async function guardarRecordatorio() {
 }
 
 function alternarRecordatorio(r: Recordatorio) {
-  ejecutarRecordatorio(() => servicio.actualizarRecordatorio(r.id, { activo: !r.activo }))
+  ejecutar(() => servicio.actualizarRecordatorio(r.id, { activo: !r.activo }), 'recordatorios')
 }
 
 function borrarRecordatorio(r: Recordatorio) {
   if (!window.confirm(`¿Borrar el recordatorio "${etiquetaRecordatorio(r)}"?`)) return
-  ejecutarRecordatorio(() => servicio.eliminarRecordatorio(r.id))
-}
-
-/** Como ejecutar(), pero recargando el store de recordatorios al momento */
-async function ejecutarRecordatorio(accion: () => Promise<unknown>): Promise<boolean> {
-  error.value = ''
-  try {
-    await accion()
-  } catch (e) {
-    error.value = mensajeError(e)
-    return false
-  }
-  await recordatoriosStore.refrescar().catch((e) => (error.value = mensajeError(e)))
-  return true
+  ejecutar(() => servicio.eliminarRecordatorio(r.id), 'recordatorios')
 }
 </script>
 
@@ -308,7 +298,7 @@ async function ejecutarRecordatorio(accion: () => Promise<unknown>): Promise<boo
           {{ icono(cita.tipo) }} <strong>{{ cita.titulo }}</strong>
           <br />
           <span class="suave">
-            {{ fechaLegible(cita.fecha) }}
+            {{ fechaHoraCita(cita.fecha) }}
             <template v-if="cita.lugar"> · {{ cita.lugar }}</template>
             <template v-if="cita.notas"> · {{ cita.notas }}</template>
           </span>
@@ -338,7 +328,7 @@ async function ejecutarRecordatorio(accion: () => Promise<unknown>): Promise<boo
           />
           <span class="detalle">
             {{ icono(cita.tipo) }} {{ cita.titulo }}
-            <span class="suave"> · {{ fechaLegible(cita.fecha) }}</span>
+            <span class="suave"> · {{ fechaHoraCita(cita.fecha) }}</span>
           </span>
           <button
             class="boton peligro"

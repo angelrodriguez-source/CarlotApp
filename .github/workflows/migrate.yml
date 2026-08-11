@@ -1,7 +1,9 @@
-# Migraciones automaticas de Supabase
+# Migraciones de Supabase — SOLO lanzamiento manual
 #
-# Se dispara cuando cambia algo en supabase/migrations/ (o a mano desde la
-# pestana Actions > "Migraciones Supabase" > Run workflow).
+# El camino normal es automatico: el job `migrar` de deploy.yml aplica las
+# migraciones pendientes en cada push a main, ANTES de publicar el
+# frontend. Este workflow queda para aplicarlas a mano (pestana Actions >
+# "Migraciones Supabase" > Run workflow), p. ej. tras arreglar el secret.
 #
 # Aplica SOLO las migraciones nuevas: lleva la cuenta en la tabla
 # public._migrations de tu base de datos (ver scripts/apply-migrations.sh).
@@ -13,14 +15,10 @@
 name: Migraciones Supabase
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/**'
   workflow_dispatch:
 
-# Nunca dos runs a la vez: dos pushes seguidos aplicarian la misma
-# migracion en paralelo (el check-then-apply del script no es atomico)
+# Mismo grupo que el job `migrar` de deploy.yml: nunca dos aplicaciones
+# a la vez (el check-then-apply del script no es atomico entre procesos)
 concurrency:
   group: migraciones-supabase
   cancel-in-progress: false

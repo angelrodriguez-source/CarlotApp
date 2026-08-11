@@ -12,11 +12,13 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
-import { useUserStore } from '../stores/userStore'
 import { fotoBebeUrl, ICONOS_REGISTRO, iconoDiaUrl, logoUrl } from '../assets/branding'
 import * as servicio from '../services/carlotaService'
 import BarraObjetivo from '../components/BarraObjetivo.vue'
 import HojaInferior from '../components/HojaInferior.vue'
+import HojaPanal from '../components/HojaPanal.vue'
+import HojaConfiguracion from '../components/HojaConfiguracion.vue'
+import { usarListaPersistida } from '../components/listaPersistida'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import { usarAutorrecarga } from '../components/autorrecarga'
 import type { RegistroEditable } from '../components/registroEditable'
@@ -33,6 +35,9 @@ import {
   duracionMinutos,
   edadCorta,
   edadDias,
+  fechaDiaCorta,
+  fechaHoraCita,
+  filasDeDia,
   formatoDuracion,
   formatoPeso,
   horaCorta,
@@ -45,16 +50,10 @@ import {
   percentilRedondeado,
   resumenDia,
   sinEmojiInicial,
-  textoEvento,
-  textoPanal,
-  suenosDeDia,
-  textoSuenoEnDia,
-  textoToma,
   ultimoValor,
 } from '../models/CarlotaModel'
 import {
   ETIQUETAS_EJERCICIO,
-  ETIQUETAS_CANTIDAD_PANAL,
   ETIQUETAS_EVENTO,
   ETIQUETAS_TOMA,
   type CantidadPanal,
@@ -71,7 +70,6 @@ import {
 } from '../types'
 
 const bebeStore = useBebeStore()
-const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -332,13 +330,6 @@ const minutosSuenoHoy = computed(() =>
   minutosSuenoEnDia(suenosConAbierto.value, hoyLocal(ahora.value), ahora.value),
 )
 
-function fechaCorta(fechaIso: string): string {
-  return new Date(fechaIso + 'T00:00:00').toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
 // ---- Objetivos del día (orientativos, según edad) ----
 const edadDiasHoy = computed(() =>
   bebeStore.bebe ? edadDias(bebeStore.bebe.fecha_nacimiento, hoyLocal(ahora.value)) : 0,
@@ -407,29 +398,8 @@ const CATALOGO_HITOS = [
 
 const HITOS_VISIBLES_POR_DEFECTO = ['toma', 'sueno', 'panal']
 
-/**
- * Lista de ids persistida en localStorage por usuario (cada padre la suya
- * en este dispositivo). La lista vacía también se respeta al recargar
- * (deseleccionarlo todo es una elección válida): los valores por defecto
- * solo aplican si nunca se guardó nada o la config está corrupta.
- */
-function listaPersistida(prefijo: string, porDefecto: readonly string[]) {
-  const clave = computed(() => `${prefijo}-${userStore.user?.id ?? 'anon'}`)
-  const valor = ref<string[]>([...porDefecto])
-  function cargar() {
-    try {
-      const guardado = JSON.parse(localStorage.getItem(clave.value) ?? 'null')
-      if (Array.isArray(guardado)) valor.value = guardado
-    } catch {
-      // config corrupta: se queda la de por defecto
-    }
-  }
-  watch(valor, (v) => localStorage.setItem(clave.value, JSON.stringify(v)), { deep: true })
-  return { valor, cargar }
-}
-
 // Config por usuario (guardada en el dispositivo, cada padre la suya)
-const { valor: hitosVisiblesConfig, cargar: cargarConfigHitos } = listaPersistida(
+const { valor: hitosVisiblesConfig, cargar: cargarConfigHitos } = usarListaPersistida(
   'carlotapp-hitos',
   HITOS_VISIBLES_POR_DEFECTO,
 )
@@ -533,16 +503,6 @@ const proximaCita = computed(() => {
       .sort((a, b) => a.fecha.localeCompare(b.fecha))[0] ?? null
   )
 })
-
-function fechaCita(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 // ---- Toma ----
 const nuevaToma = ref({
@@ -677,25 +637,19 @@ function alternarSueno() {
 }
 
 // ---- Pañal ----
-// Hoja única para pis/caca/mixto: hora editable (precargada con "ahora")
-// y, en caca/mixto, la cantidad como botones que guardan directamente
-const nuevoPanal = ref<{ tipo: TipoPanal; hora: string } | null>(null)
-
-const TITULOS_PANAL: Record<TipoPanal, { texto: string; icono?: string }> = {
-  pis: { texto: 'Pis', icono: ICONOS_REGISTRO.pis },
-  caca: { texto: 'Caca', icono: ICONOS_REGISTRO.caca },
-  mixto: { texto: 'Pis + caca', icono: ICONOS_REGISTRO.caca },
-}
+// La hoja (hora + cantidad) vive en HojaPanal; aquí, el tipo abierto y
+// el guardado real (validación + servicio + deshacer)
+const tipoPanalAbierto = ref<TipoPanal | null>(null)
 
 function abrirPanal(tipo: TipoPanal) {
-  nuevoPanal.value = { tipo, hora: aInputLocal(new Date()) }
+  tipoPanalAbierto.value = tipo
 }
 
-async function registrarPanal(cantidad: CantidadPanal | null = null) {
+async function registrarPanal(cantidad: CantidadPanal | null, hora: string) {
   const bebe = bebeStore.bebe
-  const panal = nuevoPanal.value
-  if (!bebe || !panal) return
-  const problema = validarFechaRegistro(new Date(panal.hora), bebe.fecha_nacimiento)
+  const tipo = tipoPanalAbierto.value
+  if (!bebe || !tipo) return
+  const problema = validarFechaRegistro(new Date(hora), bebe.fecha_nacimiento)
   if (problema) {
     error.value = problema
     return
@@ -705,14 +659,14 @@ async function registrarPanal(cantidad: CantidadPanal | null = null) {
     () =>
       servicio.registrarPanal({
         bebe_id: bebe.id,
-        fecha: new Date(panal.hora).toISOString(),
-        tipo: panal.tipo,
+        fecha: new Date(hora).toISOString(),
+        tipo,
         cantidad,
         notas: null,
       }),
     (registro) => () => servicio.eliminarPanal(registro.id),
   )
-  if (guardado) nuevoPanal.value = null
+  if (guardado) tipoPanalAbierto.value = null
 }
 
 // ---- Sueño a posteriori ----
@@ -957,7 +911,7 @@ function ejecutarAccion(id: string) {
 
 // Accesos directos configurados (por usuario, en este dispositivo)
 const ACCESOS_POR_DEFECTO = ['sueno', 'toma', 'caca', 'pis']
-const { valor: accesosConfig, cargar: cargarConfigAccesos } = listaPersistida(
+const { valor: accesosConfig, cargar: cargarConfigAccesos } = usarListaPersistida(
   'carlotapp-accesos',
   ACCESOS_POR_DEFECTO,
 )
@@ -1085,47 +1039,45 @@ function finToqueFila(evento: TouchEvent, id: string) {
   else if (dx > 40 && filaDeslizada.value === id) filaDeslizada.value = null
 }
 
-const lineaDeTiempo = computed<Registro[]>(() => {
-  const registros: Registro[] = [
-    ...tomas.value.map((t): Registro => ({
-      id: t.id,
-      hora: t.inicio,
-      texto: textoConIcono(textoToma(t), ICONOS_REGISTRO.toma),
-      img: ICONOS_REGISTRO.toma,
-      borrar: () => servicio.eliminarToma(t.id),
-      editable: { kind: 'toma', toma: t },
-    })),
-    // Sueños VISIBLES hoy: también el nocturno que empezó ayer (fila
-    // "prestada" con aviso y su parte de hoy — el registro no se mueve)
-    ...suenosDeDia(suenosConAbierto.value, hoyLocal(ahora.value), ahora.value).map(
-      (v): Registro => ({
-        id: v.sueno.id,
-        hora: v.horaOrden,
-        texto: textoConIcono(textoSuenoEnDia(v), ICONOS_REGISTRO.sueno),
-        img: ICONOS_REGISTRO.sueno,
-        borrar: () => servicio.eliminarSueno(v.sueno.id),
-        editable: { kind: 'sueno', sueno: v.sueno },
-      }),
-    ),
-    ...panales.value.map((p): Registro => ({
-      id: p.id,
-      hora: p.fecha,
-      texto: textoConIcono(textoPanal(p), ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca']),
-      img: ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca'],
-      borrar: () => servicio.eliminarPanal(p.id),
-      editable: { kind: 'panal', panal: p },
-    })),
-    ...eventos.value.map((e): Registro => ({
-      id: e.id,
-      hora: e.fecha,
-      texto: textoConIcono(textoEvento(e), ICONOS_REGISTRO[e.tipo]),
-      img: ICONOS_REGISTRO[e.tipo],
-      borrar: () => servicio.eliminarEvento(e.id),
-      editable: { kind: 'evento', evento: e },
-    })),
-  ]
-  return registros.sort((a, b) => b.hora.localeCompare(a.hora))
-})
+/** El borrado que corresponde a cada tipo de fila */
+function borrarEditable(e: RegistroEditable): Promise<void> {
+  switch (e.kind) {
+    case 'toma':
+      return servicio.eliminarToma(e.toma.id)
+    case 'sueno':
+      return servicio.eliminarSueno(e.sueno.id)
+    case 'panal':
+      return servicio.eliminarPanal(e.panal.id)
+    case 'evento':
+      return servicio.eliminarEvento(e.evento.id)
+  }
+}
+
+// Las filas las construye el modelo (filasDeDia, misma fuente que el
+// Historial); aquí solo se añade la presentación (icono) y el borrado
+const lineaDeTiempo = computed<Registro[]>(() =>
+  filasDeDia(
+    {
+      tomas: tomas.value,
+      suenos: suenosConAbierto.value,
+      panales: panales.value,
+      eventos: eventos.value,
+    },
+    hoyLocal(ahora.value),
+    ahora.value,
+    'desc',
+  ).map((f): Registro => {
+    const img = ICONOS_REGISTRO[f.icono]
+    return {
+      id: f.id,
+      hora: f.hora,
+      texto: textoConIcono(f.texto, img),
+      img,
+      borrar: () => borrarEditable(f.editable),
+      editable: f.editable,
+    }
+  }),
+)
 </script>
 
 <template>
@@ -1166,7 +1118,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <span class="sub">
               {{
                 ultimoPeso
-                  ? `${percentilPeso !== null ? `P${percentilPeso} · ` : ''}${fechaCorta(ultimoPeso.fecha)}`
+                  ? `${percentilPeso !== null ? `P${percentilPeso} · ` : ''}${fechaDiaCorta(ultimoPeso.fecha)}`
                   : 'sin datos'
               }}
             </span>
@@ -1178,7 +1130,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
             <span class="sub">
               {{
                 ultimaAltura
-                  ? `${percentilAltura !== null ? `P${percentilAltura} · ` : ''}${fechaCorta(ultimaAltura.fecha)}`
+                  ? `${percentilAltura !== null ? `P${percentilAltura} · ` : ''}${fechaDiaCorta(ultimaAltura.fecha)}`
                   : 'sin datos'
               }}
             </span>
@@ -1187,7 +1139,7 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
         <!-- Próxima cita del calendario → Citas -->
         <RouterLink v-if="proximaCita" :to="{ name: 'citas' }" class="cita-bebe">
-          <span>🗓️ {{ proximaCita.titulo }} · {{ fechaCita(proximaCita.fecha) }}</span>
+          <span>🗓️ {{ proximaCita.titulo }} · {{ fechaHoraCita(proximaCita.fecha) }}</span>
           <span class="suave">→</span>
         </RouterLink>
 
@@ -1349,43 +1301,12 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       </section>
 
       <!-- Hojas inferiores (formularios) -->
-      <HojaInferior
-        :abierta="nuevoPanal !== null"
-        :titulo="nuevoPanal ? TITULOS_PANAL[nuevoPanal.tipo].texto : ''"
-        :icono="nuevoPanal ? TITULOS_PANAL[nuevoPanal.tipo].icono : undefined"
-        @cerrar="nuevoPanal = null"
-      >
-        <template v-if="nuevoPanal">
-          <div class="campo">
-            <label for="panal-hora">Hora (por si no es ahora mismo)</label>
-            <input
-              id="panal-hora"
-              v-model="nuevoPanal.hora"
-              type="datetime-local"
-              :min="sueloHora()"
-              :max="topeHora()"
-              required
-            />
-          </div>
-          <template v-if="nuevoPanal.tipo !== 'pis'">
-            <span class="etiqueta-seccion">¿Cuánta?</span>
-            <div class="cantidades">
-              <button
-                v-for="(etiqueta, valor) in ETIQUETAS_CANTIDAD_PANAL"
-                :key="valor"
-                class="acceso"
-                :disabled="registrando"
-                @click="registrarPanal(valor)"
-              >
-                {{ etiqueta }}
-              </button>
-            </div>
-          </template>
-          <button v-else class="boton" :disabled="registrando" @click="registrarPanal()">
-            Guardar
-          </button>
-        </template>
-      </HojaInferior>
+      <HojaPanal
+        :tipo="tipoPanalAbierto"
+        :registrando="registrando"
+        @cerrar="tipoPanalAbierto = null"
+        @guardar="registrarPanal"
+      />
 
       <HojaInferior
         :abierta="formulario === 'toma'"
@@ -1634,33 +1555,14 @@ const lineaDeTiempo = computed<Registro[]>(() => {
       </HojaInferior>
 
       <!-- Configuración por usuario: hitos visibles + accesos directos -->
-      <HojaInferior
+      <HojaConfiguracion
+        v-model:hitos-visibles="hitosVisiblesConfig"
+        v-model:accesos="accesosConfig"
         :abierta="mostrarConfig"
-        titulo="⚙ Configuración"
+        :hitos="CATALOGO_HITOS"
+        :acciones="accionesRegistro"
         @cerrar="mostrarConfig = false"
-      >
-        <p class="suave">
-          Se guarda para tu usuario en este dispositivo — cada uno puede tener la suya.
-        </p>
-        <span class="etiqueta-seccion">Últimos hitos visibles sin desplegar</span>
-        <label v-for="entrada in CATALOGO_HITOS" :key="entrada.id" class="opcion-hito">
-          <input v-model="hitosVisiblesConfig" type="checkbox" :value="entrada.id" />
-          <span class="opcion-texto">
-            <img v-if="entrada.img" :src="entrada.img" alt="" class="icono-opcion" />
-            {{ entrada.etiqueta }}
-          </span>
-        </label>
-        <span class="etiqueta-seccion seccion-config">Accesos directos de la card</span>
-        <label v-for="accion in accionesRegistro" :key="accion.id" class="opcion-hito">
-          <input v-model="accesosConfig" type="checkbox" :value="accion.id" />
-          <span class="opcion-texto">
-            <img v-if="accion.img" :src="accion.img" alt="" class="icono-opcion" />
-            <template v-else>{{ accion.icono }}</template>
-            {{ accion.etiqueta }}
-          </span>
-        </label>
-        <button class="boton" @click="mostrarConfig = false">Listo</button>
-      </HojaInferior>
+      />
 
       <!-- Edición de un registro del día (misma hoja que en el Historial) -->
       <HojaEdicionRegistro
@@ -1792,27 +1694,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 
 .cabecera-toggle:disabled {
   cursor: default;
-}
-
-.opcion-hito {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.45rem 0;
-  border-bottom: 1px solid var(--color-borde);
-}
-
-.opcion-hito input {
-  width: auto;
-}
-
-.opcion-hito:last-of-type {
-  border-bottom: none;
-  margin-bottom: 0.75rem;
-}
-
-.seccion-config {
-  margin-top: 1rem;
 }
 
 /* Bloque "Ahora" del hero */
@@ -1957,17 +1838,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
   height: 30px;
 }
 
-.opcion-texto {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.icono-opcion {
-  width: 18px;
-  height: 18px;
-}
-
 .acceso:hover {
   background: var(--color-borde);
 }
@@ -1979,12 +1849,6 @@ const lineaDeTiempo = computed<Registro[]>(() => {
 }
 
 /* Selector de cantidad de caca */
-.cantidades {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-
 /* La hoja del ＋: rejilla con todos los tipos de registro */
 .rejilla-registro {
   grid-template-columns: repeat(3, 1fr);

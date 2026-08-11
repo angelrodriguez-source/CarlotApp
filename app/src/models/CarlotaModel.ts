@@ -13,6 +13,7 @@ import {
   ETIQUETAS_TOMA,
   type Evento,
   type Panal,
+  type RegistroEditable,
   type Sueno,
   type Toma,
 } from '../types'
@@ -162,6 +163,23 @@ export function horaCorta(iso: string): string {
 export function fechaCortaDia(dia: string): string {
   const [, mes, d] = dia.split('-')
   return `${d}/${mes}`
+}
+
+/** "mié, 12 ago, 10:30" — citas en Hoy y en la vista de Citas */
+export function fechaHoraCita(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-ES', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/** "12 ago" — acepta ISO completo o 'YYYY-MM-DD' (se interpreta local) */
+export function fechaDiaCorta(fecha: string): string {
+  const iso = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
 
 /**
@@ -396,6 +414,74 @@ export function suenosDeDia(suenos: Sueno[], dia: string, ahora: Date = new Date
     })
   }
   return resultado
+}
+
+/** Fila de la línea de tiempo de un día (la usan Hoy y el Historial) */
+export interface FilaDia {
+  id: string
+  /** ISO para ordenar (00:00 del día si el sueño empezó el día anterior) */
+  hora: string
+  /** Texto completo, con su emoji (la vista lo quita si pinta icono) */
+  texto: string
+  /** Clave de icono en ICONOS_REGISTRO (branding) */
+  icono: string
+  editable: RegistroEditable
+}
+
+/**
+ * Las filas de registros de un día local: tomas, sueños (incluido el
+ * nocturno que cruza la medianoche, con su aviso), pañales y eventos,
+ * ordenadas por hora. ÚNICA fuente del formato de fila: Hoy añade encima
+ * el borrado y el Historial la usa tal cual — un tipo de registro nuevo
+ * se cablea solo aquí.
+ */
+export function filasDeDia(
+  datos: { tomas: Toma[]; suenos: Sueno[]; panales: Panal[]; eventos: Evento[] },
+  dia: string,
+  ahora: Date = new Date(),
+  orden: 'asc' | 'desc' = 'asc',
+): FilaDia[] {
+  const filas: FilaDia[] = [
+    ...datos.tomas
+      .filter((t) => claveDia(t.inicio) === dia)
+      .map((t): FilaDia => ({
+        id: t.id,
+        hora: t.inicio,
+        texto: textoToma(t),
+        icono: 'toma',
+        editable: { kind: 'toma', toma: t },
+      })),
+    // Sueños VISIBLES en el día: el que cruza la medianoche aparece en
+    // ambos días con su parte (solo presentación, el registro no se mueve)
+    ...suenosDeDia(datos.suenos, dia, ahora).map((v): FilaDia => ({
+      id: v.sueno.id,
+      hora: v.horaOrden,
+      texto: textoSuenoEnDia(v),
+      icono: 'sueno',
+      editable: { kind: 'sueno', sueno: v.sueno },
+    })),
+    ...datos.panales
+      .filter((p) => claveDia(p.fecha) === dia)
+      .map((p): FilaDia => ({
+        id: p.id,
+        hora: p.fecha,
+        texto: textoPanal(p),
+        icono: p.tipo === 'pis' ? 'pis' : 'caca',
+        editable: { kind: 'panal', panal: p },
+      })),
+    ...datos.eventos
+      .filter((e) => claveDia(e.fecha) === dia)
+      .map((e): FilaDia => ({
+        id: e.id,
+        hora: e.fecha,
+        texto: textoEvento(e),
+        icono: e.tipo,
+        editable: { kind: 'evento', evento: e },
+      })),
+  ]
+  return filas.sort((a, b) =>
+    orden === 'asc' ? a.hora.localeCompare(b.hora) : b.hora.localeCompare(a.hora),
+  )
 }
 
 /**

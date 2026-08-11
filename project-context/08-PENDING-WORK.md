@@ -88,19 +88,26 @@ vistas/stores, PWA/infra/docs). 20 hallazgos aplicados:
       abrir el formulario; dedupe suenosConAbierto en Hoy; created_at en
       el tipo Recordatorio; docs desalineados corregidos (01/02/CLAUDE).
 
-Diferido a proposito (bajo valor/alto riesgo hoy, candidatos a proxima
-sesion de orden):
+Backlog de orden — EJECUTADO el 2026-08-11 (sesion de orden):
 
-- [ ] Encadenar deploy.yml tras migrate.yml (hoy hay una ventana en la
-      que la UI nueva puede llegar antes que su tabla)
-- [ ] Purga de chunks huerfanos de /assets/ en el SW (se acumulan entre
-      bumps de CACHE)
-- [ ] Extraer el builder de filas del dia (Hoy/Historial lo duplican) a
-      CarlotaModel como funcion pura testeada
-- [ ] Trocear HoyView (~2000 lineas): extraer las 8 hojas inferiores a
-      componentes (empezar por toma/panal/configuracion)
-- [ ] Unificar formateadores de fecha repetidos entre vistas en
-      CarlotaModel
+- [x] Migraciones ANTES del deploy: job `migrar` dentro de deploy.yml
+      con `needs:` (migrate.yml queda solo para lanzamiento manual,
+      mismo grupo de concurrencia). Docs en 07.
+- [x] Purga de chunks huerfanos: cache aparte `carlotapp-assets-v1` con
+      recorte a 60 entradas (insercion = antiguedad); CACHE v18.
+- [x] `filasDeDia()` en CarlotaModel (testeada): unica fuente de las
+      filas del dia — la linea de tiempo de Hoy (desc) y el Historial
+      (asc) la comparten; RegistroEditable movido a types.ts.
+- [x] Formateadores unificados: `fechaHoraCita` y `fechaDiaCorta` en
+      CarlotaModel (antes 4 copias entre Hoy/Citas/Historial).
+- [x] Troceo de HoyView (2036 → ~1920 lineas): HojaPanal.vue,
+      HojaConfiguracion.vue y el composable usarListaPersistida
+      extraidos; helpers ejecutar/ejecutarRecordatorio de Citas
+      fusionados.
+- [ ] Troceo de HoyView, fase 2: extraer la hoja de toma (cronometro +
+      conservacion de notas si falla el alta — acoplada a
+      registrarYOfrecer, pide sesion propia) y las hojas de una sola
+      entrada (momento, sueño a posteriori, evento, ejercicio).
 
 ## Super analisis 2026-08-08 (revision multi-agente — EJECUTADO ese mismo dia)
 

@@ -167,6 +167,13 @@ Componentes):
 - Persistencia: `guardarPrediccion`/`getPrediccionGuardada` en el servicio
   (upsert de una fila viva por bebe en `predicciones`) +
   `aFilaPrediccion()` para serializar
+- `filasDeDia(datos, dia, ahora?, orden?)` — las filas de registros de un
+  dia (tomas, sueños con el cruce de medianoche, pañales, eventos) con su
+  clave de icono y su RegistroEditable: UNICA fuente del formato de fila
+  (la linea de tiempo de Hoy la usa en 'desc' y el Historial en 'asc');
+  un tipo de registro nuevo se cablea solo aqui. Testeada. Tambien
+  `fechaHoraCita(iso)` y `fechaDiaCorta(fecha)` (formateadores que antes
+  estaban duplicados entre vistas).
 - `models/recordatorios.ts` — logica pura de los Recordatorios
   (testeada en recordatorios.spec.ts): `AJUSTES_RECORDATORIOS` (hora de
   aviso 19h, ventana semanal 7 dias, repeticiones 1-24) como unico punto
@@ -227,6 +234,15 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   Tab, Escape, scroll-lock via components/modal.ts, Teleport). Persiste
   el calculo en `predicciones` en segundo plano con boton de reintento
   si falla la carga.
+- **HojaPanal.vue**: hoja de registro de pañal (hora precargada +
+  cantidad en caca/mixto); emite `guardar(cantidad, hora)` y el guardado
+  real (validacion + servicio + deshacer) queda en HoyView.
+- **HojaConfiguracion.vue**: hoja de configuracion por usuario de Hoy
+  (hitos visibles + accesos directos) con `defineModel` sobre las dos
+  listas persistidas.
+- **listaPersistida.ts** (components/): `usarListaPersistida(prefijo,
+  porDefecto)` — lista de ids en localStorage POR USUARIO (la usan los
+  hitos y los accesos de Hoy; la lista vacia se respeta).
 - **autorrecarga.ts** (components/): `usarAutorrecarga(recargar)` — la
   vista pasa su funcion de recarga SILENCIOSA (sin esqueletos, con token
   anti-pisado) y se dispara con debounce (900 ms) al llegar
