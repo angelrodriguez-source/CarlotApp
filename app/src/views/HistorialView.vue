@@ -10,6 +10,8 @@ import * as servicio from '../services/carlotaService'
 import {
   agruparPorDia,
   claveDia,
+  fechaDiaCorta,
+  filasDeDia,
   formatoDuracion,
   horaCorta,
   mensajeError,
@@ -17,18 +19,13 @@ import {
   rangoDesde,
   resumenDia,
   sinEmojiInicial,
-  textoEvento,
-  textoPanal,
-  suenosDeDia,
-  textoSuenoEnDia,
-  textoToma,
   ultimosDias,
 } from '../models/CarlotaModel'
 import { ICONOS_REGISTRO, iconoDiaUrl, iconoHistorialUrl } from '../assets/branding'
 import GraficaRitmo from '../components/GraficaRitmo.vue'
 import HojaEdicionRegistro from '../components/HojaEdicionRegistro.vue'
 import { usarAutorrecarga } from '../components/autorrecarga'
-import type { RegistroEditable } from '../components/registroEditable'
+import type { RegistroEditable } from '../types'
 import type { Evento, Panal, Sueno, Toma } from '../types'
 
 const bebeStore = useBebeStore()
@@ -85,11 +82,14 @@ watch(dias, () => cargar())
 // de esa misma escritura (una sola tanda de consultas)
 const { recargarAhora } = usarAutorrecarga(() => cargar(true))
 
-type RegistroDia =
-  | { kind: 'toma'; id: string; hora: string; texto: string; img?: string; toma: Toma }
-  | { kind: 'sueno'; id: string; hora: string; texto: string; img?: string; sueno: Sueno }
-  | { kind: 'panal'; id: string; hora: string; texto: string; img?: string; panal: Panal }
-  | { kind: 'evento'; id: string; hora: string; texto: string; img?: string; evento: Evento }
+/** Fila del modelo (filasDeDia) ya con su icono resuelto */
+interface FilaHistorial {
+  id: string
+  hora: string
+  texto: string
+  img?: string
+  editable: RegistroEditable
+}
 
 /** Con icono propio el texto pierde su emoji inicial; sin él, se queda */
 function textoConIcono(texto: string, img: string | undefined): string {
@@ -99,7 +99,7 @@ function textoConIcono(texto: string, img: string | undefined): string {
 interface DiaHistorial {
   dia: string
   resumen: ReturnType<typeof resumenDia>
-  registros: RegistroDia[]
+  registros: FilaHistorial[]
 }
 
 function fechaLegible(dia: string): string {
@@ -110,15 +110,10 @@ function fechaLegible(dia: string): string {
   })
 }
 
-function fechaMomento(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-}
-
 const historial = computed<DiaHistorial[]>(() => {
   const tomasPorDia = agruparPorDia(tomas.value, (t) => t.inicio)
   const suenosPorDia = agruparPorDia(suenos.value, (s) => s.inicio)
   const panalesPorDia = agruparPorDia(panales.value, (p) => p.fecha)
-  const eventosPorDia = agruparPorDia(eventos.value, (e) => e.fecha)
 
   // Todos los días del rango (recientes primero), aunque estén a cero:
   // así "Hoy" existe desde por la mañana y el tap del ritmo siempre aterriza
@@ -126,44 +121,22 @@ const historial = computed<DiaHistorial[]>(() => {
     const tomasDia = tomasPorDia.get(dia) ?? []
     const suenosDia = suenosPorDia.get(dia) ?? []
     const panalesDia = panalesPorDia.get(dia) ?? []
-    const eventosDia = eventosPorDia.get(dia) ?? []
 
-    const registros: RegistroDia[] = [
-      ...tomasDia.map((t): RegistroDia => ({
-        kind: 'toma',
-        id: t.id,
-        hora: t.inicio,
-        texto: textoConIcono(textoToma(t), ICONOS_REGISTRO.toma),
-        img: ICONOS_REGISTRO.toma,
-        toma: t,
-      })),
-      // Sueños VISIBLES en el día: el nocturno que cruza medianoche
-      // aparece en ambos días con su parte (solo presentación)
-      ...suenosDeDia(suenos.value, dia).map((v): RegistroDia => ({
-        kind: 'sueno',
-        id: v.sueno.id,
-        hora: v.horaOrden,
-        texto: textoConIcono(textoSuenoEnDia(v), ICONOS_REGISTRO.sueno),
-        img: ICONOS_REGISTRO.sueno,
-        sueno: v.sueno,
-      })),
-      ...panalesDia.map((p): RegistroDia => ({
-        kind: 'panal',
-        id: p.id,
-        hora: p.fecha,
-        texto: textoConIcono(textoPanal(p), ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca']),
-        img: ICONOS_REGISTRO[p.tipo === 'pis' ? 'pis' : 'caca'],
-        panal: p,
-      })),
-      ...eventosDia.map((e): RegistroDia => ({
-        kind: 'evento',
-        id: e.id,
-        hora: e.fecha,
-        texto: textoConIcono(textoEvento(e), ICONOS_REGISTRO[e.tipo]),
-        img: ICONOS_REGISTRO[e.tipo],
-        evento: e,
-      })),
-    ].sort((a, b) => a.hora.localeCompare(b.hora))
+    // Las filas las construye el modelo (filasDeDia, misma fuente que la
+    // línea de tiempo de Hoy); aquí solo se resuelve el icono
+    const registros = filasDeDia(
+      { tomas: tomas.value, suenos: suenos.value, panales: panales.value, eventos: eventos.value },
+      dia,
+    ).map((f): FilaHistorial => {
+      const img = ICONOS_REGISTRO[f.icono]
+      return {
+        id: f.id,
+        hora: f.hora,
+        texto: textoConIcono(f.texto, img),
+        img,
+        editable: f.editable,
+      }
+    })
 
     // El sueño del resumen se reparte por día real (los nocturnos que
     // cruzan medianoche aportan su parte a cada día), no por día de inicio
@@ -262,7 +235,7 @@ async function borrarMomento(momento: Evento) {
         </RouterLink>
       </p>
       <div v-for="momento in momentos" :key="momento.id" class="fila-registro">
-        <span class="hora fecha-momento">{{ fechaMomento(momento.fecha) }}</span>
+        <span class="hora fecha-momento">{{ fechaDiaCorta(momento.fecha) }}</span>
         <span class="detalle">{{ momento.descripcion ?? 'Hito' }}</span>
         <button
           class="boton peligro"
@@ -305,7 +278,7 @@ async function borrarMomento(momento: Evento) {
             <button
               class="boton peligro editar"
               aria-label="Editar registro"
-              @click="registroEnEdicion = registro"
+              @click="registroEnEdicion = registro.editable"
             >
               ✎
             </button>

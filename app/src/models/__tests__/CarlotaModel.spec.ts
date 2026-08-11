@@ -23,6 +23,9 @@ import {
   textoEvento,
   tramoEnDia,
   fechaCortaDia,
+  fechaDiaCorta,
+  fechaHoraCita,
+  filasDeDia,
   horaCorta,
   mensajeError,
   minutosEnDia,
@@ -36,7 +39,7 @@ import {
   ultimoValor,
   valorPercentilOMS,
 } from '../CarlotaModel'
-import type { Toma, Sueno, Panal } from '../../types'
+import type { Toma, Sueno, Panal, Evento } from '../../types'
 
 describe('edadTexto', () => {
   it('cuenta en semanas antes de las 10 semanas', () => {
@@ -578,5 +581,84 @@ describe('helpers compartidos', () => {
 
   it('minutosEnDia devuelve la duración real del día', () => {
     expect(minutosEnDia('2026-08-07')).toBe(1440)
+  })
+})
+
+describe('fechaHoraCita / fechaDiaCorta', () => {
+  it('fechaHoraCita lleva día de semana, día, mes y hora', () => {
+    const texto = fechaHoraCita('2026-08-12T10:30:00')
+    expect(texto).toContain('12')
+    expect(texto).toContain('ago')
+    expect(texto).toContain('10:30')
+  })
+
+  it('fechaDiaCorta acepta ISO completo y día suelto (local, sin desfase UTC)', () => {
+    expect(fechaDiaCorta('2026-08-12')).toBe(fechaDiaCorta('2026-08-12T09:00:00'))
+    expect(fechaDiaCorta('2026-08-12')).toContain('12')
+    expect(fechaDiaCorta('2026-08-12')).toContain('ago')
+  })
+})
+
+describe('filasDeDia — una sola fuente para Hoy y el Historial', () => {
+  const toma: Toma = {
+    id: 't1',
+    bebe_id: 'b',
+    inicio: '2026-08-06T09:00:00',
+    fin: null,
+    tipo: 'biberon_formula',
+    cantidad_ml: 120,
+    notas: null,
+  }
+  const tomaOtroDia: Toma = { ...toma, id: 't2', inicio: '2026-08-05T09:00:00' }
+  const nocturno: Sueno = {
+    id: 'noche',
+    bebe_id: 'b',
+    inicio: '2026-08-05T23:20:00',
+    fin: '2026-08-06T07:00:00',
+    notas: null,
+  }
+  const panal: Panal = {
+    id: 'p1',
+    bebe_id: 'b',
+    fecha: '2026-08-06T12:00:00',
+    tipo: 'caca',
+    cantidad: null,
+    notas: null,
+  }
+  const ejercicio: Evento = {
+    id: 'e1',
+    bebe_id: 'b',
+    fecha: '2026-08-06T17:00:00',
+    tipo: 'ejercicio',
+    descripcion: null,
+    subtipo: 'tummy_time',
+    duracion_min: 15,
+  }
+  const datos = {
+    tomas: [toma, tomaOtroDia],
+    suenos: [nocturno],
+    panales: [panal],
+    eventos: [ejercicio],
+  }
+
+  it('filtra por día, ordena asc y construye el editable de cada tipo', () => {
+    const filas = filasDeDia(datos, '2026-08-06')
+    expect(filas.map((f) => f.id)).toEqual(['noche', 't1', 'p1', 'e1'])
+    expect(filas.map((f) => f.editable.kind)).toEqual(['sueno', 'toma', 'panal', 'evento'])
+    // El nocturno que empezó la víspera ordena a las 00:00 y lleva su aviso
+    expect(filas[0]!.texto).toContain('empezó el día anterior')
+    expect(filas[3]!.texto).toContain('Tummy Time')
+  })
+
+  it('orden desc para la línea de tiempo de Hoy y claves de icono correctas', () => {
+    const filas = filasDeDia(datos, '2026-08-06', new Date('2026-08-06T20:00:00'), 'desc')
+    expect(filas[0]!.id).toBe('e1')
+    expect(filas.map((f) => f.icono)).toEqual(['ejercicio', 'caca', 'toma', 'sueno'])
+  })
+
+  it('el día de inicio del nocturno lo muestra con su parte', () => {
+    const filas = filasDeDia(datos, '2026-08-05')
+    expect(filas.map((f) => f.id)).toEqual(['t2', 'noche'])
+    expect(filas[1]!.texto).toContain('sigue tras medianoche')
   })
 })

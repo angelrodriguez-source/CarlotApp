@@ -144,6 +144,17 @@ export const ETIQUETAS_EJERCICIO: Record<TipoEjercicio, string> = {
   otros: 'Otros',
 }
 
+/**
+ * Unión discriminada "un registro de cualquier tipo con su objeto
+ * original a cuestas": la construye filasDeDia (CarlotaModel) y la
+ * consume HojaEdicionRegistro para editar cualquier fila.
+ */
+export type RegistroEditable =
+  | { kind: 'toma'; toma: Toma }
+  | { kind: 'sueno'; sueno: Sueno }
+  | { kind: 'panal'; panal: Panal }
+  | { kind: 'evento'; evento: Evento }
+
 export const ETIQUETAS_ORIGEN_MEDIDA: Record<OrigenMedida, string> = {
   casa: '🏠 En casa',
   oficial: '✅ Oficial (pediatra/farmacia)',

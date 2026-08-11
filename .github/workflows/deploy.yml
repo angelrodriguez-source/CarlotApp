@@ -1,8 +1,11 @@
 # CI/CD del frontend
 #
 # En cada push a main (y en PRs): instala, testea, type-checkea y buildea.
-# Si es un push a main y todo pasa, publica dist/ en la rama gh-pages
-# (GitHub Pages ya sirve esa rama, no hay que tocar nada mas).
+# Si es un push a main: PRIMERO aplica las migraciones pendientes de
+# supabase/migrations/ y SOLO despues publica dist/ en la rama gh-pages —
+# asi la UI nueva nunca llega antes que su tabla/columna.
+# (La aplicacion manual de migraciones sigue disponible en el workflow
+# "Migraciones Supabase" de la pestana Actions.)
 #
 # Resultado: desplegar = hacer git push.
 name: CI y Deploy
@@ -21,7 +24,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Migraciones ANTES del deploy. El script es idempotente y solo aplica
+  # lo pendiente, asi que correr en cada push cuesta un par de segundos.
+  migrar:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Mismo grupo que el workflow manual: nunca dos aplicaciones a la vez
+    concurrency:
+      group: migraciones-supabase
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar migraciones nuevas
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::Falta el secret SUPABASE_DB_URL — no se aplican migraciones. Crealo en Settings > Secrets and variables > Actions."
+            exit 0
+          fi
+          bash scripts/apply-migrations.sh
+
   build-y-deploy:
+    # En PRs `migrar` se salta; el build debe correr igual (solo CI)
+    needs: migrar
+    if: always() && (needs.migrar.result == 'success' || needs.migrar.result == 'skipped')
     runs-on: ubuntu-latest
     defaults:
       run:

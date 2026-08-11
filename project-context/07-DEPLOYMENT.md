@@ -6,11 +6,16 @@
 
 **Push a `main` = deploy.** `.github/workflows/deploy.yml`:
 
-1. `npm ci` + `npm run lint-check` + `npm run test` + `npm run build` en `app/` (si algo falla, NO se publica)
-2. Publica `app/dist/` en la rama `gh-pages` (peaceiris/actions-gh-pages)
+1. Job `migrar`: aplica las migraciones pendientes de `supabase/migrations/`
+   (idempotente, solo en push a main) — ANTES de publicar, para que la UI
+   nueva nunca llegue antes que su tabla/columna
+2. Job `build-y-deploy` (`needs: migrar`): `npm ci` + `npm run lint-check` +
+   `npm run test` + `npm run build` en `app/` (si algo falla, NO se publica)
+3. Publica `app/dist/` en la rama `gh-pages` (peaceiris/actions-gh-pages)
 
-En PRs solo testea y buildea (sin publicar). Tras el PRIMER deploy hay que
-activar Pages una vez: Settings > Pages > Deploy from a branch > `gh-pages` / root.
+En PRs `migrar` se salta y solo se testea y buildea (sin publicar). Tras el
+PRIMER deploy hay que activar Pages una vez: Settings > Pages > Deploy from
+a branch > `gh-pages` / root.
 
 ### Requisitos criticos (heredados de Mimes)
 
@@ -21,8 +26,11 @@ activar Pages una vez: Settings > Pages > Deploy from a branch > `gh-pages` / ro
 
 ## Migraciones automaticas
 
-Cambios en `supabase/migrations/` + push a `main` → `migrate.yml` ejecuta
-`scripts/apply-migrations.sh` (solo lo pendiente; registro en `_migrations`).
+Las aplica el job `migrar` de deploy.yml en cada push a `main` (ver arriba),
+ejecutando `scripts/apply-migrations.sh` (solo lo pendiente; migracion y su
+registro en `_migrations` van en la MISMA transaccion). `migrate.yml` queda
+SOLO para lanzarlas a mano (pestana Actions > Run workflow); ambos comparten
+el grupo de concurrencia `migraciones-supabase` (nunca dos a la vez).
 
 **Requiere** el secret `SUPABASE_DB_URL` (Settings > Secrets and variables >
 Actions): connection string URI del **session pooler** (Dashboard > Connect),

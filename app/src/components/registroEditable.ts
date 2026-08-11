@@ -1,12 +1,5 @@
 /**
- * registroEditable.ts — Unión discriminada que HojaEdicionRegistro acepta:
- * un registro de cualquier tipo con su objeto original a cuestas.
- * La construyen HoyView (línea de tiempo) e HistorialView (días).
+ * registroEditable.ts — Reexporta el tipo desde types.ts (vive alli para
+ * que el modelo puro pueda construirlo sin depender de components/).
  */
-import type { Evento, Panal, Sueno, Toma } from '../types'
-
-export type RegistroEditable =
-  | { kind: 'toma'; toma: Toma }
-  | { kind: 'sueno'; sueno: Sueno }
-  | { kind: 'panal'; panal: Panal }
-  | { kind: 'evento'; evento: Evento }
+export type { RegistroEditable } from '../types'
