@@ -6,7 +6,23 @@
  *  - Assets con hash de Vite (/assets/): cache primero (son inmutables)
  *  - Resto: red con fallback a cache
  */
-const CACHE = 'carlotapp-v17'
+const CACHE = 'carlotapp-v18'
+
+// Cache aparte para los assets hasheados de Vite, con recorte: sin el,
+// los chunks de deploys viejos se acumulaban para siempre (solo se
+// purgaban al subir a mano la constante CACHE). keys() devuelve por
+// orden de insercion: borrar por delante = borrar lo mas antiguo.
+const CACHE_ASSETS = 'carlotapp-assets-v1'
+const MAX_ASSETS = 60 // ~6 deploys de margen (≈10 archivos por build)
+
+function recortarAssets() {
+  return caches.open(CACHE_ASSETS).then((cache) =>
+    cache.keys().then((claves) => {
+      const sobran = claves.length - MAX_ASSETS
+      return Promise.all(claves.slice(0, Math.max(0, sobran)).map((c) => cache.delete(c)))
+    }),
+  )
+}
 
 // Estaticos de public/ (sin hash): precacheados para que el avatar y los
 // iconos de la navegacion funcionen offline desde el primer arranque
@@ -86,7 +102,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE && k !== CACHE_ASSETS).map((k) => caches.delete(k)),
+        ),
+      )
       .then(() => self.clients.claim()),
   )
 })
@@ -110,7 +130,10 @@ self.addEventListener('fetch', (event) => {
           fetch(request).then((res) => {
             if (res.ok) {
               const copy = res.clone()
-              caches.open(CACHE).then((cache) => cache.put(request, copy))
+              caches
+                .open(CACHE_ASSETS)
+                .then((cache) => cache.put(request, copy))
+                .then(() => recortarAssets())
             }
             return res
           }),
