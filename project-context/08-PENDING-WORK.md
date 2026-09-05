@@ -23,6 +23,18 @@
       en el catalogo, edicion completa en HojaEdicionRegistro y rango de
       validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
 
+## Objetivo de leche sin escalones (2026-09-05)
+
+- [x] Bug detectado por Angel: al cumplir Carlota 90 dias (3-sep) el
+      objetivo de leche del dia cayo un ~20% de golpe con el peso
+      subiendo — la regla ml/kg iba por tramos duros (150→120 en el
+      dia 90, prematuro ademas: la pauta estandar con formula es
+      ~150 ml/kg hasta el inicio de solidos a los ~6 meses). Ahora
+      `TASA_LECHE_ML_KG` (CarlotaModel) son anclas con interpolacion
+      lineal: 150 sostenidos hasta el dia 180, descenso SUAVE a 100
+      (9 m) y 90 (12 m); banda ±15% y tope 1000 ml/dia se mantienen.
+      Tests de la curva y de no-regresion del escalon (117 en total).
+
 ## Recordatorios (2026-08-10)
 
 - [x] Seccion **Recordatorios** (idea de Angel): sobre un item de
