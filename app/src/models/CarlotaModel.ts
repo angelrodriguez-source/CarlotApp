@@ -302,17 +302,46 @@ export function objetivoSuenoMinutos(edadDias: number): ObjetivoDiario {
 }
 
 /**
- * Leche diaria orientativa (ml) con la regla pediátrica de ml/kg por edad
- * (~150 ml/kg hasta los 3 meses, 120 hasta los 6, 100 hasta los 9, 90
- * después), con banda del ±15% y tope de 1000 ml/día. Requiere conocer el
- * peso: null si no hay medida de peso.
+ * Tasa de leche por peso (ml/kg/día) como puntos de anclaje con
+ * interpolación lineal entre ellos: 150 ml/kg sostenidos hasta los ~6
+ * meses (regla clínica estándar con fórmula; NHS: 150-200 ml/kg hasta
+ * el inicio de sólidos) y descenso SUAVE después, al ritmo al que los
+ * sólidos van sustituyendo leche. Antes había escalones por tramos
+ * (150→120 en el día 90): al cruzar un umbral el objetivo caía un ~20%
+ * de un día para otro aunque el peso subiera.
+ */
+const TASA_LECHE_ML_KG: readonly { dia: number; mlKg: number }[] = [
+  { dia: 0, mlKg: 150 },
+  { dia: 180, mlKg: 150 }, // hasta ~6 meses (inicio de sólidos)
+  { dia: 270, mlKg: 100 }, // ~9 meses: los sólidos ya cuentan
+  { dia: 365, mlKg: 90 }, // ~12 meses
+]
+
+/** ml/kg/día para una edad: interpolación lineal entre anclas */
+function mlPorKg(edadDias: number): number {
+  const anclas = TASA_LECHE_ML_KG
+  if (edadDias <= anclas[0]!.dia) return anclas[0]!.mlKg
+  for (let i = 1; i < anclas.length; i++) {
+    const a = anclas[i - 1]!
+    const b = anclas[i]!
+    if (edadDias <= b.dia) {
+      return a.mlKg + ((b.mlKg - a.mlKg) * (edadDias - a.dia)) / (b.dia - a.dia)
+    }
+  }
+  return anclas[anclas.length - 1]!.mlKg
+}
+
+/**
+ * Leche diaria orientativa (ml): peso × ml/kg (ver TASA_LECHE_ML_KG),
+ * con banda del ±15% y tope de 1000 ml/día. Requiere conocer el peso:
+ * null si no hay medida de peso.
  */
 export function objetivoLecheMl(
   edadDias: number,
   pesoGramos: number | null,
 ): ObjetivoDiario | null {
   if (!pesoGramos || pesoGramos <= 0) return null
-  const porKg = edadDias < 90 ? 150 : edadDias < 180 ? 120 : edadDias < 270 ? 100 : 90
+  const porKg = mlPorKg(edadDias)
   const kg = pesoGramos / 1000
   const redondear = (v: number) => Math.round(v / 10) * 10
   const max = Math.min(1000, redondear(kg * porKg * 1.15))

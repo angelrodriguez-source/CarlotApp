@@ -275,12 +275,27 @@ describe('objetivos diarios', () => {
   it('leche por regla ml/kg segun edad, con banda y tope', () => {
     // 5 kg a los 2 meses: 150 ml/kg → 750, banda 640-860
     expect(objetivoLecheMl(60, 5000)).toEqual({ min: 640, max: 860 })
-    // 7 kg a los 5 meses: 120 ml/kg → 840, banda 710-970
-    expect(objetivoLecheMl(150, 7000)).toEqual({ min: 710, max: 970 })
+    // 7 kg a los 5 meses: SIGUE a 150 ml/kg (hasta los sólidos, ~6 meses)
+    expect(objetivoLecheMl(150, 7000)).toEqual({ min: 890, max: 1000 })
+    // 6 kg a los 7,5 meses: interpolado 150→100 (125 ml/kg → 750)
+    expect(objetivoLecheMl(225, 6000)).toEqual({ min: 640, max: 860 })
+    // 6 kg pasado el año: 90 ml/kg → 540
+    expect(objetivoLecheMl(400, 6000)).toEqual({ min: 460, max: 620 })
     // Tope de 1000 ml/dia
     expect(objetivoLecheMl(60, 9000)!.max).toBe(1000)
     // Sin peso no hay objetivo
     expect(objetivoLecheMl(60, null)).toBeNull()
+  })
+
+  it('sin escalón al cumplir 3 meses: el objetivo no cae de un día a otro', () => {
+    // Antes había un salto 150→120 ml/kg en el día 90: con el peso
+    // subiendo, el objetivo bajaba un ~20% de golpe
+    expect(objetivoLecheMl(89, 6200)).toEqual(objetivoLecheMl(92, 6200))
+    // Y el descenso posterior a los 6 meses es suave: entre días
+    // consecutivos el redondeo a 10 ml absorbe la pendiente
+    const dia200 = objetivoLecheMl(200, 7000)!
+    const dia201 = objetivoLecheMl(201, 7000)!
+    expect(Math.abs(dia200.max - dia201.max)).toBeLessThanOrEqual(10)
   })
 })
 
