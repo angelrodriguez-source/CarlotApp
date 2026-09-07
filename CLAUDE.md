@@ -14,6 +14,7 @@ directorio al inicio de cada sesion:
 - [03-FRONTEND-ARCHITECTURE.md](project-context/03-FRONTEND-ARCHITECTURE.md) — Entry point, routing, stores, servicios, vistas
 - [07-DEPLOYMENT.md](project-context/07-DEPLOYMENT.md) — GitHub Pages, build, Supabase
 - [08-PENDING-WORK.md](project-context/08-PENDING-WORK.md) — Bugs, deuda tecnica, roadmap
+- [09-ARQUITECTURA-DIAGRAMAS.md](project-context/09-ARQUITECTURA-DIAGRAMAS.md) — Mapa visual completo (Mermaid): capas, flujos, CI/CD, modelo de datos
 
 (La numeracion salta 04-06 a proposito: mantiene el paralelismo con
 Mimes-Care-Corp, el proyecto del que se heredo este montaje.)
