@@ -49,11 +49,19 @@ falla y GitHub avisa por email.
 
 ## Keepalive
 
-`keepalive.yml` hace un ping cada 3 dias para que el free tier de Supabase
-no pause el proyecto (pausa tras ~7 dias inactivo). Si Supabase no responde,
-el workflow falla y GitHub avisa por email (monitorizacion gratis).
-Si el repo pasa 60 dias sin commits, GitHub deshabilita los crons —
-se reactivan con un click en la pestana Actions.
+`keepalive.yml` tiene dos jobs cada 3 dias:
+
+- **ping**: consulta trivial para que el free tier de Supabase no pause
+  el proyecto (pausa tras ~7 dias inactivo). Si Supabase no responde,
+  el job falla y GitHub avisa por email (monitorizacion gratis).
+- **latido**: GitHub deshabilita los workflows programados (este y el
+  recordatorio nocturno) si el repo pasa 60 dias sin commits — avisa
+  antes con un email "will be disabled soon". Si el ultimo commit tiene
+  50+ dias, el job empuja un commit VACIO que reinicia el contador. El
+  push usa GITHUB_TOKEN, que a proposito no dispara otros workflows (un
+  latido no provoca deploy ni migraciones). Si aun asi un workflow
+  llegara a deshabilitarse, se reactiva con un click en la pestana
+  Actions.
 
 ## Build local
 
