@@ -1,15 +1,18 @@
-# Keepalive de Supabase
+# Keepalive de Supabase + latido del repositorio
 #
-# El free tier de Supabase PAUSA el proyecto tras ~7 dias sin actividad.
-# Este workflow hace una consulta trivial cada 3 dias para mantenerlo
-# despierto. Usa la anon key (publica, la misma del frontend) — no
-# necesita secrets.
+# 1) ping: el free tier de Supabase PAUSA el proyecto tras ~7 dias sin
+#    actividad. Consulta trivial cada 3 dias para mantenerlo despierto.
+#    Usa la anon key (publica, la misma del frontend) — sin secrets.
+#    Bonus: si Supabase esta caido o pausado, el job falla y GitHub
+#    avisa por email — monitorizacion gratuita.
 #
-# Bonus: si Supabase esta caido o pausado, el workflow falla y GitHub
-# te avisa por email — funciona tambien como monitorizacion gratuita.
-#
-# Nota: GitHub deshabilita los crons si el repo lleva 60 dias sin
-# commits. Si eso pasa, se reactiva con un click en la pestana Actions.
+# 2) latido: GitHub DESACTIVA los workflows programados (este, y el
+#    recordatorio nocturno) si el repo lleva 60 dias sin commits — avisa
+#    por email con "will be disabled soon". Para que no pase nunca, si
+#    el ultimo commit tiene 50+ dias este job empuja un commit VACIO:
+#    cuenta como actividad y reinicia el contador. El push se hace con
+#    GITHUB_TOKEN, que a proposito NO dispara otros workflows (no hay
+#    deploy ni migraciones por un latido).
 name: Keepalive Supabase
 
 on:
@@ -18,6 +21,9 @@ on:
     # picos de crons de GitHub, que se retrasan)
     - cron: '43 9 */3 * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   ping:
@@ -39,3 +45,24 @@ jobs:
             exit 1
           fi
           echo "Supabase despierto ✔"
+
+  # Job aparte: aunque el ping falle (Supabase caido), el latido corre
+  latido:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Commit vacio si el repo lleva 50+ dias sin actividad
+        run: |
+          ULTIMO=$(git log -1 --format=%ct)
+          DIAS=$(( ( $(date +%s) - ULTIMO ) / 86400 ))
+          echo "Ultimo commit hace $DIAS dias"
+          if [ "$DIAS" -lt 50 ]; then
+            echo "Actividad reciente: no hace falta latido"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "Latido: actividad para que GitHub no desactive los workflows programados"
+          git push origin HEAD:main
+          echo "Latido empujado ✔ (contador de 60 dias reiniciado)"

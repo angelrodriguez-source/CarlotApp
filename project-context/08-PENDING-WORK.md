@@ -23,6 +23,16 @@
       en el catalogo, edicion completa en HojaEdicionRegistro y rango de
       validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
 
+## Latido anti-apagado de crons (2026-10-31)
+
+- [x] GitHub aviso por email de que iba a deshabilitar "Keepalive
+      Supabase" (los workflows programados se apagan tras 60 dias sin
+      commits; el ultimo era del 7-sep). Arreglo de raiz: job `latido`
+      en keepalive.yml — si el ultimo commit tiene 50+ dias, empuja un
+      commit vacio con GITHUB_TOKEN (cuenta como actividad, reinicia el
+      contador, y no dispara deploy ni migraciones). Protege tambien al
+      recordatorio nocturno. Docs en 07.
+
 ## Objetivo de leche sin escalones (2026-09-05)
 
 - [x] Bug detectado por Angel: al cumplir Carlota 90 dias (3-sep) el
