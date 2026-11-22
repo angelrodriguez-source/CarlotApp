@@ -14,7 +14,7 @@ import {
   watch,
   watchEffect,
 } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useUserStore } from './stores/userStore'
 import { useBebeStore } from './stores/bebeStore'
 import { useRecordatoriosStore } from './stores/recordatoriosStore'
@@ -45,6 +45,7 @@ const userStore = useUserStore()
 const bebeStore = useBebeStore()
 const recordatoriosStore = useRecordatoriosStore()
 const router = useRouter()
+const route = useRoute()
 
 // Con la sesión arrancan los recordatorios (primera carga + escucha de
 // escrituras) y la escucha remota: los cambios que registre la otra
@@ -98,12 +99,6 @@ function moverFocoMenu(delta: number) {
   if (items.length === 0) return
   const indice = items.indexOf(document.activeElement as HTMLElement)
   items[(indice + delta + items.length) % items.length]?.focus()
-}
-
-/** El Armario vive en el menú (la nav inferior ya está completa) */
-function irArmario() {
-  menuAbierto.value = false
-  router.push({ name: 'armario' })
 }
 
 /** Abre la hoja de Configuración de Hoy (funciona desde cualquier pantalla) */
@@ -216,10 +211,15 @@ function actualizarApp() {
 }
 
 /**
- * FAB "+": registrar desde cualquier pantalla. Lleva a Hoy y le pide
- * (via query, que HoyView observa y limpia) que abra la hoja de registro.
+ * FAB "+": registrar desde cualquier pantalla. En el Armario despliega
+ * el catálogo de tipos de prenda; en el resto lleva a Hoy y le pide
+ * (via query, que cada vista observa y limpia) que abra su hoja.
  */
 function abrirRegistro() {
+  if (route.name === 'armario') {
+    router.push({ name: 'armario', query: { nueva: String(Date.now()) } })
+    return
+  }
   router.push({ name: 'hoy', query: { registrar: String(Date.now()) } })
 }
 </script>
@@ -270,7 +270,6 @@ function abrirRegistro() {
         <strong>{{ userStore.nombre }}</strong>
         <span v-if="userStore.user?.email" class="suave">{{ userStore.user.email }}</span>
       </p>
-      <button role="menuitem" @click="irArmario">👕 Armario</button>
       <button role="menuitem" @click="irConfiguracion">⚙ Configuración</button>
       <button role="menuitem" @click="alternarTema">{{ iconoTema }} Tema: {{ modoTema }}</button>
       <button
@@ -312,6 +311,10 @@ function abrirRegistro() {
     <RouterLink :to="{ name: 'citas' }">
       <img :src="iconoCitasUrl" alt="" class="icono-nav" />
       <span>Citas</span>
+    </RouterLink>
+    <RouterLink :to="{ name: 'armario' }">
+      <span class="icono-nav emoji-nav" aria-hidden="true">👕</span>
+      <span>Armario</span>
     </RouterLink>
   </nav>
 
@@ -526,6 +529,20 @@ function abrirRegistro() {
 .nav-inferior .icono-nav {
   width: 21px;
   height: 21px;
+}
+
+/* Pestaña con emoji (Armario, hasta que tenga icono propio) */
+.nav-inferior .emoji-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 21px;
+}
+
+.nav-inferior a:not(.router-link-active) .emoji-nav {
+  opacity: 0.55;
+  filter: grayscale(35%);
 }
 
 /* Fuera de Inicio el icono se apaga, como el resto de pestañas inactivas */
