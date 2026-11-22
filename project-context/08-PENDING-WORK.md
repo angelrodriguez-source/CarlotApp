@@ -23,6 +23,21 @@
       en el catalogo, edicion completa en HojaEdicionRegistro y rango de
       validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
 
+## Modulo Armario (2026-11-22)
+
+- [x] Primera version del **Armario** (idea de Angel): la ropa de
+      Carlota clasificada por tipo de prenda y color, con foto. Tabla
+      `prendas` (migracion 10) + bucket privado 'armario' en Storage
+      (fotos comprimidas en cliente a ~1024 px JPEG, URLs firmadas,
+      RLS lista blanca tambien en Storage). models/armario.ts puro y
+      testeado (catalogos de 19 tipos y 14 colores, filtros, orden,
+      resumen). ArmarioView: rejilla con filtros por tipo y color,
+      alta/edicion/borrado en hoja inferior, autorrecarga entre
+      moviles (prendas esta en la publicacion realtime). Acceso desde
+      el menu de usuario. PENDIENTE de ajustar con Angel: icono
+      propio, y que pasa con la ropa que se le queda pequena
+      (¿archivar por talla?).
+
 ## Latido anti-apagado de crons (2026-10-31)
 
 - [x] GitHub aviso por email de que iba a deshabilitar "Keepalive
