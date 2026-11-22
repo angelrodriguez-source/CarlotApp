@@ -230,6 +230,7 @@ erDiagram
     BEBES ||--o{ MEDIDAS : tiene
     BEBES ||--o{ CITAS : tiene
     BEBES ||--o{ RECORDATORIOS : tiene
+    BEBES ||--o{ PRENDAS : tiene
     BEBES ||--o| PREDICCIONES : "1 fila viva"
 
     BEBES { text nombre "Carlota" date fecha_nacimiento "2026-06-05" }
@@ -240,6 +241,7 @@ erDiagram
     MEDIDAS { date fecha "" int peso_gramos "" numeric altura_cm "" numeric perimetro_craneal_cm "" text origen "casa/oficial" }
     CITAS { timestamptz fecha "" text titulo "" text tipo "medica/tramite/otro" bool completada "" }
     RECORDATORIOS { text item "toma…ejercicio" text intervalo "dia/semana" int repeticiones "1-24" bool activo "" }
+    PRENDAS { text tipo "body ... otro" text color "14 colores" text talla "" text foto_path "objeto del bucket armario" }
     PREDICCIONES { timestamptz calculado_en "" timestamptz proxima_toma "" timestamptz proxima_siesta "" jsonb parametros "" }
     USUARIOS_AUTORIZADOS { text email "lista blanca (2 padres)" }
     MIGRATIONS { text name "control del runner" }
@@ -263,6 +265,7 @@ publicacion `supabase_realtime` (autorrecarga).
 | `HistorialView` | Dias con resumen + filasDeDia + ritmo 24h + momentos | modelo, service |
 | `EvolucionView` | Graficas OMS (valor/percentil), mediciones, sueño/tomas por dia | modelo, service |
 | `CitasView` | Citas & Recordatorios: altas, estado, pausa | modelo, service, recordatoriosStore |
+| `ArmarioView` | El armario: ropa por tipo y color con foto — rejilla con filtros, hoja de alta/edicion; fotos comprimidas (components/imagen.ts) en el bucket privado de Storage | modelo (armario), service |
 | **components/** | | |
 | `NeneniPanel` | El bocadillo del predictor (modal, memo 60s) | MimePredictor, frasesNeneni, recordatorios |
 | `HojaInferior` / `modal.ts` | Bottom sheet + ciclo de vida modal compartido | — |

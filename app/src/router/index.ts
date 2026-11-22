@@ -31,6 +31,11 @@ const router = createRouter({
       name: 'citas',
       component: () => import('../views/CitasView.vue'),
     },
+    {
+      path: '/armario',
+      name: 'armario',
+      component: () => import('../views/ArmarioView.vue'),
+    },
     // Comodín: un hash desconocido (marcador viejo, typo) no debe dejar
     // el <router-view> en blanco — a Hoy (o a login via el guard)
     {

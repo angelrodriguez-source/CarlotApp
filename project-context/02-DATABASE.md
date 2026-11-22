@@ -32,6 +32,7 @@ sobre `usuarios_autorizados` (nunca editar una migracion aplicada).
 | `usuarios_autorizados` | email, nota | Lista blanca (ver arriba) |
 | `predicciones` | calculado_en, proxima_toma(+franja), proxima_siesta(+franja), durmiendo, incomodidad_prob, parametros | Mime Predictor: UNA fila viva por bebe (upsert), con los parametros del calculo en JSONB. La linea base poblacional vive en el codigo (prediccionBase.ts) |
 | `recordatorios` | item, subtipo, intervalo, repeticiones, activo | "Esto deberia hacerse N veces al dia/semana". item: toma/sueno/panal/bano/vitamina_d/medicacion/unas/ejercicio; subtipo solo para ejercicio (NULL = cualquiera); intervalo dia/semana; repeticiones 1-24. El estado (hechas/pendientes) NO se guarda: se calcula en el cliente contando registros reales (models/recordatorios.ts) |
+| `prendas` | tipo, color, talla, notas, foto_path | Armario: la ropa clasificada por tipo (body/pijama/.../otro) y color (14), con foto opcional en el bucket privado 'armario' de Storage (foto_path = ruta del objeto) |
 | `_migrations` | name, applied_at | Control del runner de migraciones. RLS sin policies |
 
 Todas las tablas de datos llevan ademas `registrado_por UUID DEFAULT auth.uid()`
@@ -72,6 +73,13 @@ Migraciones existentes:
    suenos, panales, eventos, medidas, citas, recordatorios) a la
    publicacion `supabase_realtime` para que la app escuche los cambios
    (autorrecarga). RLS sigue filtrando lo que recibe cada suscriptor.
+10. `202611221200_armario.sql` — tabla `prendas` (CHECKs de tipo y
+    color, RLS lista blanca, realtime) + bucket privado 'armario' de
+    Storage con sus policies. El bloque de Storage es best-effort
+    (WARNING, nunca falla): si el rol del runner no puede crear
+    policies en storage.objects, se crean a mano en Dashboard >
+    Storage (bucket privado 'armario' + 4 policies para authenticated
+    con es_usuario_autorizado()).
 
 ## Reglas aprendidas en Mimes (aplican aqui)
 

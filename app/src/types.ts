@@ -144,6 +144,58 @@ export const ETIQUETAS_EJERCICIO: Record<TipoEjercicio, string> = {
   otros: 'Otros',
 }
 
+// ---- Armario (ropa de la bebé) ----
+
+export type TipoPrenda =
+  | 'body'
+  | 'pijama'
+  | 'camiseta'
+  | 'pantalon'
+  | 'leggings'
+  | 'vestido'
+  | 'falda'
+  | 'jersey'
+  | 'sudadera'
+  | 'chaqueta'
+  | 'abrigo'
+  | 'buzo'
+  | 'calcetines'
+  | 'zapatos'
+  | 'gorro'
+  | 'manoplas'
+  | 'babero'
+  | 'banador'
+  | 'otro'
+
+export type ColorPrenda =
+  | 'blanco'
+  | 'crudo'
+  | 'amarillo'
+  | 'naranja'
+  | 'rosa'
+  | 'rojo'
+  | 'morado'
+  | 'azul'
+  | 'celeste'
+  | 'verde'
+  | 'gris'
+  | 'marron'
+  | 'negro'
+  | 'multicolor'
+
+export interface Prenda {
+  id: string
+  bebe_id: string
+  tipo: TipoPrenda
+  color: ColorPrenda
+  /** Talla tal cual la etiqueta ("3-6 m", "68"...); null = sin apuntar */
+  talla: string | null
+  notas: string | null
+  /** Ruta del objeto en el bucket 'armario' (null = sin foto) */
+  foto_path: string | null
+  created_at: string
+}
+
 /**
  * Unión discriminada "un registro de cualquier tipo con su objeto
  * original a cuestas": la construye filasDeDia (CarlotaModel) y la

@@ -100,6 +100,12 @@ function moverFocoMenu(delta: number) {
   items[(indice + delta + items.length) % items.length]?.focus()
 }
 
+/** El Armario vive en el menú (la nav inferior ya está completa) */
+function irArmario() {
+  menuAbierto.value = false
+  router.push({ name: 'armario' })
+}
+
 /** Abre la hoja de Configuración de Hoy (funciona desde cualquier pantalla) */
 function irConfiguracion() {
   menuAbierto.value = false
@@ -264,6 +270,7 @@ function abrirRegistro() {
         <strong>{{ userStore.nombre }}</strong>
         <span v-if="userStore.user?.email" class="suave">{{ userStore.user.email }}</span>
       </p>
+      <button role="menuitem" @click="irArmario">👕 Armario</button>
       <button role="menuitem" @click="irConfiguracion">⚙ Configuración</button>
       <button role="menuitem" @click="alternarTema">{{ iconoTema }} Tema: {{ modoTema }}</button>
       <button

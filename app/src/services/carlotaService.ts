@@ -16,6 +16,7 @@ import {
   type Evento,
   type Medida,
   type Panal,
+  type Prenda,
   type Recordatorio,
   type Sueno,
   type Toma,
@@ -53,6 +54,7 @@ const TABLAS_EN_ESCUCHA = [
   'medidas',
   'citas',
   'recordatorios',
+  'prendas',
 ] as const
 
 let canalCambios: RealtimeChannel | null = null
@@ -582,4 +584,85 @@ export async function getPrediccionGuardada(bebeId: string): Promise<PrediccionG
     .maybeSingle()
   lanzarSi(error)
   return data as PrediccionGuardada | null
+}
+
+// ------------------------------------------------------------
+// Armario (prendas + fotos en Storage)
+// ------------------------------------------------------------
+
+const BUCKET_ARMARIO = 'armario'
+
+export async function listarPrendas(bebeId: string): Promise<Prenda[]> {
+  const { data, error } = await supabase
+    .from('prendas')
+    .select()
+    .eq('bebe_id', bebeId)
+    .order('created_at', { ascending: false })
+  lanzarSi(error)
+  return (data ?? []) as Prenda[]
+}
+
+export async function crearPrenda(
+  prenda: Pick<Prenda, 'bebe_id' | 'tipo' | 'color' | 'talla' | 'notas' | 'foto_path'>,
+): Promise<Prenda> {
+  const { data, error } = await supabase.from('prendas').insert(prenda).select().single()
+  lanzarSi(error)
+  avisarDatosCambiados()
+  return data as Prenda
+}
+
+export async function actualizarPrenda(
+  id: string,
+  cambios: Partial<Pick<Prenda, 'tipo' | 'color' | 'talla' | 'notas' | 'foto_path'>>,
+): Promise<void> {
+  const { error } = await supabase.from('prendas').update(cambios).eq('id', id)
+  lanzarSi(error)
+  avisarDatosCambiados()
+}
+
+/** Borra la prenda y, si tenía foto, su objeto del bucket */
+export async function eliminarPrenda(prenda: Pick<Prenda, 'id' | 'foto_path'>): Promise<void> {
+  const { error } = await supabase.from('prendas').delete().eq('id', prenda.id)
+  lanzarSi(error)
+  if (prenda.foto_path) {
+    // Mejor una foto huérfana que una prenda imposible de borrar
+    await supabase.storage
+      .from(BUCKET_ARMARIO)
+      .remove([prenda.foto_path])
+      .catch(() => undefined)
+  }
+  avisarDatosCambiados()
+}
+
+/**
+ * Sube una foto (ya comprimida por components/imagen.ts) al bucket
+ * privado y devuelve su ruta, que se guarda en prendas.foto_path.
+ */
+export async function subirFotoPrenda(bebeId: string, foto: Blob): Promise<string> {
+  const ruta = `${bebeId}/${crypto.randomUUID()}.jpg`
+  const { error } = await supabase.storage
+    .from(BUCKET_ARMARIO)
+    .upload(ruta, foto, { contentType: 'image/jpeg', cacheControl: '31536000' })
+  lanzarSi(error)
+  return ruta
+}
+
+export async function eliminarFotoPrenda(ruta: string): Promise<void> {
+  const { error } = await supabase.storage.from(BUCKET_ARMARIO).remove([ruta])
+  lanzarSi(error)
+}
+
+/**
+ * URLs firmadas (1 h) para ver las fotos del bucket privado: el RLS de
+ * Storage manda, así que no hay URLs públicas. Devuelve ruta → URL.
+ */
+export async function urlsFotosPrendas(rutas: string[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>()
+  if (rutas.length === 0) return mapa
+  const { data, error } = await supabase.storage.from(BUCKET_ARMARIO).createSignedUrls(rutas, 3600)
+  lanzarSi(error)
+  for (const fila of data ?? []) {
+    if (fila.path && fila.signedUrl) mapa.set(fila.path, fila.signedUrl)
+  }
+  return mapa
 }
