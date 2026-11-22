@@ -33,8 +33,9 @@
       testeado (catalogos de 19 tipos y 14 colores, filtros, orden,
       resumen). ArmarioView: rejilla con filtros por tipo y color,
       alta/edicion/borrado en hoja inferior, autorrecarga entre
-      moviles (prendas esta en la publicacion realtime). Acceso desde
-      el menu de usuario. PENDIENTE de ajustar con Angel: icono
+      moviles (prendas esta en la publicacion realtime). Pestana
+      propia en la nav inferior; el + es contextual (en el Armario
+      abre el catalogo de tipos de prenda). PENDIENTE: icono
       propio, y que pasa con la ropa que se le queda pequena
       (¿archivar por talla?).
 

@@ -6,7 +6,8 @@
  * comprimen en el cliente (components/imagen.ts) y viven en el bucket
  * privado 'armario' de Supabase Storage (URLs firmadas, RLS manda).
  */
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useBebeStore } from '../stores/bebeStore'
 import * as servicio from '../services/carlotaService'
 import { usarAutorrecarga } from '../components/autorrecarga'
@@ -24,6 +25,8 @@ import {
 import type { ColorPrenda, Prenda, TipoPrenda } from '../types'
 
 const bebeStore = useBebeStore()
+const route = useRoute()
+const router = useRouter()
 
 const cargando = ref(true)
 const error = ref('')
@@ -76,6 +79,30 @@ function alternarColor(color: ColorPrenda) {
   filtroColor.value = filtroColor.value === color ? null : color
 }
 
+// ---- Catálogo de tipos (lo abre el + de la nav y el botón + Prenda) ----
+const hojaTipos = ref(false)
+
+function abrirCatalogoTipos() {
+  hojaAbierta.value = false
+  hojaTipos.value = true
+}
+
+function elegirTipo(tipo: TipoPrenda) {
+  hojaTipos.value = false
+  abrirAlta(tipo)
+}
+
+// El FAB ＋ estando en el Armario llega con ?nueva=...: catálogo y limpiar
+function atenderQueryNueva() {
+  if (route.query.nueva) {
+    abrirCatalogoTipos()
+    router.replace({ query: {} })
+  }
+}
+
+watch(() => route.query.nueva, atenderQueryNueva)
+atenderQueryNueva()
+
 // ---- Alta / edición (misma hoja; editandoId null = alta) ----
 const hojaAbierta = ref(false)
 const guardando = ref(false)
@@ -112,9 +139,9 @@ function alElegirFoto(evento: Event) {
   entrada.value = ''
 }
 
-function abrirAlta() {
+function abrirAlta(tipo: TipoPrenda = 'body') {
   editando.value = null
-  formulario.value = { tipo: 'body', color: 'blanco', talla: '', notas: '' }
+  formulario.value = { tipo, color: 'blanco', talla: '', notas: '' }
   limpiarVistaPrevia()
   hojaAbierta.value = true
 }
@@ -215,7 +242,7 @@ function hexColor(color: ColorPrenda): string {
   <main class="pantalla">
     <div class="tarjeta cabecera-armario">
       <h2 class="titulo-vista">👕 Armario</h2>
-      <button class="boton" @click="abrirAlta">+ Prenda</button>
+      <button class="boton" @click="abrirCatalogoTipos">+ Prenda</button>
     </div>
 
     <template v-if="cargando">
@@ -291,6 +318,16 @@ function hexColor(color: ColorPrenda): string {
         </button>
       </div>
     </template>
+
+    <!-- Catálogo de tipos: qué prenda vas a dar de alta -->
+    <HojaInferior :abierta="hojaTipos" titulo="¿Qué prenda es?" @cerrar="hojaTipos = false">
+      <div class="catalogo-tipos">
+        <button v-for="t in TIPOS_PRENDA" :key="t.id" class="tipo-acceso" @click="elegirTipo(t.id)">
+          <span class="tipo-emoji" aria-hidden="true">{{ t.emoji }}</span>
+          <span>{{ t.etiqueta }}</span>
+        </button>
+      </div>
+    </HojaInferior>
 
     <!-- Alta / edición -->
     <HojaInferior
@@ -381,6 +418,37 @@ function hexColor(color: ColorPrenda): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* Catálogo de tipos (hoja del +): rejilla de accesos como la de Hoy */
+.catalogo-tipos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.tipo-acceso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.7rem 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  transition: background 0.15s;
+}
+
+.tipo-acceso:hover {
+  background: var(--color-borde);
+}
+
+.tipo-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
 }
 
 /* Chips de tipo */
