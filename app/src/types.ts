@@ -146,6 +146,9 @@ export const ETIQUETAS_EJERCICIO: Record<TipoEjercicio, string> = {
 
 // ---- Armario (ropa de la bebé) ----
 
+/** A quién pertenece el armario (los nombres visibles, en models/armario) */
+export type DuenoArmario = 'carlota' | 'madre' | 'padre'
+
 export type TipoPrenda =
   | 'body'
   | 'pijama'
@@ -165,6 +168,15 @@ export type TipoPrenda =
   | 'manoplas'
   | 'babero'
   | 'banador'
+  | 'camisa'
+  | 'blusa'
+  | 'top'
+  | 'vaqueros'
+  | 'traje'
+  | 'ropa_interior'
+  | 'zapatillas'
+  | 'deporte'
+  | 'accesorio'
   | 'otro'
 
 export type ColorPrenda =
@@ -186,6 +198,8 @@ export type ColorPrenda =
 export interface Prenda {
   id: string
   bebe_id: string
+  /** De quién es el armario: Carlota, su madre o su padre */
+  dueno: DuenoArmario
   tipo: TipoPrenda
   color: ColorPrenda
   /** Talla tal cual la etiqueta ("3-6 m", "68"...); null = sin apuntar */

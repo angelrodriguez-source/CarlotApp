@@ -23,6 +23,18 @@
       en el catalogo, edicion completa en HojaEdicionRegistro y rango de
       validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
 
+## Armarios de la familia (2026-11-28, tarde)
+
+- [x] El Armario ya no es solo de Carlota: selector Carlota / Cristina
+      / Angel (migracion 12: columna dueno + CHECK de tipo ampliado con
+      ropa de adulto). Cada armario ofrece SU catalogo de tipos
+      (TIPOS_POR_DUENO: body y buzo solo en el de la bebe; blusa y top
+      en el de Cristina; camisa y traje en el de Angel), los filtros,
+      grupos, conteos y ubicaciones son por armario, el armario elegido
+      se recuerda por dispositivo, y al editar una prenda se puede
+      MOVER de armario (si su tipo no existe en el nuevo, se conserva
+      anteponiendolo en el select). 128 tests.
+
 ## Armario v2 + FAB flotante (2026-11-28)
 
 - [x] Ideas de Angel: (1) la foto se puede hacer con la CAMARA directa

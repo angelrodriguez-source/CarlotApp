@@ -6,7 +6,7 @@
  * color, y los conteos del resumen. Las fotos viven en Supabase Storage;
  * aquí solo se razona sobre los datos.
  */
-import type { ColorPrenda, Prenda, TipoPrenda } from '../types'
+import type { ColorPrenda, DuenoArmario, Prenda, TipoPrenda } from '../types'
 
 /** Catálogo de tipos de prenda (define el orden; 'otro' SIEMPRE al final) */
 export const TIPOS_PRENDA: readonly { id: TipoPrenda; etiqueta: string; emoji: string }[] = [
@@ -28,6 +28,16 @@ export const TIPOS_PRENDA: readonly { id: TipoPrenda; etiqueta: string; emoji: s
   { id: 'manoplas', etiqueta: 'Manoplas', emoji: '🧤' },
   { id: 'babero', etiqueta: 'Babero', emoji: '🍼' },
   { id: 'banador', etiqueta: 'Bañador', emoji: '🏖️' },
+  // Prendas de adulto (armarios de la madre y el padre)
+  { id: 'camisa', etiqueta: 'Camisa', emoji: '👔' },
+  { id: 'blusa', etiqueta: 'Blusa', emoji: '👚' },
+  { id: 'top', etiqueta: 'Top', emoji: '🎽' },
+  { id: 'vaqueros', etiqueta: 'Vaqueros', emoji: '👖' },
+  { id: 'traje', etiqueta: 'Traje', emoji: '🤵' },
+  { id: 'ropa_interior', etiqueta: 'Ropa interior', emoji: '🩲' },
+  { id: 'zapatillas', etiqueta: 'Zapatillas', emoji: '👟' },
+  { id: 'deporte', etiqueta: 'Deporte', emoji: '🏋️' },
+  { id: 'accesorio', etiqueta: 'Accesorio', emoji: '🧣' },
   { id: 'otro', etiqueta: 'Otro', emoji: '⭐' },
 ] as const
 
@@ -63,6 +73,98 @@ export function tituloPrenda(p: Pick<Prenda, 'tipo' | 'color' | 'talla'>): strin
   const partes = [etiquetaTipoPrenda(p.tipo), etiquetaColorPrenda(p.color)]
   if (p.talla) partes.push(p.talla)
   return partes.join(' · ')
+}
+
+/** Los tres armarios de la familia (etiquetas visibles, ajustables aquí) */
+export const DUENOS_ARMARIO: readonly { id: DuenoArmario; etiqueta: string; emoji: string }[] = [
+  { id: 'carlota', etiqueta: 'Carlota', emoji: '👶' },
+  { id: 'madre', etiqueta: 'Cristina', emoji: '👩' },
+  { id: 'padre', etiqueta: 'Ángel', emoji: '👨' },
+] as const
+
+/**
+ * Qué tipos ofrece cada armario y en qué orden ('otro' SIEMPRE el
+ * último). El catálogo maestro (TIPOS_PRENDA) conserva etiqueta/emoji
+ * de todos: una prenda movida de armario se muestra bien aunque su
+ * tipo no esté en la lista del dueño nuevo.
+ */
+const TIPOS_POR_DUENO: Record<DuenoArmario, readonly TipoPrenda[]> = {
+  carlota: [
+    'body',
+    'pijama',
+    'camiseta',
+    'pantalon',
+    'leggings',
+    'vestido',
+    'falda',
+    'jersey',
+    'sudadera',
+    'chaqueta',
+    'abrigo',
+    'buzo',
+    'calcetines',
+    'zapatos',
+    'gorro',
+    'manoplas',
+    'babero',
+    'banador',
+    'otro',
+  ],
+  madre: [
+    'camiseta',
+    'top',
+    'blusa',
+    'camisa',
+    'jersey',
+    'sudadera',
+    'vestido',
+    'falda',
+    'pantalon',
+    'vaqueros',
+    'leggings',
+    'chaqueta',
+    'abrigo',
+    'pijama',
+    'ropa_interior',
+    'deporte',
+    'calcetines',
+    'zapatos',
+    'zapatillas',
+    'accesorio',
+    'banador',
+    'otro',
+  ],
+  padre: [
+    'camiseta',
+    'camisa',
+    'jersey',
+    'sudadera',
+    'pantalon',
+    'vaqueros',
+    'traje',
+    'chaqueta',
+    'abrigo',
+    'pijama',
+    'ropa_interior',
+    'deporte',
+    'calcetines',
+    'zapatos',
+    'zapatillas',
+    'accesorio',
+    'banador',
+    'otro',
+  ],
+}
+
+export function etiquetaDueno(dueno: DuenoArmario): string {
+  return DUENOS_ARMARIO.find((d) => d.id === dueno)?.etiqueta ?? dueno
+}
+
+/** El catálogo de tipos de UN armario, en su orden (para el + y el form) */
+export function tiposPara(dueno: DuenoArmario): typeof TIPOS_PRENDA {
+  return TIPOS_POR_DUENO[dueno]
+    .map((id) => TIPOS_PRENDA.find((t) => t.id === id))
+    .filter((t): t is (typeof TIPOS_PRENDA)[number] => t !== undefined)
 }
 
 export interface FiltroArmario {

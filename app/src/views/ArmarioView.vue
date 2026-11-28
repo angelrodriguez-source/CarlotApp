@@ -16,15 +16,18 @@ import HojaInferior from '../components/HojaInferior.vue'
 import { mensajeError } from '../models/CarlotaModel'
 import {
   COLORES_PRENDA,
+  DUENOS_ARMARIO,
   TIPOS_PRENDA,
+  etiquetaDueno,
   filtrarPrendas,
   gruposPorTipo,
   ordenarPrendas,
   resumenArmario,
+  tiposPara,
   tituloPrenda,
   ubicacionesUsadas,
 } from '../models/armario'
-import type { ColorPrenda, Prenda, TipoPrenda } from '../types'
+import type { ColorPrenda, DuenoArmario, Prenda, TipoPrenda } from '../types'
 
 const bebeStore = useBebeStore()
 const route = useRoute()
@@ -61,13 +64,36 @@ const { recargarAhora } = usarAutorrecarga(() =>
   cargar().catch((e) => (error.value = mensajeError(e))),
 )
 
+// ---- Armario activo (Carlota / Cristina / Ángel) ----
+const CLAVE_DUENO = 'carlotapp-armario-dueno'
+
+function duenoGuardado(): DuenoArmario {
+  const valor = localStorage.getItem(CLAVE_DUENO)
+  return DUENOS_ARMARIO.some((d) => d.id === valor) ? (valor as DuenoArmario) : 'carlota'
+}
+
+const duenoActivo = ref<DuenoArmario>(duenoGuardado())
+
+// Cambiar de armario: filtros fuera (los tipos son otros) y se recuerda
+watch(duenoActivo, (dueno) => {
+  filtroTipo.value = null
+  filtroColor.value = null
+  localStorage.setItem(CLAVE_DUENO, dueno)
+})
+
+/** Las prendas del armario activo (todas viajan juntas; se parte aquí) */
+const prendasDueno = computed(() => prendas.value.filter((p) => p.dueno === duenoActivo.value))
+
+/** Tipos que ofrece el armario activo (catálogo del + y chips) */
+const tiposCatalogo = computed(() => tiposPara(duenoActivo.value))
+
 // ---- Filtros ----
 const filtroTipo = ref<TipoPrenda | null>(null)
 const filtroColor = ref<ColorPrenda | null>(null)
 
 const prendasVisibles = computed(() =>
   ordenarPrendas(
-    filtrarPrendas(prendas.value, { tipo: filtroTipo.value, color: filtroColor.value }),
+    filtrarPrendas(prendasDueno.value, { tipo: filtroTipo.value, color: filtroColor.value }),
   ),
 )
 
@@ -76,7 +102,7 @@ const prendasVisibles = computed(() =>
 const gruposVisibles = computed(() => gruposPorTipo(prendasVisibles.value))
 const agrupada = computed(() => filtroTipo.value === null)
 
-const resumen = computed(() => resumenArmario(prendas.value))
+const resumen = computed(() => resumenArmario(prendasDueno.value))
 
 function alternarTipo(tipo: TipoPrenda) {
   filtroTipo.value = filtroTipo.value === tipo ? null : tipo
@@ -116,6 +142,7 @@ const guardando = ref(false)
 const editando = ref<Prenda | null>(null)
 
 const formulario = ref({
+  dueno: 'carlota' as DuenoArmario,
   tipo: 'body' as TipoPrenda,
   color: 'blanco' as ColorPrenda,
   talla: '',
@@ -123,8 +150,22 @@ const formulario = ref({
   notas: '',
 })
 
-// Ubicaciones ya usadas → <datalist> del formulario (autocompletar)
-const ubicaciones = computed(() => ubicacionesUsadas(prendas.value))
+// Ubicaciones ya usadas EN ese armario → <datalist> (autocompletar)
+const ubicaciones = computed(() =>
+  ubicacionesUsadas(prendas.value.filter((p) => p.dueno === formulario.value.dueno)),
+)
+
+/**
+ * Tipos que ofrece el select del formulario: los del armario elegido y,
+ * si la prenda trae un tipo de otro armario (se está moviendo), ese
+ * tipo se antepone para no perderlo de la lista.
+ */
+const tiposFormulario = computed(() => {
+  const lista = tiposPara(formulario.value.dueno)
+  if (lista.some((t) => t.id === formulario.value.tipo)) return lista
+  const actual = TIPOS_PRENDA.find((t) => t.id === formulario.value.tipo)
+  return actual ? [actual, ...lista] : lista
+})
 
 // Foto elegida en el formulario (se comprime al guardar)
 const archivoFoto = ref<File | null>(null)
@@ -150,9 +191,16 @@ function alElegirFoto(evento: Event) {
   entrada.value = ''
 }
 
-function abrirAlta(tipo: TipoPrenda = 'body') {
+function abrirAlta(tipo?: TipoPrenda) {
   editando.value = null
-  formulario.value = { tipo, color: 'blanco', talla: '', ubicacion: '', notas: '' }
+  formulario.value = {
+    dueno: duenoActivo.value,
+    tipo: tipo ?? tiposCatalogo.value[0]!.id,
+    color: 'blanco',
+    talla: '',
+    ubicacion: '',
+    notas: '',
+  }
   limpiarVistaPrevia()
   hojaAbierta.value = true
 }
@@ -160,6 +208,7 @@ function abrirAlta(tipo: TipoPrenda = 'body') {
 function abrirEdicion(prenda: Prenda) {
   editando.value = prenda
   formulario.value = {
+    dueno: prenda.dueno,
     tipo: prenda.tipo,
     color: prenda.color,
     talla: prenda.talla ?? '',
@@ -193,6 +242,7 @@ async function guardarPrenda() {
     if (editando.value) {
       const anterior = editando.value.foto_path
       await servicio.actualizarPrenda(editando.value.id, {
+        dueno: datos.dueno,
         tipo: datos.tipo,
         color: datos.color,
         talla: datos.talla.trim() || null,
@@ -207,6 +257,7 @@ async function guardarPrenda() {
     } else {
       await servicio.crearPrenda({
         bebe_id: bebe.id,
+        dueno: datos.dueno,
         tipo: datos.tipo,
         color: datos.color,
         talla: datos.talla.trim() || null,
@@ -255,7 +306,21 @@ function hexColor(color: ColorPrenda): string {
 <template>
   <main class="pantalla">
     <div class="tarjeta cabecera-armario">
-      <h2 class="titulo-vista">👕 Armario</h2>
+      <div>
+        <h2 class="titulo-vista">👕 Armario</h2>
+        <div class="selector-armario" role="group" aria-label="De quién es el armario">
+          <button
+            v-for="d in DUENOS_ARMARIO"
+            :key="d.id"
+            class="dueno"
+            :class="{ activo: duenoActivo === d.id }"
+            :aria-pressed="duenoActivo === d.id"
+            @click="duenoActivo = d.id"
+          >
+            {{ d.emoji }} {{ d.etiqueta }}
+          </button>
+        </div>
+      </div>
       <button class="boton" @click="abrirCatalogoTipos">+ Prenda</button>
     </div>
 
@@ -267,7 +332,7 @@ function hexColor(color: ColorPrenda): string {
 
     <template v-if="!cargando">
       <!-- Filtros: chips de tipo (solo los que tienen prendas) + colores -->
-      <div v-if="prendas.length > 0" class="tarjeta">
+      <div v-if="prendasDueno.length > 0" class="tarjeta">
         <div class="chips">
           <button
             v-for="r in resumen"
@@ -295,12 +360,13 @@ function hexColor(color: ColorPrenda): string {
         <p class="suave contador">
           {{ prendasVisibles.length }}
           {{ prendasVisibles.length === 1 ? 'prenda' : 'prendas' }}
-          <template v-if="filtroTipo || filtroColor"> (de {{ prendas.length }})</template>
+          <template v-if="filtroTipo || filtroColor"> (de {{ prendasDueno.length }})</template>
         </p>
       </div>
 
-      <p v-if="prendas.length === 0" class="tarjeta suave">
-        El armario está vacío. Dale a «+ Prenda» y estrénalo con una foto 📸
+      <p v-if="prendasDueno.length === 0" class="tarjeta suave">
+        El armario de {{ etiquetaDueno(duenoActivo) }} está vacío. Dale a «+ Prenda» y estrénalo con
+        una foto 📸
       </p>
 
       <!-- Rejilla por tipos: cabecera de grupo (tocarla filtra ese tipo);
@@ -353,9 +419,18 @@ function hexColor(color: ColorPrenda): string {
     </template>
 
     <!-- Catálogo de tipos: qué prenda vas a dar de alta -->
-    <HojaInferior :abierta="hojaTipos" titulo="¿Qué prenda es?" @cerrar="hojaTipos = false">
+    <HojaInferior
+      :abierta="hojaTipos"
+      :titulo="`¿Qué prenda es? (${etiquetaDueno(duenoActivo)})`"
+      @cerrar="hojaTipos = false"
+    >
       <div class="catalogo-tipos">
-        <button v-for="t in TIPOS_PRENDA" :key="t.id" class="tipo-acceso" @click="elegirTipo(t.id)">
+        <button
+          v-for="t in tiposCatalogo"
+          :key="t.id"
+          class="tipo-acceso"
+          @click="elegirTipo(t.id)"
+        >
           <span class="tipo-emoji" aria-hidden="true">{{ t.emoji }}</span>
           <span>{{ t.etiqueta }}</span>
         </button>
@@ -391,9 +466,18 @@ function hexColor(color: ColorPrenda): string {
         </div>
 
         <div class="campo">
+          <label for="prenda-dueno">Armario de</label>
+          <select id="prenda-dueno" v-model="formulario.dueno">
+            <option v-for="d in DUENOS_ARMARIO" :key="d.id" :value="d.id">
+              {{ d.emoji }} {{ d.etiqueta }}
+            </option>
+          </select>
+        </div>
+
+        <div class="campo">
           <label for="prenda-tipo">Tipo de prenda</label>
           <select id="prenda-tipo" v-model="formulario.tipo">
-            <option v-for="t in TIPOS_PRENDA" :key="t.id" :value="t.id">
+            <option v-for="t in tiposFormulario" :key="t.id" :value="t.id">
               {{ t.emoji }} {{ t.etiqueta }}
             </option>
           </select>
@@ -477,7 +561,32 @@ function hexColor(color: ColorPrenda): string {
 .cabecera-armario {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* Selector del armario de la familia (Carlota / Cristina / Ángel) */
+.selector-armario {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dueno {
+  border: 1px solid var(--color-borde);
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dueno.activo {
+  background: var(--color-accion);
+  border-color: var(--color-accion);
+  color: #fff;
 }
 
 /* Catálogo de tipos (hoja del +): rejilla de accesos como la de Hoy */
