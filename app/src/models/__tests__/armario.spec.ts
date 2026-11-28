@@ -5,13 +5,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   COLORES_PRENDA,
+  DUENOS_ARMARIO,
   TIPOS_PRENDA,
   etiquetaColorPrenda,
   etiquetaTipoPrenda,
+  etiquetaDueno,
   filtrarPrendas,
   gruposPorTipo,
   ordenarPrendas,
   resumenArmario,
+  tiposPara,
   tituloPrenda,
   ubicacionesUsadas,
 } from '../armario'
@@ -25,6 +28,7 @@ function prenda(parcial: Partial<Prenda>): Prenda {
     bebe_id: 'bebe-1',
     tipo: 'body',
     color: 'blanco',
+    dueno: 'carlota',
     talla: null,
     notas: null,
     ubicacion: null,
@@ -116,5 +120,30 @@ describe('ubicacionesUsadas', () => {
       prenda({ ubicacion: '  ' }),
     ])
     expect(lista).toEqual(['Cajón de arriba', 'Cómoda'])
+  })
+})
+
+describe('armarios de la familia', () => {
+  it('tres dueños con etiqueta visible', () => {
+    expect(DUENOS_ARMARIO.map((d) => d.id)).toEqual(['carlota', 'madre', 'padre'])
+    expect(etiquetaDueno('madre')).toBe('Cristina')
+    expect(etiquetaDueno('padre')).toBe('Ángel')
+  })
+
+  it("cada armario ofrece SUS tipos, todos del maestro y con 'otro' al final", () => {
+    for (const d of DUENOS_ARMARIO) {
+      const tipos = tiposPara(d.id)
+      expect(tipos.length).toBeGreaterThan(5)
+      expect(tipos[tipos.length - 1]!.id).toBe('otro')
+      // Sin huecos: todo id de la lista existe en el catálogo maestro
+      for (const t of tipos) expect(TIPOS_PRENDA.some((m) => m.id === t.id)).toBe(true)
+    }
+    const ids = (d: 'carlota' | 'madre' | 'padre') => tiposPara(d).map((t) => t.id)
+    expect(ids('carlota')).toContain('body')
+    expect(ids('carlota')).not.toContain('traje')
+    expect(ids('madre')).toContain('blusa')
+    expect(ids('madre')).not.toContain('body')
+    expect(ids('padre')).toContain('traje')
+    expect(ids('padre')).not.toContain('blusa')
   })
 })
