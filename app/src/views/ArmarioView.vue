@@ -18,9 +18,11 @@ import {
   COLORES_PRENDA,
   TIPOS_PRENDA,
   filtrarPrendas,
+  gruposPorTipo,
   ordenarPrendas,
   resumenArmario,
   tituloPrenda,
+  ubicacionesUsadas,
 } from '../models/armario'
 import type { ColorPrenda, Prenda, TipoPrenda } from '../types'
 
@@ -69,6 +71,11 @@ const prendasVisibles = computed(() =>
   ),
 )
 
+// Sin filtro de tipo, la rejilla va AGRUPADA por tipo con su cabecera;
+// con filtro de tipo activo ya es un único grupo y se muestra plana
+const gruposVisibles = computed(() => gruposPorTipo(prendasVisibles.value))
+const agrupada = computed(() => filtroTipo.value === null)
+
 const resumen = computed(() => resumenArmario(prendas.value))
 
 function alternarTipo(tipo: TipoPrenda) {
@@ -112,8 +119,12 @@ const formulario = ref({
   tipo: 'body' as TipoPrenda,
   color: 'blanco' as ColorPrenda,
   talla: '',
+  ubicacion: '',
   notas: '',
 })
+
+// Ubicaciones ya usadas → <datalist> del formulario (autocompletar)
+const ubicaciones = computed(() => ubicacionesUsadas(prendas.value))
 
 // Foto elegida en el formulario (se comprime al guardar)
 const archivoFoto = ref<File | null>(null)
@@ -141,7 +152,7 @@ function alElegirFoto(evento: Event) {
 
 function abrirAlta(tipo: TipoPrenda = 'body') {
   editando.value = null
-  formulario.value = { tipo, color: 'blanco', talla: '', notas: '' }
+  formulario.value = { tipo, color: 'blanco', talla: '', ubicacion: '', notas: '' }
   limpiarVistaPrevia()
   hojaAbierta.value = true
 }
@@ -152,6 +163,7 @@ function abrirEdicion(prenda: Prenda) {
     tipo: prenda.tipo,
     color: prenda.color,
     talla: prenda.talla ?? '',
+    ubicacion: prenda.ubicacion ?? '',
     notas: prenda.notas ?? '',
   }
   limpiarVistaPrevia()
@@ -184,6 +196,7 @@ async function guardarPrenda() {
         tipo: datos.tipo,
         color: datos.color,
         talla: datos.talla.trim() || null,
+        ubicacion: datos.ubicacion.trim() || null,
         notas: datos.notas.trim() || null,
         ...(fotoNueva ? { foto_path: fotoNueva } : {}),
       })
@@ -197,6 +210,7 @@ async function guardarPrenda() {
         tipo: datos.tipo,
         color: datos.color,
         talla: datos.talla.trim() || null,
+        ubicacion: datos.ubicacion.trim() || null,
         notas: datos.notas.trim() || null,
         foto_path: fotoNueva,
       })
@@ -289,34 +303,53 @@ function hexColor(color: ColorPrenda): string {
         El armario está vacío. Dale a «+ Prenda» y estrénalo con una foto 📸
       </p>
 
-      <!-- Rejilla de prendas -->
-      <div class="rejilla">
+      <!-- Rejilla por tipos: cabecera de grupo (tocarla filtra ese tipo);
+           con un tipo ya filtrado, la lista va plana -->
+      <section v-for="grupo in gruposVisibles" :key="grupo.tipo" class="grupo-tipo">
         <button
-          v-for="prenda in prendasVisibles"
-          :key="prenda.id"
-          class="prenda"
-          :aria-label="`Editar: ${tituloPrenda(prenda)}`"
-          @click="abrirEdicion(prenda)"
+          v-if="agrupada"
+          class="cabecera-grupo"
+          :aria-label="`Ver solo ${grupo.etiqueta}`"
+          @click="alternarTipo(grupo.tipo)"
         >
-          <span class="prenda-foto">
-            <img
-              v-if="prenda.foto_path && fotos.get(prenda.foto_path)"
-              :src="fotos.get(prenda.foto_path)"
-              alt=""
-              loading="lazy"
-            />
-            <span v-else class="prenda-emoji" aria-hidden="true">{{ emojiTipo(prenda.tipo) }}</span>
-          </span>
-          <span class="prenda-datos">
-            <span
-              class="punto-color"
-              :class="{ multicolor: prenda.color === 'multicolor' }"
-              :style="prenda.color === 'multicolor' ? {} : { background: hexColor(prenda.color) }"
-            ></span>
-            <span class="prenda-titulo">{{ tituloPrenda(prenda) }}</span>
-          </span>
+          <span>{{ grupo.emoji }} {{ grupo.etiqueta }}</span>
+          <span class="suave">{{ grupo.prendas.length }} ›</span>
         </button>
-      </div>
+        <div class="rejilla">
+          <button
+            v-for="prenda in grupo.prendas"
+            :key="prenda.id"
+            class="prenda"
+            :aria-label="`Editar: ${tituloPrenda(prenda)}`"
+            @click="abrirEdicion(prenda)"
+          >
+            <span class="prenda-foto">
+              <img
+                v-if="prenda.foto_path && fotos.get(prenda.foto_path)"
+                :src="fotos.get(prenda.foto_path)"
+                alt=""
+                loading="lazy"
+              />
+              <span v-else class="prenda-emoji" aria-hidden="true">{{
+                emojiTipo(prenda.tipo)
+              }}</span>
+            </span>
+            <span class="prenda-datos">
+              <span
+                class="punto-color"
+                :class="{ multicolor: prenda.color === 'multicolor' }"
+                :style="prenda.color === 'multicolor' ? {} : { background: hexColor(prenda.color) }"
+              ></span>
+              <span class="prenda-titulo">
+                {{ tituloPrenda(prenda) }}
+                <span v-if="prenda.ubicacion" class="suave prenda-ubicacion">
+                  📍 {{ prenda.ubicacion }}
+                </span>
+              </span>
+            </span>
+          </button>
+        </div>
+      </section>
     </template>
 
     <!-- Catálogo de tipos: qué prenda vas a dar de alta -->
@@ -336,13 +369,26 @@ function hexColor(color: ColorPrenda): string {
       @cerrar="hojaAbierta = false"
     >
       <form @submit.prevent="guardarPrenda">
-        <!-- Foto: la elegida (vista previa) o la actual -->
-        <label class="zona-foto">
-          <img v-if="fotoHoja" :src="fotoHoja" alt="Foto de la prenda" />
-          <span v-else class="zona-foto-vacia">📸 Añadir foto</span>
-          <input type="file" accept="image/*" hidden @change="alElegirFoto" />
-        </label>
-        <p v-if="fotoHoja" class="suave cambiar-foto">Toca la foto para cambiarla</p>
+        <!-- Foto: vista previa (la elegida o la actual) + cámara/galería -->
+        <div v-if="fotoHoja" class="zona-foto">
+          <img :src="fotoHoja" alt="Foto de la prenda" />
+        </div>
+        <div class="botones-foto">
+          <label class="boton secundario boton-foto">
+            📷 {{ fotoHoja ? 'Repetir con cámara' : 'Hacer foto' }}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              @change="alElegirFoto"
+            />
+          </label>
+          <label class="boton secundario boton-foto">
+            🖼️ Galería
+            <input type="file" accept="image/*" hidden @change="alElegirFoto" />
+          </label>
+        </div>
 
         <div class="campo">
           <label for="prenda-tipo">Tipo de prenda</label>
@@ -382,6 +428,20 @@ function hexColor(color: ColorPrenda): string {
             type="text"
             placeholder="3-6 m, 68…"
           />
+        </div>
+
+        <div class="campo">
+          <label for="prenda-ubicacion">Dónde se guarda</label>
+          <input
+            id="prenda-ubicacion"
+            v-model="formulario.ubicacion"
+            type="text"
+            list="ubicaciones-usadas"
+            placeholder="Cómoda, cajón de arriba…"
+          />
+          <datalist id="ubicaciones-usadas">
+            <option v-for="u in ubicaciones" :key="u" :value="u" />
+          </datalist>
         </div>
 
         <div class="campo">
@@ -505,6 +565,24 @@ function hexColor(color: ColorPrenda): string {
   font-size: 0.82rem;
 }
 
+/* Grupos por tipo */
+.grupo-tipo {
+  margin-bottom: 1rem;
+}
+
+.cabecera-grupo {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.15rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-texto);
+}
+
 /* Rejilla de prendas */
 .rejilla {
   display: grid;
@@ -568,14 +646,31 @@ function hexColor(color: ColorPrenda): string {
   line-height: 1.25;
 }
 
+.prenda-ubicacion {
+  display: block;
+  font-size: 0.74rem;
+}
+
 /* Hoja de alta/edición */
 .zona-foto {
   display: block;
   aspect-ratio: 4 / 3;
-  border: 2px dashed var(--color-borde);
+  border: 1px solid var(--color-borde);
   border-radius: var(--radio-s);
   background: var(--color-fondo);
   overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.botones-foto {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.boton-foto {
+  flex: 1;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -584,21 +679,6 @@ function hexColor(color: ColorPrenda): string {
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.zona-foto-vacia {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--color-texto-suave);
-  font-size: 1rem;
-}
-
-.cambiar-foto {
-  margin: 0.3rem 0 0;
-  font-size: 0.78rem;
-  text-align: center;
 }
 
 .color-elegido {

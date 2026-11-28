@@ -20,7 +20,7 @@ Hash mode (`createWebHashHistory`) — obligatorio en GitHub Pages.
 | `/hoy` | HoyView | Dashboard en 3 cards: (1) "La bebe" — carita + nombre completo + tiles edad/peso/altura con percentil (enlazan a Evolucion); (2) "Cómo va el día" (icono icono-dia.png) con fecha y hora actual en la cabecera y 3 secciones — objetivos del dia, ultimos hitos (el ultimo de CADA tipo, los visibles sin desplegar los configura cada usuario) y registro del dia (2 ultimos, expandible, swipe para borrar, tocar una fila abre su edicion; el sueño nocturno que cruza la medianoche aparece en ambos dias via suenosDeDia — solo presentacion, con aviso "empezo el dia anterior / sigue tras medianoche" y su parte del dia); (3) "⚡ Accesos directos" — las acciones que configure cada usuario. El FAB ＋ de la nav abre la hoja con TODOS los tipos de registro (?registrar=1); panales, eventos y momentos se registran en una hoja con hora editable (precargada con ahora); ?config=1 abre la hoja de Configuracion (menu de usuario). Banda de proxima cita &lt;7 dias → Citas |
 | `/historial` | HistorialView | Grafica de ritmo de 24h (tocar una fila abre ese dia) + seccion Momentos + dias plegables con resumen en una linea; edicion en hoja inferior (HojaEdicionRegistro) |
 | `/evolucion` | EvolucionView | Alta de medidas (?nueva=1 la abre directamente) + segmento Valor \| Percentil: peso y altura con las curvas estandar OMS de fondo (deciles P0-P100, ventana de 60 dias con hoy en el dia 45, GraficaCrecimiento) y PC con banda P3-P97 + tabla con percentiles + graficas de dia a dia (leche ml/dia y sueno h/dia, rango 7/14/30, con franja naranja del rango recomendado por edad; ?grafica=tomas\|sueno hace scroll hasta ellas — enlazan los objetivos de Hoy); ✎ en cada medicion abre su edicion/borrado en hoja inferior |
-| `/armario` | ArmarioView | El armario: ropa por tipo y color con foto. Rejilla con filtros (chips de tipo con conteo + swatches de color); el + (FAB o boton de cabecera) abre PRIMERO el catalogo de tipos de prenda y de ahi la hoja de alta; edicion/borrado en hoja inferior; fotos comprimidas en cliente (components/imagen.ts) y subidas al bucket privado 'armario' (URLs firmadas 1 h). Pestana propia en la nav inferior (emoji hasta tener icono). El FAB es contextual: en /armario manda ?nueva=... (catalogo de tipos); en el resto, ?registrar=... a Hoy |
+| `/armario` | ArmarioView | El armario: ropa por tipo y color con foto, talla y ubicacion ("donde se guarda", con autocompletar de las ya usadas). Rejilla AGRUPADA por tipo (cabecera con conteo; tocarla filtra ese tipo) + chips y swatches de color; el + abre PRIMERO el catalogo de tipos y de ahi la hoja de alta; la foto se hace con CAMARA directa (input capture) o galeria, se comprime en cliente (components/imagen.ts) y va al bucket privado 'armario' (URLs firmadas 1 h). Pestana propia en la nav (emoji hasta tener icono). El + es contextual: en /armario manda ?nueva=...; en el resto, ?registrar=... a Hoy |
 | `/citas` | CitasView | "Citas & Recordatorios": proximas y hechas, alta, check de completada; y la card de Recordatorios (item + intervalo dia/semana + repeticiones, alta/pausa/borrado, estado "Hoy: 1 de 3 · quedan 2" via recordatoriosStore) |
 
 Guard global: espera `userStore.waitUntilReady()` y redirige segun sesion
@@ -248,6 +248,11 @@ lookup; test de cobertura garantiza que ninguna semana queda sin etapa.
   Tab, Escape, scroll-lock via components/modal.ts, Teleport). Persiste
   el calculo en `predicciones` en segundo plano con boton de reintento
   si falla la carga.
+- **BotonFlotante.vue**: el + de registrar como boton flotante
+  ARRASTRABLE (pointer events con umbral de 8 px para distinguir toque
+  de arrastre; posicion acotada a pantalla y persistida en localStorage
+  del dispositivo). Sustituye al FAB que iba incrustado en la nav (con
+  5 pestanas ya no cabia); App.vue lo monta con @pulsar=abrirRegistro.
 - **HojaPanal.vue**: hoja de registro de pañal (hora precargada +
   cantidad en caca/mixto); emite `guardar(cantidad, hora)` y el guardado
   real (validacion + servicio + deshacer) queda en HoyView.

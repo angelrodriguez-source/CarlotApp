@@ -191,6 +191,8 @@ export interface Prenda {
   /** Talla tal cual la etiqueta ("3-6 m", "68"...); null = sin apuntar */
   talla: string | null
   notas: string | null
+  /** Dónde se suele guardar ("cómoda", "cajón de arriba"...; libre) */
+  ubicacion: string | null
   /** Ruta del objeto en el bucket 'armario' (null = sin foto) */
   foto_path: string | null
   created_at: string
