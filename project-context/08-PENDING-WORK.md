@@ -23,6 +23,17 @@
       en el catalogo, edicion completa en HojaEdicionRegistro y rango de
       validacion 1-180 min. Icono pendiente (de momento emoji 🤸).
 
+## Armario v2 + FAB flotante (2026-11-28)
+
+- [x] Ideas de Angel: (1) la foto se puede hacer con la CAMARA directa
+      (input capture) ademas de galeria; (2) la rejilla va agrupada por
+      tipo de prenda con cabecera-conteo (tocarla filtra ese tipo; los
+      chips y swatches siguen); (3) atributo `ubicacion` ("donde se
+      suele guardar", migracion 11) con autocompletar de las ya usadas
+      y 📍 en la tarjeta; (4) el + sale de la nav (5 pestanas ya no lo
+      acomodaban) y pasa a ser BotonFlotante.vue: arrastrable, con la
+      posicion guardada por dispositivo.
+
 ## Modulo Armario (2026-11-22)
 
 - [x] Primera version del **Armario** (idea de Angel): la ropa de

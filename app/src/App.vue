@@ -28,6 +28,7 @@ import {
   soportaNotificaciones,
 } from './services/notificaciones'
 import HojaInferior from './components/HojaInferior.vue'
+import BotonFlotante from './components/BotonFlotante.vue'
 
 // Async: el panel arrastra el MimePredictor y las tablas OMS — cargarlo
 // bajo demanda los saca del chunk de entrada (que se descarga pre-login)
@@ -303,7 +304,6 @@ function abrirRegistro() {
       <img :src="iconoHistorialUrl" alt="" class="icono-nav" />
       <span>Historial</span>
     </RouterLink>
-    <button class="fab" aria-label="Registrar" @click="abrirRegistro">＋</button>
     <RouterLink :to="{ name: 'evolucion' }">
       <img :src="iconoEvolucionUrl" alt="" class="icono-nav" />
       <span>Evolución</span>
@@ -317,6 +317,10 @@ function abrirRegistro() {
       <span>Armario</span>
     </RouterLink>
   </nav>
+
+  <!-- El ＋ de registrar: flotante y arrastrable (cada uno lo deja donde
+       le venga mejor; la posición se guarda en el dispositivo) -->
+  <BotonFlotante v-if="userStore.isLoggedIn" @pulsar="abrirRegistro" />
 
   <!-- Acerca de -->
   <HojaInferior :abierta="mostrarAcercaDe" titulo="" @cerrar="mostrarAcercaDe = false">
@@ -558,25 +562,6 @@ function abrirRegistro() {
 .nav-inferior a.router-link-active {
   color: var(--color-primario-oscuro);
   font-weight: 600;
-}
-
-.fab {
-  flex: 0 0 auto;
-  width: 52px;
-  height: 52px;
-  margin: -1.35rem 0.5rem 0;
-  border: none;
-  border-radius: 50%;
-  background: var(--color-accion);
-  color: #fff;
-  font-size: 1.6rem;
-  line-height: 1;
-  box-shadow: var(--sombra);
-  transition: filter 0.15s;
-}
-
-.fab:hover {
-  filter: brightness(1.15);
 }
 
 /* ---- Acerca de ---- */

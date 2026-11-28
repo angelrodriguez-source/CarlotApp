@@ -104,3 +104,50 @@ export function resumenArmario(
     n: conteos.get(t.id)!,
   }))
 }
+
+/** Grupo de la rejilla: un tipo con sus prendas (ya ordenadas) */
+export interface GrupoArmario {
+  tipo: TipoPrenda
+  etiqueta: string
+  emoji: string
+  prendas: Prenda[]
+}
+
+/**
+ * Prendas agrupadas por tipo en orden de catálogo ('otro' al final),
+ * las más nuevas primero dentro de cada grupo. Solo tipos con prendas.
+ */
+export function gruposPorTipo(prendas: Prenda[]): GrupoArmario[] {
+  const ordenadas = ordenarPrendas(prendas)
+  const grupos: GrupoArmario[] = []
+  for (const p of ordenadas) {
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && ultimo.tipo === p.tipo) {
+      ultimo.prendas.push(p)
+    } else {
+      const info = TIPOS_PRENDA.find((t) => t.id === p.tipo)
+      grupos.push({
+        tipo: p.tipo,
+        etiqueta: info?.etiqueta ?? p.tipo,
+        emoji: info?.emoji ?? '⭐',
+        prendas: [p],
+      })
+    }
+  }
+  return grupos
+}
+
+/**
+ * Ubicaciones ya usadas, sin repetir (ignorando mayúsculas y espacios),
+ * por orden alfabético — alimentan el autocompletar del formulario.
+ */
+export function ubicacionesUsadas(prendas: Prenda[]): string[] {
+  const vistas = new Map<string, string>()
+  for (const p of prendas) {
+    const limpia = p.ubicacion?.trim()
+    if (!limpia) continue
+    const clave = limpia.toLocaleLowerCase('es')
+    if (!vistas.has(clave)) vistas.set(clave, limpia)
+  }
+  return [...vistas.values()].sort((a, b) => a.localeCompare(b, 'es'))
+}

@@ -9,9 +9,11 @@ import {
   etiquetaColorPrenda,
   etiquetaTipoPrenda,
   filtrarPrendas,
+  gruposPorTipo,
   ordenarPrendas,
   resumenArmario,
   tituloPrenda,
+  ubicacionesUsadas,
 } from '../armario'
 import type { Prenda } from '../../types'
 
@@ -25,6 +27,7 @@ function prenda(parcial: Partial<Prenda>): Prenda {
     color: 'blanco',
     talla: null,
     notas: null,
+    ubicacion: null,
     foto_path: null,
     created_at: `2026-11-0${(secuencia % 9) + 1}T10:00:00Z`,
     ...parcial,
@@ -82,5 +85,36 @@ describe('filtrarPrendas / ordenarPrendas / resumenArmario', () => {
   it('resumen: solo tipos con prendas, en orden de catálogo', () => {
     const r = resumenArmario(armario)
     expect(r.map((x) => `${x.tipo}:${x.n}`)).toEqual(['body:2', 'pijama:1', 'otro:1'])
+  })
+})
+
+describe('gruposPorTipo', () => {
+  it('agrupa en orden de catálogo con nuevas primero dentro del grupo', () => {
+    const grupos = gruposPorTipo([
+      prenda({ tipo: 'pijama', created_at: '2026-11-01T10:00:00Z' }),
+      prenda({ tipo: 'body', color: 'blanco', created_at: '2026-11-02T10:00:00Z' }),
+      prenda({ tipo: 'body', color: 'rosa', created_at: '2026-11-05T10:00:00Z' }),
+      prenda({ tipo: 'otro', created_at: '2026-11-03T10:00:00Z' }),
+    ])
+    expect(grupos.map((g) => `${g.tipo}:${g.prendas.length}`)).toEqual([
+      'body:2',
+      'pijama:1',
+      'otro:1',
+    ])
+    expect(grupos[0]!.prendas[0]!.color).toBe('rosa')
+    expect(grupos[0]!.emoji).toBeTruthy()
+  })
+})
+
+describe('ubicacionesUsadas', () => {
+  it('únicas sin distinguir mayúsculas/espacios, orden alfabético', () => {
+    const lista = ubicacionesUsadas([
+      prenda({ ubicacion: 'Cómoda' }),
+      prenda({ ubicacion: ' cómoda ' }),
+      prenda({ ubicacion: 'Cajón de arriba' }),
+      prenda({ ubicacion: null }),
+      prenda({ ubicacion: '  ' }),
+    ])
+    expect(lista).toEqual(['Cajón de arriba', 'Cómoda'])
   })
 })

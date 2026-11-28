@@ -603,7 +603,10 @@ export async function listarPrendas(bebeId: string): Promise<Prenda[]> {
 }
 
 export async function crearPrenda(
-  prenda: Pick<Prenda, 'bebe_id' | 'tipo' | 'color' | 'talla' | 'notas' | 'foto_path'>,
+  prenda: Pick<
+    Prenda,
+    'bebe_id' | 'tipo' | 'color' | 'talla' | 'notas' | 'ubicacion' | 'foto_path'
+  >,
 ): Promise<Prenda> {
   const { data, error } = await supabase.from('prendas').insert(prenda).select().single()
   lanzarSi(error)
@@ -613,7 +616,7 @@ export async function crearPrenda(
 
 export async function actualizarPrenda(
   id: string,
-  cambios: Partial<Pick<Prenda, 'tipo' | 'color' | 'talla' | 'notas' | 'foto_path'>>,
+  cambios: Partial<Pick<Prenda, 'tipo' | 'color' | 'talla' | 'notas' | 'ubicacion' | 'foto_path'>>,
 ): Promise<void> {
   const { error } = await supabase.from('prendas').update(cambios).eq('id', id)
   lanzarSi(error)
